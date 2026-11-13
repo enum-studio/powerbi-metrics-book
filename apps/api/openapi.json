@@ -5432,6 +5432,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "aliases": {
                             "type": "array",
                             "items": {
@@ -11240,6 +11244,10 @@
                           "excerpt": {
                             "type": "string"
                           },
+                          "excerpt_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "author_name": {
                             "description": "The asker's display name, null for a caller who can see no dataset. Never an email.",
                             "type": [
@@ -12776,6 +12784,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "dataset": {
                             "anyOf": [
                               {
@@ -13556,6 +13568,10 @@
                           },
                           "summary": {
                             "type": "string"
+                          },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
                           },
                           "column_count": {
                             "type": "number"

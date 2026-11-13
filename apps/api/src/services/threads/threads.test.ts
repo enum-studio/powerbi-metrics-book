@@ -86,6 +86,32 @@ const eventsOf = (tx: Db, kind: EventKind) =>
     .orderBy(asc(event.id));
 
 describe("listThreads and getThread", () => {
+  it("flags only excerpts longer than 300 code points", () =>
+    rolledBack(async (tx) => {
+      const context = session(tx)(asker);
+      for (const body of ["😀".repeat(300), "Sample question ".repeat(30)]) {
+        const posted = await postThread(context, {
+          kind: "question",
+          element: salesDataset,
+          title: "Which period?",
+          body,
+        });
+        const listed = (await listThreads(context)).items.find(
+          (item) => item.id === posted.id,
+        );
+        if (Array.from(body).length === 300) {
+          expect(listed?.excerpt).toBe(body);
+          expect(listed).not.toHaveProperty("excerpt_truncated");
+        } else {
+          expect(listed?.excerpt).toMatch(/Sample…$/u);
+          expect(Array.from(listed?.excerpt ?? "").length).toBeLessThanOrEqual(
+            300,
+          );
+          expect(listed?.excerpt_truncated).toBe(true);
+        }
+      }
+    }));
+
   it("count a reply by another person as unread until the asker views the thread", () =>
     rolledBack(async (tx) => {
       const as = session(tx);

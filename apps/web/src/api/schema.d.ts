@@ -3766,6 +3766,8 @@ export interface operations {
               label: string;
               icon: string | null;
               summary: string;
+              /** @constant */
+              summary_truncated?: true;
               aliases: string[];
               dataset_count: number;
               unit: string | null;
@@ -6670,6 +6672,8 @@ export interface operations {
                 id: string;
               };
               excerpt: string;
+              /** @constant */
+              excerpt_truncated?: true;
               /** @description The asker's display name, null for a caller who can see no dataset. Never an email. */
               author_name: string | null;
             }[];
@@ -7636,6 +7640,8 @@ export interface operations {
               key: string | null;
               label: string;
               summary: string;
+              /** @constant */
+              summary_truncated?: true;
               dataset: {
                 /** @enum {string} */
                 kind: "workspace" | "app" | "dataset" | "table";
@@ -7942,6 +7948,8 @@ export interface operations {
               /** @enum {string} */
               type: "dimension" | "concept";
               summary: string;
+              /** @constant */
+              summary_truncated?: true;
               column_count: number;
               aliases: string[] | null;
               owner: string | null;
