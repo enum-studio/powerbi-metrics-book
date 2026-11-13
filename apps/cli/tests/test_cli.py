@@ -9,6 +9,25 @@ from typer.testing import CliRunner
 
 from powerbi_metrics_book.cli import CommandModuleError, app, build_app
 
+
+def test_terms_help_explains_business_words_and_column_types() -> None:
+    result = CliRunner().invoke(app, ["terms", "--help"], color=False)
+    assert result.exit_code == 0
+    help_text = " ".join(result.stdout.split())
+    assert (
+        "A term is a word the business uses that a newcomer needs explained"
+        in help_text
+    )
+    assert "Returning customer" in help_text
+    assert "Sign-up attribution" in help_text
+    listed = CliRunner().invoke(app, ["terms", "list", "--help"], color=False)
+    assert listed.exit_code == 0
+    assert (
+        "A term with columns has type dimension; one with none has type concept."
+        in " ".join(listed.stdout.split())
+    )
+
+
 GROUP = """
 import typer
 

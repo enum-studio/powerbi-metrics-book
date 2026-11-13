@@ -19,8 +19,9 @@ from powerbi_metrics_book.output import JsonOption
 from powerbi_metrics_book.tables import line, print_fields, print_table, render_page
 
 app = typer.Typer(
-    help="The glossary: terms, the columns behind them and their values, and the "
-    "metrics they relate to."
+    help="A term is a word the business uses that a newcomer needs explained: "
+    "Returning customer, Sign-up attribution, Cohort, Channel. A term can point "
+    "to the columns that hold it and the metrics that use it."
 )
 
 LIST_COLUMNS = ["name", "type", "trust_state", "owner", "summary"]
@@ -36,7 +37,7 @@ NotTheSameAs = Annotated[
 ]
 Values = Annotated[
     str | None,
-    typer.Option(help="The values a dimension term takes, comma-separated, or `none`."),
+    typer.Option(help="The values the term takes, comma-separated, or `none`."),
 ]
 Owner = Annotated[str | None, typer.Option(help="Who answers for the term.")]
 Metric = Annotated[str, typer.Argument(help="The metric's id or name.")]
@@ -129,7 +130,9 @@ def list_terms(
     ] = None,
     json_output: JsonOption = False,
 ) -> None:
-    """List terms A to Z. A dimension term is backed by columns; a concept is not."""
+    """List the words the business uses, A to Z.
+
+    A term with columns has type dimension; one with none has type concept."""
     query: Query = {
         **query_of(
             dataset=dataset,
@@ -154,7 +157,7 @@ def list_terms(
 
 @app.command("show")
 def show(context: typer.Context, name: Name, json_output: JsonOption = False) -> None:
-    """Show a term: definition, values, the columns behind it and related metrics."""
+    """Show what the business means by a word, its values, columns and metrics."""
     _term(context, json_output, "GET", api_path("terms", name))
 
 
