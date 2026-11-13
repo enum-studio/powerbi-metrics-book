@@ -1,0 +1,128 @@
+# Apply after stack/compose.yml and deploy/dokploy/compose.dokploy.yml.
+# The demo uses only the invented tenant; no Microsoft account is needed.
+x-demo: &demo
+  DEMO_MODE: "1"
+  NODE_ENV: production
+  POWERBI_AUTHORITY: http://powerbi-mock.localhost:3001
+  POWERBI_API_URL: http://powerbi-mock.localhost:3001/powerbi
+  POWERBI_GRAPH_URL: http://powerbi-mock.localhost:3001/graph
+  EMAIL_BASE_URL: http://powerbi-mock.localhost:3001
+  SEARCH_BASE_URL: http://powerbi-mock.localhost:3001/openai
+  # Public sample browsing must neither collect usage nor hide metadata.
+  USAGE_CAPTURE: "false"
+  ACCESS_METADATA_VISIBILITY: everyone
+
+# Tagged per project, as stack/dev does, so building the demo on a Docker
+# host that also runs another stack never replaces that stack's image.
+x-image: &image powerbi-metrics-book:${COMPOSE_PROJECT_NAME}
+
+services:
+  api:
+    image: *image
+    environment: *demo
+    # Settings point at the mock, so wait until its tenant is ready.
+    depends_on:
+      powerbi-mock: { condition: service_healthy }
+
+  worker:
+    image: *image
+    environment: *demo
+    depends_on:
+      powerbi-mock: { condition: service_healthy }
+
+  powerbi-mock:
+    # Paths resolve from stack/compose.yml, the first compose file.
+    build:
+      context: ..
+      dockerfile: packages/powerbi-mock/Dockerfile
+    image: powerbi-metrics-book-mock:${COMPOSE_PROJECT_NAME}
+    # Match the dev mock's hardening and small resource allowance.
+    user: "10001:10001"
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    restart: unless-stopped
+    # No published port or domain: only stack containers reach control routes.
+    # egress keeps the mock away from postgres and cerbos on app.
+    networks:
+      egress:
+        aliases: [powerbi-mock.localhost]
+    environment:
+      PORT: "3001"
+      MOCK_ORIGIN: http://powerbi-mock.localhost:3001
+      SAMPLE_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      # The seed needs the acting-user control route for the setup walk.
+      MOCK_CONTROL: "1"
+    healthcheck:
+      # Public signing keys are served only once the sample tenant is loaded.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch(`http://127.0.0.1:$${process.env.PORT}/11111111-1111-4111-8111-111111111111/discovery/v2.0/keys`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy: { resources: { limits: { memory: 256m, cpus: "0.5" } } }
+
+  cerbos:
+    volumes:
+      # The default policies from this project's own image (merged by target).
+      - type: image
+        source: *image
+        target: /policies/default
+        image:
+          subpath: app/access/policies
+
+  seed:
+    # The api builds this image; setup runs in process with the api's rights.
+    image: *image
+    command: [server, sample-seed]
+    user: "10001:10001"
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp:size=64m]
+    # Successful setup exits once; a failure stays visible for the operator.
+    restart: "no"
+    # No edge: the seed serves no public requests.
+    networks: [app, egress]
+    environment:
+      # The api's environment, DEMO_MODE included: setup writes through an
+      # in-process app the seed builds without the demo's read-only rule.
+      <<: *demo
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL?PUBLIC_BASE_URL is not set; pbmb init writes it to .env}
+      DATABASE_URL: postgres://api_rw:${API_RW_PASSWORD?API_RW_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      MIGRATOR_DATABASE_URL: postgres://migrator:${MIGRATOR_PASSWORD?MIGRATOR_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      AUDIT_DATABASE_URL: postgres://audit_writer:${AUDIT_WRITER_PASSWORD?AUDIT_WRITER_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      AUTH_SECRET: ${AUTH_SECRET?AUTH_SECRET is not set; pbmb init writes it to .env}
+      CERBOS_URL: http://cerbos:3592
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
+      # Match the api's optional environment identity and default IDENTITY_DIR.
+      API_AGE_IDENTITY:
+    volumes:
+      # Seal secrets for the api's existing identity, never a third identity.
+      - type: volume
+        source: api_identity
+        target: /var/lib/pbmb/identity
+        # The api made the identity before it turned healthy; the seed only reads it.
+        read_only: true
+    depends_on:
+      # The api creates its identity and migrates; the worker runs setup jobs.
+      api: { condition: service_healthy }
+      worker: { condition: service_healthy }
+    healthcheck:
+      # The seed's own dependency: the mock it signs people in at.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://powerbi-mock.localhost:3001/11111111-1111-4111-8111-111111111111/discovery/v2.0/keys').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy: { resources: { limits: { memory: 512m, cpus: "1.0" } } }

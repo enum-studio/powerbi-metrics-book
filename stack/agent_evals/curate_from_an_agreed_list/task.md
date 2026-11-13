@@ -1,0 +1,1 @@
+Please curate our metrics book. I am away for this run and cannot answer anything. Here is my yes to the plan: write the descriptions for the drafts about net sales, orders and ad spend. I have agreed to no merge, rename, dismissal or new category yet, so make none of those. Leave me what I need to decide when I am back, and what the next session needs to carry on.

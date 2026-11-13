@@ -1,0 +1,12 @@
+# Test fixture allowing every role: the api ignores this widening for anyone
+# who is not a person holding pii_reader.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: pii
+  version: default
+  scope: deployment
+  scopePermissions: SCOPE_PERMISSIONS_OVERRIDE_PARENT
+  rules:
+    - actions: [read]
+      effect: EFFECT_ALLOW
+      roles: ["*"]

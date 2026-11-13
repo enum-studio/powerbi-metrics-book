@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": [
+      "Read(**/.env*)",
+      "Read(**/*.key)",
+      "Read(**/identity/**)",
+      "Shell(env)",
+      "Shell(printenv)",
+      "Shell(echo:$*)",
+      "Shell(echo:\"$*)",
+      "Shell(cat:/proc/*/environ*)",
+      "Shell(docker:inspect*)",
+      "Shell(docker:container inspect*)",
+      "Shell(docker:compose config*)",
+      "Shell(docker:compose * config*)",
+      "Shell(docker:compose exec*)",
+      "Shell(docker:compose * exec*)",
+      "Shell(docker:exec*)",
+      "Shell(docker:container exec*)",
+      "Shell(docker:compose run*)",
+      "Shell(docker:compose * run*)",
+      "Shell(git:push --force*)",
+      "Shell(git:push -f*)",
+      "Shell(git:push * --force*)",
+      "Shell(git:push * -f*)"
+    ]
+  }
+}

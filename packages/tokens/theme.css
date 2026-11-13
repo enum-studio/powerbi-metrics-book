@@ -1,0 +1,69 @@
+/* Tailwind 4 utilities for the tokens in tokens.css, so a product writes
+   `bg-surface text-ink` and never a raw hex. The utility has the token's name:
+   `--ink-2` is `text-ink-2`, `--line-control` is `border-line-control`,
+   `--type-ui` is `text-ui`, `--radius-sheet` is `rounded-sheet`.
+
+   Every mapping is `inline`, so a utility reads the token's variable itself
+   and follows it into dark. Tailwind's default palette, type sizes, radii and
+   shadows are cleared first: the look has six sizes, two radii and one palette,
+   and a class outside them should not exist.
+
+   Five token names (--font-mono, --radius, --radius-sheet, --shadow,
+   --shadow-sheet) are also Tailwind's own theme keys. They are mapped under
+   their own names so `rounded-t-sheet` and `shadow-sheet` keep every variant.
+   The block is `reference`, so Tailwind emits no variable of its own for any
+   mapping: a utility reads the token straight from tokens.css, and a token
+   mapped to its own name is never written back as `--shadow: var(--shadow)`. */
+
+@theme inline reference {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-canvas: var(--canvas);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-control: var(--line-control);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-out: var(--out);
+  --color-select: var(--select);
+  --color-scrim: var(--scrim);
+  --color-icon-gray: var(--icon-gray);
+  --color-icon-green: var(--icon-green);
+  --color-icon-teal: var(--icon-teal);
+  --color-icon-blue: var(--icon-blue);
+  --color-icon-violet: var(--icon-violet);
+  --color-icon-red: var(--icon-red);
+  --color-icon-amber: var(--icon-amber);
+  --color-icon-ink: var(--icon-ink);
+
+  /* font-sans is Inter, and through Tailwind's preflight the page's default face. */
+  --font-*: initial;
+  --font-sans: var(--font-text);
+  --font-mono: var(--font-mono);
+
+  --text-*: initial;
+  --text-title: var(--type-title);
+  --text-heading: var(--type-heading);
+  --text-body: var(--type-body);
+  --text-ui: var(--type-ui);
+  --text-meta: var(--type-meta);
+  --text-label: var(--type-label);
+
+  /* One step of the 4px grid: p-3 is --space-3, and p-9 stays on the grid. */
+  --spacing: var(--space-1);
+
+  --radius-*: initial;
+  --radius: var(--radius);
+  --radius-sheet: var(--radius-sheet);
+
+  --shadow-*: initial;
+  --shadow: var(--shadow);
+  --shadow-sheet: var(--shadow-sheet);
+}

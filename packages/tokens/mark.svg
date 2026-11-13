@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19 19" fill="none">
+  <!--
+    The line mark from docs/brand.md in the enumstudio repository: a square
+    register with two rules inside it, the longer above the shorter. It draws in
+    currentColor, ink on paper and paper on the green or the dark ground, and is
+    never green on paper. Same literals as Mark.astro there.
+  -->
+  <rect x="0.75" y="0.75" width="17.5" height="17.5" stroke="currentColor" stroke-width="1.5" />
+  <rect x="3" y="4.5" width="9" height="1.5" fill="currentColor" />
+  <rect x="3" y="10" width="5" height="1.5" fill="currentColor" />
+</svg>

@@ -1,0 +1,16 @@
+# Test fixture narrowing the query log to one's own entries. A deny decides
+# ahead of the default's allow; both the kind and the id are compared, since a
+# service account's name could equal a person's id.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: query_log
+  version: default
+  scope: deployment
+  scopePermissions: SCOPE_PERMISSIONS_OVERRIDE_PARENT
+  rules:
+    - actions: [read]
+      effect: EFFECT_DENY
+      roles: ["*"]
+      condition:
+        match:
+          expr: "!(R.attr.principal_kind == P.attr.kind && R.attr.principal_id == P.id)"

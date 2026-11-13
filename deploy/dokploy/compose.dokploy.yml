@@ -1,0 +1,15 @@
+# Layered over the compose.yml that pbmb init writes, for a Dokploy compose
+# application. Dokploy runs it through the custom command in
+# apps/docs/src/content/docs/deploy/dokploy.md.
+#
+# Traefik reaches the api over dokploy-network, which Dokploy adds to the
+# service that has a domain (the api) when Isolated Deployments is off.
+# https://docs.dokploy.com/docs/core/docker-compose/domains
+# Leave Isolated Deployments off: it adds a network to every service, which
+# would put postgres and cerbos on a network the proxy shares.
+
+services:
+  api:
+    # The base file publishes the api on 127.0.0.1:3000, the port Dokploy's
+    # own dashboard listens on. Traefik needs no published port.
+    ports: !reset []

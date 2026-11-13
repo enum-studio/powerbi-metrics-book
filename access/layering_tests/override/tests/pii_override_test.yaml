@@ -1,0 +1,31 @@
+name: pii_override
+description: The test policy allows PII even to service accounts; the api must refuse them.
+options:
+  lenientScopeSearch: true
+principals:
+  person:
+    id: person
+    roles: [viewer]
+    attr: { kind: person }
+  account:
+    id: account
+    roles: [viewer]
+    attr: { kind: service_account }
+resources:
+  pii:
+    kind: pii
+    id: pii
+    scope: deployment
+tests:
+  - name: allow both kinds without pii_reader
+    input:
+      principals: [person, account]
+      resources: [pii]
+      actions: [read]
+    expected:
+      - principal: person
+        resource: pii
+        actions: { read: EFFECT_ALLOW }
+      - principal: account
+        resource: pii
+        actions: { read: EFFECT_ALLOW }

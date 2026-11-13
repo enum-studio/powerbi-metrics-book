@@ -1,0 +1,70 @@
+# Unlisted combinations are denied, including a service account with the owner's id.
+name: usage
+options:
+  lenientScopeSearch: true
+tests:
+  - name: request access matrix
+    input:
+      principals:
+        [
+          workspace_member,
+          app_only,
+          analyst,
+          curator,
+          admin,
+          service_account_named_like_a_person,
+        ]
+      resources: [request]
+      actions: [create, read, delete]
+    expected:
+      - principals:
+          [
+            workspace_member,
+            app_only,
+            analyst,
+            curator,
+            admin,
+            service_account_named_like_a_person,
+          ]
+        resource: request
+        actions: { create: EFFECT_ALLOW }
+      - principals: [workspace_member, admin]
+        resource: request
+        actions: { read: EFFECT_ALLOW, delete: EFFECT_ALLOW }
+      - principal: curator
+        resource: request
+        actions: { read: EFFECT_ALLOW }
+  - name: search_log access matrix
+    input:
+      principals:
+        [
+          workspace_member,
+          app_only,
+          analyst,
+          curator,
+          admin,
+          service_account_named_like_a_person,
+        ]
+      resources: [search_log]
+      actions: [read, delete]
+    expected:
+      - principals: [workspace_member, curator, admin]
+        resource: search_log
+        actions: { read: EFFECT_ALLOW }
+  - name: usage_report access matrix
+    input:
+      principals:
+        [
+          workspace_member,
+          app_only,
+          analyst,
+          curator,
+          admin,
+          service_account_named_like_a_person,
+        ]
+      resources: [usage_report]
+      actions: [read, delete]
+    expected:
+      - principals: [curator, admin]
+        resource: usage_report
+        actions: { read: EFFECT_ALLOW }

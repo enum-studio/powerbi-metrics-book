@@ -1,0 +1,30 @@
+{
+  "name": "powerbi-metrics-book",
+  "private": true,
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=24.2 <25"
+  },
+  "scripts": {
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check:all": "node scripts/check-all.mjs",
+    "dev:up": "node scripts/dev-stack.mjs up",
+    "dev:down": "node scripts/dev-stack.mjs down",
+    "dev:serve": "node scripts/dev-stack.mjs serve",
+    "dev:reset": "node scripts/dev-stack.mjs reset",
+    "dev:logs": "node scripts/dev-stack.mjs logs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "lefthook": "2.2.2",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0"
+  }
+}

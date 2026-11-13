@@ -1,0 +1,39 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: admin_override
+description: A deployment policy in override mode gives a role of its own the whole admin section.
+options:
+  lenientScopeSearch: true
+principals:
+  # Cerbos allows it whatever its kind; the api's code bound refuses it.
+  integration_service_account:
+    id: integration_service_account
+    roles: [integration]
+    attr: &lists
+      kind: service_account
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+  viewer:
+    id: viewer
+    roles: [viewer]
+    attr: { <<: *lists, kind: person }
+resources:
+  admin:
+    kind: admin
+    id: admin
+    scope: deployment
+tests:
+  - name: every admin action, for the role the deployment names
+    input:
+      principals: [integration_service_account, viewer]
+      resources: [admin]
+      actions: [manage_service_accounts, manage_settings, read_audit]
+    expected:
+      - principal: integration_service_account
+        resource: admin
+        actions:
+          manage_service_accounts: EFFECT_ALLOW
+          manage_settings: EFFECT_ALLOW
+          read_audit: EFFECT_ALLOW

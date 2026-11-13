@@ -1,0 +1,51 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: override
+description: A deployment policy in override mode, layered on the defaults.
+options:
+  lenientScopeSearch: true
+principals:
+  no_access:
+    id: no_access
+    roles: [viewer]
+    attr: &no_lists
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+  workspace_member:
+    id: workspace_member
+    roles: [viewer]
+    attr: { <<: *no_lists, powerbi_workspace_ids: [sales_workspace] }
+  ungranted_service_account:
+    id: ungranted_service_account
+    roles: [viewer]
+    attr: { <<: *no_lists, kind: service_account }
+resources:
+  certified_dataset:
+    kind: dataset
+    id: certified_dataset
+    scope: deployment
+    attr: { workspace_id: other_workspace, app_ids: [], endorsement: Certified }
+  sales_dataset:
+    kind: dataset
+    id: sales_dataset
+    scope: deployment
+    attr: { workspace_id: sales_workspace, app_ids: [], endorsement: null }
+tests:
+  - name: the override opens certified datasets, and the defaults decide the rest
+    input:
+      principals: [no_access, workspace_member, ungranted_service_account]
+      resources: [certified_dataset, sales_dataset]
+      actions: [describe, query]
+    expected:
+      # Cerbos lets the override reach a service account too: createAccess
+      # holds it to its grant in code (cerbos.test.ts), since no root rule
+      # can stop an override.
+      - principals: [no_access, workspace_member, ungranted_service_account]
+        resource: certified_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }
+      - principal: workspace_member
+        resource: sales_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }

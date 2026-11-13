@@ -1,0 +1,10 @@
+# A usage report is checked whole, as one decision.
+# It is never plan-translated and has no principal_kind or principal_id attributes.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: usage_report
+  version: default
+  rules:
+    - actions: [read]
+      effect: EFFECT_ALLOW
+      roles: [curator, admin]

@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // The dev stack's identity and the sample's values are reused from
+    // scripts/dev-stack.mjs, which is JavaScript.
+    "allowJs": true
+  },
+  "include": ["."]
+}

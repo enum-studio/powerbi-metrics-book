@@ -1,0 +1,10 @@
+# The links GitHub shows beside the bug and feature templates. A
+# vulnerability goes through a private report, never a public issue.
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/enum-studio/powerbi-metrics-book/security/advisories/new
+    about: Privately, as SECURITY.md describes. Never in a public issue.
+  - name: Read the docs
+    url: https://powerbimetricsbook.io/docs/
+    about: Setup, deployment and every check, step by step.

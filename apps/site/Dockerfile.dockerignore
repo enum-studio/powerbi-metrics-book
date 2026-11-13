@@ -1,0 +1,12 @@
+# BuildKit reads this file, not apps/site/.dockerignore, for
+# `docker build -f apps/site/Dockerfile .` from the repository root.
+# The Dockerfile copies named paths; this keeps the rest out of the context.
+.git
+**/node_modules
+**/dist
+**/.astro
+.venv
+**/.env
+**/.env.*
+**/*.key
+.claude

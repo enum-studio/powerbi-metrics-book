@@ -1,0 +1,21 @@
+---
+// A code block with a Copy button. With `prompt`, each command line starts
+// with a "$ " that is drawn but not copied; a line that only continues the one
+// above (it starts with spaces) gets none, and neither does a comment. A line
+// starting with # or // is a comment and is drawn in the quieter ink.
+interface Props {
+  code: string;
+  prompt?: boolean;
+}
+
+const { code, prompt = false } = Astro.props;
+const lines = code.split("\n").map((text) => {
+  const comment = /^\s*(#|\/\/)/.test(text);
+  return { text, comment, prompt: prompt && !comment && text !== "" && !text.startsWith(" ") };
+});
+---
+
+<div class="code">
+  <button class="copy" type="button" data-copy>Copy</button>
+  <pre><code>{lines.map((line, index) => <>{line.prompt && <span class="prompt">$ </span>}{line.comment ? <span class="comment">{line.text}</span> : line.text}{index < lines.length - 1 && "\n"}</>)}</code></pre>
+</div>

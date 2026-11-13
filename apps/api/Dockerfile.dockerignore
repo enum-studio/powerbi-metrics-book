@@ -1,0 +1,17 @@
+# BuildKit reads this file, not apps/api/.dockerignore, for
+# `docker build -f apps/api/Dockerfile .` from the repository root.
+# The Dockerfile copies named paths; this keeps the rest out of the context.
+.git
+**/node_modules
+**/dist
+.venv
+**/.env
+**/.env.*
+**/*.key
+.claude
+# What the commit stage of the Dockerfile reads, and no more: .git/config can
+# hold the token a host cloned with. Last, so the rules above do not take a
+# branch named dist back out of refs/heads.
+!.git/HEAD
+!.git/refs/heads
+!.git/packed-refs

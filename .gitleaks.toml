@@ -1,0 +1,43 @@
+title = "Power BI Metrics Book"
+
+[extend]
+useDefault = true
+
+# A service account's API key: pbmb_sk_ and 32 random bytes in base64url
+# (apps/api/src/services/auth/service-accounts.ts).
+[[rules]]
+id = "pbmb-api-key"
+description = "Power BI Metrics Book API key"
+regex = '''pbmb_sk_[A-Za-z0-9_-]{43}'''
+keywords = ["pbmb_sk_"]
+
+# A few allow-lists, each with its reason and the date to look at it again.
+# Everything else is a finding to fix, not to silence.
+
+# Fake keys that the security tests feed to the code under test.
+[[allowlists]]
+description = "fake keys in test fixtures"
+paths = ['''(^|/)tests/(.+/)?fixtures/''']
+
+# What git ignores and holds no source of this repository: other checkouts'
+# worktrees, installed environments and build output. The tree scan reads the
+# working directory, untracked files included, so a secret is caught before it
+# is added; these folders are not ours to scan, and the history scan covers
+# every commit.
+[[allowlists]]
+description = "ignored worktrees, environments and build output"
+paths = [
+  '''(^|/)\.claude/worktrees/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)(dist|coverage|\.astro)/''',
+]
+
+# The made-up secret that apps/api/src/routes/v1/admin.test.ts saves through
+# the settings route to check it is stored and never shown again. It names no
+# system. Exactly this value is allowed, not the file: a real key added to the
+# test is still a finding. Look again by 2027-04-30.
+[[allowlists]]
+description = "made-up secret in the admin settings route test"
+regexTarget = "match"
+regexes = ['''sk-test-0123456789-abcdwxyz''']

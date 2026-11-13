@@ -1,0 +1,69 @@
+---
+import mark from "@enum-studio/tokens/mark.svg?raw";
+import { LINKS } from "../links";
+---
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="mark" aria-hidden="true" set:html={mark} />
+      <span translate="no">Power BI Metrics Book</span>
+    </a>
+    <nav aria-label="Footer">
+      <a href={LINKS.docs}>Docs</a>
+      <a href={LINKS.changelog}>Changelog</a>
+      <a href={LINKS.github}>GitHub</a>
+      <a href={LINKS.licence}>Licence</a>
+      <a href={LINKS.security}>Security</a>
+    </nav>
+    <p>
+      Open source under Apache 2.0. Built and maintained by <a href={LINKS.enumStudio}
+        >Enum Studio</a
+      >.
+    </p>
+  </div>
+</footer>
+
+<style>
+  footer {
+    padding-block: var(--space-8);
+    border-top: 1px solid var(--line);
+    font-size: var(--type-ui);
+  }
+  .wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4) var(--space-8);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .mark {
+    display: flex;
+    width: 1rem;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+  }
+  nav a {
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+  nav a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+  p {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--ink-3);
+  }
+</style>

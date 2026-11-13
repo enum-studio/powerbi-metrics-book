@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "image": {
+      "value": "ghcr.io/enum-studio/powerbi-metrics-book:<version>@sha256:<digest>"
+    },
+    "publicBaseUrl": {
+      "value": "https://metrics.example.com"
+    },
+    "keyVaultName": {
+      "value": "<key vault name>"
+    },
+    "postgresServerName": {
+      "value": "<globally unique server name>"
+    },
+    "postgresAdminPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/<subscription id>/resourceGroups/<resource group>/providers/Microsoft.KeyVault/vaults/<key vault name>"
+        },
+        "secretName": "postgres-password"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# Personal data. The pii_reader role reads it and no other shipped role does.
+# The api also refuses it, whatever a policy says, to anyone but a person
+# holding pii_reader: a deployment's policy can narrow this, never widen it.
+# What a person without pii_reader is shown in its place is fixed
+# in code, not here.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: pii
+  version: default
+  rules:
+    - actions: [read]
+      effect: EFFECT_ALLOW
+      roles: [pii_reader]
+      condition:
+        match:
+          expr: P.attr.kind == "person"

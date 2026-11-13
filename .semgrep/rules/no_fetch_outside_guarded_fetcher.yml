@@ -1,0 +1,49 @@
+rules:
+  - id: no-fetch-outside-guarded-fetcher
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Do not call fetch directly. Every outbound request of the api goes through
+      apps/api/src/http/fetcher.ts: https only, the configured hosts (fetchFixed)
+      or public addresses only after DNS resolution (fetchUntrusted), size and
+      time limits, no redirects followed.
+    pattern-either:
+      - pattern: fetch(...)
+      - pattern: globalThis.fetch(...)
+      - pattern: window.fetch(...)
+      - pattern: self.fetch(...)
+    paths:
+      include:
+        - "apps/api/src/**"
+      exclude:
+        - "apps/api/src/http/fetcher.ts"
+        - "**/node_modules/**"
+    metadata:
+      spec: "docs/specs/2026-10-25-powerbi-metrics-book.md, Security: Checks that run and security tests"
+  - id: no-undici-outside-guarded-fetcher
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Do not import undici. It is the HTTP client behind apps/api/src/http/fetcher.ts,
+      where every outbound request gets its https-only, public-address, size, time
+      and no-redirect limits. Reaching undici directly (its fetch, request or Agent)
+      skips them; call the fetcher instead.
+    pattern-either:
+      - pattern: import $X from "undici"
+      - pattern: import * as $X from "undici"
+      - pattern: import {...} from "undici"
+      - pattern: import "undici"
+      - pattern: require("undici")
+      - pattern: import("undici")
+      - pattern: undici.$CALL(...)
+    paths:
+      include:
+        - "apps/api/src/**"
+      exclude:
+        - "apps/api/src/http/fetcher.ts"
+        # Tests are clients of the app under test and not part of the image.
+        - "apps/api/src/**/*.test.ts"
+        - "apps/api/src/**/*_security_test.ts"
+        - "**/node_modules/**"
+    metadata:
+      spec: "docs/specs/2026-10-25-powerbi-metrics-book.md, Security: Checks that run and security tests"

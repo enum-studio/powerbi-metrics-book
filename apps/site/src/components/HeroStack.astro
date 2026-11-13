@@ -1,0 +1,474 @@
+---
+// The hero's drawing and its example run. The card walks through the four
+// steps an agent takes; each step lights up the shapes it touches. The
+// layers build in on load, and pulses run along the wires. With reduced
+// motion, nothing moves and the card shows the whole run.
+import { CALLOUTS, drawHero } from "../drawing/hero";
+
+const RUN = [
+  { tool: "search", input: '"net sales"', output: "net_sales" },
+  { tool: "get_metric", input: "net_sales", output: "SUM(Sales[Net amount])" },
+  { tool: "execute_dax", input: "on Sales", output: "12 rows as you, csv_url" },
+  { tool: "curl -o", input: "csv_url", output: "net_sales_by_month_2025.csv" },
+];
+---
+
+<figure class="hero-stack" data-hero>
+  <div class="drawing-wide" set:html={drawHero("hw", true)} />
+  <div class="drawing-narrow" set:html={drawHero("hn", false)} />
+
+  <div class="run">
+    <div class="run-head"><b>Agents and internal tools</b><span>an example run in Claude Code</span></div>
+    <p class="run-ask">How much did we sell last year, by month? I need it as a file.</p>
+    <ol>
+      {
+        RUN.map((row, index) => (
+          <li data-run={index + 1}>
+            <code>{row.tool}</code>
+            {row.input && <span class="in">{row.input}</span>}
+            <span class="out">{row.output}</span>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+
+  <dl class="layers">
+    {
+      CALLOUTS.map((callout) => (
+        <div>
+          <dt>{callout.name}</dt>
+          <dd>{callout.rows.map(([key, value]) => `${key} ${value}`).join(". ")}.</dd>
+        </div>
+      ))
+    }
+  </dl>
+</figure>
+
+<script>
+  import { stepThrough } from "../scripts/stepper";
+
+  const figure = document.querySelector<HTMLElement>("[data-hero]");
+  if (figure) stepThrough(figure, { count: 4, ms: 2400, showFirst: false, delay: 1400 });
+</script>
+
+<style>
+  .hero-stack {
+    position: relative;
+    margin: 0;
+  }
+  /* On a wide screen the drawing grows into the page's right margin, up to
+     8rem, so its labels draw near their own size. */
+  @media (min-width: 1100px) {
+    .hero-stack {
+      margin-right: calc(-1 * min(8rem, (100vw - var(--page-max)) / 2));
+    }
+  }
+  .hero-stack :global(.iso) {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-text);
+  }
+  .drawing-narrow,
+  .layers {
+    display: none;
+  }
+
+  /* The example run: a card over the drawing's top right corner. */
+  /* The card takes the drawing's free top right corner, above the agents'
+     callout: 37% of the width is the drawing's 290 free units of 780. */
+  .run {
+    position: absolute;
+    top: 3%;
+    right: 0;
+    width: 37%;
+    overflow: hidden;
+    background: var(--surface);
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--shadow-sheet);
+    font-size: var(--type-meta);
+  }
+  .run-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+    font: 500 var(--type-label) / 1.4 var(--font-mono);
+    color: var(--ink-3);
+  }
+  .run-head b {
+    font: 600 var(--type-ui) var(--font-text);
+    color: var(--ink);
+  }
+  .run-ask {
+    margin: 0;
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    color: var(--ink);
+    font-size: var(--type-ui);
+    line-height: 1.4;
+  }
+  .run ol {
+    margin: 0;
+    padding: 0 0 var(--space-2);
+    list-style: none;
+  }
+  .run li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 var(--space-2);
+    padding: 3px var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--type-label);
+    line-height: 1.5;
+    color: var(--ink-3);
+    transition:
+      background-color 0.25s,
+      color 0.25s;
+  }
+  .run li code {
+    color: var(--ink-2);
+  }
+  .run .in {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .run .out {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: var(--space-3);
+  }
+  .run li[data-current] {
+    background: var(--accent-soft);
+    color: var(--ink-2);
+  }
+  .run li[data-current] code,
+  .run li[data-current] .out {
+    color: var(--accent);
+  }
+
+  @media (max-width: 959px) {
+    .hero-stack :global(.card-leader) {
+      display: none;
+    }
+    .run {
+      position: static;
+      width: auto;
+      max-width: 24rem;
+      margin-top: var(--space-6);
+    }
+  }
+  @media (max-width: 699px) {
+    .drawing-wide {
+      display: none;
+    }
+    .drawing-narrow {
+      display: block;
+    }
+    .layers {
+      display: block;
+      margin: var(--space-6) 0 0;
+      font-size: var(--type-ui);
+    }
+    .layers div {
+      padding-block: var(--space-2);
+      border-top: 1px solid var(--line);
+    }
+    .layers dt {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .layers dd {
+      margin: 0;
+    }
+  }
+
+  /* The drawing's shapes. */
+  .hero-stack :global(.grid-line) {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 0.6;
+  }
+  .hero-stack :global(.hatch-ground) {
+    fill: var(--raised);
+  }
+  .hero-stack :global(.hatch-line) {
+    stroke: var(--line-strong);
+    stroke-width: 0.8;
+  }
+  .hero-stack :global(.glow-in) {
+    stop-color: var(--accent);
+    stop-opacity: 0.4;
+  }
+  .hero-stack :global(.glow-out) {
+    stop-color: var(--accent);
+    stop-opacity: 0;
+  }
+  .hero-stack :global(.plane) {
+    fill: var(--surface);
+    stroke: var(--line-strong);
+    stroke-width: 0.75;
+  }
+  .hero-stack :global(.side) {
+    fill: var(--hatch);
+    stroke: var(--line-strong);
+    stroke-width: 0.75;
+  }
+  .hero-stack :global(.tile-top),
+  .hero-stack :global(.panel-face) {
+    fill: var(--bg);
+    stroke: var(--line-control);
+    stroke-width: 0.75;
+    transition: stroke 0.3s;
+  }
+  .hero-stack :global(.tile-side),
+  .hero-stack :global(.panel-top),
+  .hero-stack :global(.panel-side) {
+    fill: var(--raised);
+    stroke: var(--line-strong);
+    stroke-width: 0.75;
+  }
+  .hero-stack :global(.bar-top) {
+    fill: var(--accent-soft);
+  }
+  .hero-stack :global(.bar-side) {
+    fill: color-mix(in oklab, var(--accent-soft) 70%, var(--accent));
+  }
+  .hero-stack :global(.bar-right) {
+    fill: color-mix(in oklab, var(--accent-soft) 50%, var(--accent));
+  }
+  .hero-stack :global(.bar-top.on-bar) {
+    fill: color-mix(in oklab, var(--accent) 60%, var(--surface));
+  }
+  .hero-stack :global(.bar-side.on-bar) {
+    fill: var(--accent);
+  }
+  .hero-stack :global(.bar-right.on-bar) {
+    fill: color-mix(in oklab, var(--accent) 80%, var(--ink));
+  }
+  .hero-stack :global(.book-top) {
+    fill: var(--accent);
+  }
+  .hero-stack :global(.book-left) {
+    fill: color-mix(in oklab, var(--accent) 80%, var(--ink));
+  }
+  .hero-stack :global(.book-right) {
+    fill: color-mix(in oklab, var(--accent) 64%, var(--ink));
+  }
+  .hero-stack :global(.book-edge) {
+    fill: none;
+    stroke: color-mix(in oklab, var(--accent) 55%, var(--on-accent));
+    stroke-width: 1;
+  }
+  .hero-stack :global(.chip-top) {
+    fill: var(--on-accent);
+    stroke: transparent;
+    stroke-width: 1.25;
+    transition: stroke 0.3s;
+  }
+  .hero-stack :global(.chip-side) {
+    fill: color-mix(in oklab, var(--on-accent) 70%, var(--accent));
+  }
+  .hero-stack :global(.sheet-top) {
+    fill: color-mix(in oklab, var(--on-accent) 88%, var(--accent));
+    stroke: transparent;
+    stroke-width: 1.25;
+    transition: stroke 0.3s;
+  }
+  .hero-stack :global(.sheet-side) {
+    fill: color-mix(in oklab, var(--on-accent) 60%, var(--accent));
+  }
+  .hero-stack :global(.cell) {
+    fill: color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+  .hero-stack :global(.cell-head) {
+    fill: color-mix(in oklab, var(--accent) 45%, transparent);
+  }
+  .hero-stack :global(.panel-bar) {
+    fill: var(--raised);
+  }
+  .hero-stack :global(.panel-dot) {
+    fill: var(--line-strong);
+  }
+  .hero-stack :global(.panel-line) {
+    fill: var(--line);
+  }
+  .hero-stack :global(.accent-line) {
+    fill: var(--accent-soft);
+  }
+  .hero-stack :global(.wire-line) {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+    opacity: 0.6;
+    transition:
+      opacity 0.3s,
+      stroke-width 0.3s;
+  }
+  .hero-stack :global(.pulse),
+  .hero-stack :global(.dot) {
+    fill: var(--accent);
+  }
+  .hero-stack :global(.download .wire-line) {
+    stroke-dasharray: 5 3;
+  }
+
+  /* While the run plays, the shapes of its current step stand out. */
+  .hero-stack[data-active] :global(.wire:not(.hot)) {
+    opacity: 0.35;
+  }
+  .hero-stack :global(.wire.hot .wire-line) {
+    opacity: 1;
+    stroke-width: 1.6;
+  }
+  .hero-stack :global(.tile.hot .tile-top),
+  .hero-stack :global(.panel.hot .panel-face) {
+    stroke: var(--accent);
+    stroke-width: 1.25;
+  }
+  .hero-stack :global(.metric.hot .chip-top),
+  .hero-stack :global(.sheet.hot .sheet-top) {
+    stroke: color-mix(in oklab, var(--accent) 40%, var(--on-accent));
+  }
+  .hero-stack :global(.node.hot .glow) {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: breathe 1.2s ease-in-out infinite;
+  }
+
+  /* Text. */
+  .hero-stack :global(.face-label),
+  .hero-stack :global(.mono),
+  .hero-stack :global(.chip-name),
+  .hero-stack :global(.sheet-kind),
+  .hero-stack :global(.sheet-name),
+  .hero-stack :global(.book-label),
+  .hero-stack :global(.co-key) {
+    font-family: var(--font-mono);
+  }
+  .hero-stack :global(.face-label) {
+    fill: var(--ink-3);
+    letter-spacing: 0.08em;
+  }
+  .hero-stack :global(.mono) {
+    fill: var(--ink-3);
+  }
+  .hero-stack :global(.tile-name) {
+    fill: var(--ink);
+    font-weight: 600;
+  }
+  .hero-stack :global(.book-label) {
+    fill: var(--on-accent);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+  }
+  .hero-stack :global(.chip-name),
+  .hero-stack :global(.sheet-kind) {
+    fill: var(--accent);
+    font-weight: 500;
+  }
+  .hero-stack :global(.sheet-name) {
+    fill: var(--ink);
+  }
+  .hero-stack :global(.panel-name) {
+    fill: var(--ink);
+    font-family: var(--font-text);
+    font-weight: 650;
+  }
+  .hero-stack :global(.panel-ask) {
+    fill: var(--ink-2);
+    font-family: var(--font-text);
+  }
+  .hero-stack :global(.panel-tool) {
+    fill: var(--accent);
+    font-family: var(--font-mono);
+  }
+  .hero-stack :global(.tool-sku) {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+  }
+  .hero-stack :global(.tool-units) {
+    fill: var(--ink);
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .hero-stack :global(.tool-btn) {
+    fill: none;
+    stroke: var(--line-control);
+    stroke-width: 0.75;
+  }
+  .hero-stack :global(.tool-btn-text) {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+  }
+  .hero-stack :global(.tool-btn.on-btn) {
+    fill: var(--accent);
+    stroke: var(--accent);
+  }
+  .hero-stack :global(.tool-btn-text.on-btn) {
+    fill: var(--on-accent);
+  }
+  .hero-stack :global(.leader) {
+    stroke: var(--line-control);
+    stroke-width: 0.75;
+  }
+  .hero-stack :global(.co-title) {
+    fill: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .hero-stack :global(.co-key) {
+    fill: var(--ink-3);
+    font-size: 12px;
+  }
+  .hero-stack :global(.co-value) {
+    fill: var(--ink-2);
+    font-size: 13.5px;
+  }
+
+  /* The build-in on load. */
+  .hero-stack :global(.layer),
+  .hero-stack :global(.callout) {
+    animation: drop 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i) * 140ms);
+  }
+  .hero-stack :global(.wire),
+  .hero-stack :global(.node) {
+    animation: appear 0.6s ease both 0.75s;
+  }
+  @keyframes drop {
+    from {
+      opacity: 0;
+      transform: translateY(-18px);
+    }
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes breathe {
+    50% {
+      transform: scale(1.6);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-stack :global(.layer),
+    .hero-stack :global(.callout),
+    .hero-stack :global(.wire),
+    .hero-stack :global(.node) {
+      animation: none;
+    }
+    .hero-stack :global(.pulse) {
+      display: none;
+    }
+  }
+</style>

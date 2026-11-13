@@ -1,0 +1,88 @@
+# The fewest rules: a definition and a unit on each metric, no rule about
+# names, and drafts still grouped by fingerprint. A company that wants its own
+# rules starts here and adds them.
+preset: minimal
+guide: |
+  Every metric in our book has a definition, its first sentence in words a business user would say, and a unit: money, count, quantity, rate, ratio or duration. Names are free: keep the names our Power BI measures already use. Read this guide before you describe, group or verify anything in the book; `pbmb metrics check` reports against these conventions.
+
+  ## Variants
+
+  A period comparison (last year, year to date, growth on last month) or a currency conversion is the same calculation, shifted. File such a measure under its metric as a variant, with its shift on the variant axes (period, comparison, currency), not as a metric of its own. A different calculation is a different metric.
+
+  ## Terms
+
+  A term is a business word with a definition. A dimension term is backed by one or more Power BI columns ("Channel" is `'Sales'[Channel]`); a concept term has none (a cohort, a season, a business rule). Define a word on its column when one exists.
+naming:
+  case: none
+  kinds: []
+  forbidden_words: []
+  money_qualifier: { required: false, values: [], units: [] }
+  qualifier_order: []
+  qualifiers: {}
+  label: none
+metric_fields:
+  definition: { required: true }
+  aliases: { required: false }
+  when_to_use: { required: false }
+  not_the_same_as: { required: false, ignore_words: [] }
+  grain_and_filters: { required: false }
+  unit:
+    required: true
+    values: [money, count, quantity, rate, ratio, duration]
+  category: { required: false }
+  custom: []
+term_fields:
+  definition: { required: true }
+  values: { required: false }
+  custom: []
+element_fields:
+  custom: []
+variants:
+  axes:
+    period:
+      values:
+        - current
+        - previous_year
+        - previous_quarter
+        - previous_month
+        - previous_week
+        - previous_day
+        - year_to_date
+        - quarter_to_date
+        - month_to_date
+        - previous_year_to_date
+        - rolling_12_months
+        - other
+    comparison: { values: [none, difference, growth_rate, ratio] }
+    currency: { values: iso_4217_or_local }
+    custom: []
+drafting:
+  group_by_fingerprint: true
+  recognise_time_intelligence: true
+  recognise_blank_as_zero: true
+  period_words:
+    previous_year: [LY, PY, "Last year", "Previous year", "Sidste år"]
+    previous_quarter:
+      [LQ, PQ, "Last quarter", "Previous quarter", "Sidste kvartal"]
+    previous_month: [LM, PM, "Last month", "Previous month", "Sidste måned"]
+    previous_week: [LW, PW, "Last week", "Previous week", "Sidste uge"]
+    previous_day: [LD, PD, "Last day", "Previous day", Yesterday, "I går"]
+  name_hints:
+    period: [LY, PY, YTD, MTD, QTD, "Last year"]
+    currency: [EUR, DKK, SEK, NOK, USD, Local]
+  skip:
+    hidden_measures: false
+    display_folders: []
+    tables: []
+    name_patterns: []
+  dismiss: []
+trust:
+  agent_verify_requires: all_checks
+  human_verify_from: browser
+checks:
+  off:
+    - metric_name_form
+    - metric_name_generated
+    - metric_name_comparison
+    - metric_money_qualifier
+    - metric_qualifier_order

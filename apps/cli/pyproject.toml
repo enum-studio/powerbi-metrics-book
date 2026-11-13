@@ -1,0 +1,31 @@
+[project]
+name = "powerbi-metrics-book"
+version = "0.1.0"
+description = "The pbmb command for Power BI Metrics Book: read the book, run queries and administer a deployment."
+requires-python = "==3.13.*"
+license = "Apache-2.0"
+dependencies = [
+  "typer==0.27.3",
+  "httpx==0.28.1",
+  "rich==15.0.0",
+  "pyyaml==6.0.3",
+  "jsonschema==4.26.0",
+  # Exact pin: a new lint rule is a reviewed change.
+  "ruff==0.17.2",
+]
+
+[project.scripts]
+pbmb = "powerbi_metrics_book.cli:app"
+
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/powerbi_metrics_book"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+markers = [
+  "docker: runs a container; needs Docker. The default run includes it.",
+]

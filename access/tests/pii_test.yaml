@@ -1,0 +1,60 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: pii
+description: Only pii_reader reads personal data; no other shipped role does.
+options:
+  lenientScopeSearch: true
+# pii_reader grants nothing else, so a person holds it beside viewer or curator.
+principals:
+  pii_reader:
+    id: pii_reader
+    roles: [pii_reader]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+  viewer_and_pii_reader:
+    id: viewer_and_pii_reader
+    roles: [viewer, pii_reader]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+  service_account_pii_reader:
+    id: service_account_pii_reader
+    roles: [pii_reader]
+    attr:
+      kind: service_account
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+resources:
+  pii:
+    kind: pii
+    id: pii
+    scope: deployment
+    attr: {}
+tests:
+  - name: read by role
+    input:
+      principals:
+        [
+          workspace_member,
+          analyst,
+          curator,
+          admin,
+          pii_reader,
+          viewer_and_pii_reader,
+          service_account_pii_reader,
+        ]
+      resources: [pii]
+      actions: [read]
+    expected:
+      - principals: [pii_reader, viewer_and_pii_reader]
+        resource: pii
+        actions: { read: EFFECT_ALLOW }

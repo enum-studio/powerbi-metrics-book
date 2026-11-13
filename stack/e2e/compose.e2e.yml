@@ -1,0 +1,89 @@
+# Layered over stack/compose.yml by the api's end-to-end test (test:e2e) only:
+# the Power BI mock as the tenant, every Microsoft and embedding URL pointed at
+# it, NODE_ENV=test so its http origin is allowed, and no dev sign-in, so every
+# sign-in goes through Microsoft's path at the mock. The test passes the
+# passwords, the project and the ports, hashed from the checkout's stack/e2e,
+# so this stack and the dev stack run side by side. The mock's origin is the
+# same inside and out, as in stack/dev/compose.dev.yml.
+
+x-public-base-url: &public_base_url http://localhost:${PBMB_PORT:?PBMB_PORT is not set}
+
+x-test: &test
+  NODE_ENV: test
+  PUBLIC_BASE_URL: *public_base_url
+  POWERBI_AUTHORITY: http://powerbi-mock.localhost:${PBMB_MOCK_PORT:?PBMB_MOCK_PORT is not set}
+  POWERBI_API_URL: http://powerbi-mock.localhost:${PBMB_MOCK_PORT}/powerbi
+  POWERBI_GRAPH_URL: http://powerbi-mock.localhost:${PBMB_MOCK_PORT}/graph
+  SEARCH_BASE_URL: http://powerbi-mock.localhost:${PBMB_MOCK_PORT}/openai
+
+x-needs-the-mock: &needs_the_mock
+  powerbi-mock: { condition: service_healthy }
+
+services:
+  api:
+    # Tagged per project, so this build never replaces the image another
+    # checkout's stack is running.
+    image: powerbi-metrics-book:${COMPOSE_PROJECT_NAME}
+    environment: *test
+    depends_on: *needs_the_mock
+
+  worker:
+    image: powerbi-metrics-book:${COMPOSE_PROJECT_NAME}
+    environment: *test
+    depends_on: *needs_the_mock
+
+  cerbos:
+    volumes:
+      # The default policies from the image this run built, as a deployment
+      # reads them: compose.yml names the untagged image, which is not this
+      # project's.
+      - type: image
+        source: powerbi-metrics-book:${COMPOSE_PROJECT_NAME}
+        target: /policies/default
+        image:
+          subpath: app/access/policies
+
+  powerbi-mock:
+    build:
+      context: ..
+      dockerfile: packages/powerbi-mock/Dockerfile
+    image: powerbi-metrics-book-mock:${COMPOSE_PROJECT_NAME}
+    user: "10001:10001"
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    # egress only: on app the mock could reach postgres and cerbos.
+    networks:
+      egress:
+        aliases: [powerbi-mock.localhost]
+    # Microsoft's sign-in page, which the test opens as a browser would. The
+    # mock stands in for Microsoft and is not part of compose.yml, whose only
+    # published port the test checks is the api's.
+    ports:
+      - 127.0.0.1:${PBMB_MOCK_PORT}:${PBMB_MOCK_PORT}
+    environment:
+      PORT: ${PBMB_MOCK_PORT}
+      MOCK_ORIGIN: http://powerbi-mock.localhost:${PBMB_MOCK_PORT}
+      # The mock accepts only the api's own callbacks as redirect URIs.
+      SAMPLE_PUBLIC_BASE_URL: *public_base_url
+      # The control routes (/_mock/...): the test picks who signs in.
+      MOCK_CONTROL: "1"
+    healthcheck:
+      # The sample tenant's signing keys, served once the tenant is loaded.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch(`http://127.0.0.1:$${process.env.PORT}/11111111-1111-4111-8111-111111111111/discovery/v2.0/keys`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy: { resources: { limits: { memory: 256m, cpus: "0.5" } } }
+
+networks:
+  # compose.yml pins edge to one range for TRUSTED_PROXY; this stack has no
+  # proxy, and a dev stack on the same machine would hold that range.
+  edge:
+    ipam: !reset {}

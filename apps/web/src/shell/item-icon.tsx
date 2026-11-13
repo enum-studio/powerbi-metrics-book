@@ -1,0 +1,333 @@
+import {
+  Activity,
+  AlarmClock,
+  Award,
+  BadgePercent,
+  Banknote,
+  Barcode,
+  Bell,
+  Book,
+  BookOpen,
+  Bookmark,
+  Box,
+  Boxes,
+  Briefcase,
+  Building,
+  Building2,
+  Calculator,
+  Calendar,
+  CalendarCheck,
+  CalendarDays,
+  ChartArea,
+  ChartBar,
+  ChartColumn,
+  ChartLine,
+  ChartNoAxesColumn,
+  ChartPie,
+  ChartScatter,
+  Circle,
+  CircleDollarSign,
+  CircleHelp,
+  ClipboardList,
+  Clock,
+  Cloud,
+  Code,
+  Coins,
+  Columns3,
+  Compass,
+  Contact,
+  CreditCard,
+  Database,
+  Diamond,
+  DollarSign,
+  Earth,
+  Euro,
+  Factory,
+  File,
+  FileChartColumn,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  Flag,
+  Flame,
+  Folder,
+  FolderOpen,
+  Funnel,
+  Gauge,
+  Gift,
+  GitBranch,
+  Globe,
+  HandCoins,
+  Handshake,
+  Hash,
+  Heart,
+  Hexagon,
+  History,
+  Hourglass,
+  House,
+  Info,
+  Key,
+  Landmark,
+  Layers,
+  LayoutDashboard,
+  LayoutGrid,
+  Leaf,
+  Lightbulb,
+  Lock,
+  Mail,
+  Map,
+  MapPin,
+  MessageSquare,
+  Moon,
+  Network,
+  Notebook,
+  Octagon,
+  Package,
+  PackageCheck,
+  Pentagon,
+  Percent,
+  PiggyBank,
+  Plane,
+  Receipt,
+  Repeat,
+  Rows3,
+  Scale,
+  Search,
+  Server,
+  ShieldCheck,
+  Ship,
+  Shirt,
+  ShoppingBag,
+  ShoppingCart,
+  Sigma,
+  Smile,
+  Sparkles,
+  Square,
+  Star,
+  Store,
+  Sun,
+  Table,
+  Table2,
+  Tag,
+  Tags,
+  Target,
+  Ticket,
+  Timer,
+  TrendingDown,
+  TrendingUp,
+  Triangle,
+  Truck,
+  Undo2,
+  User,
+  UserCheck,
+  UserPlus,
+  UserRound,
+  Users,
+  Wallet,
+  Warehouse,
+  Workflow,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import type { components } from "../api/schema";
+
+export type IconGlyph = components["schemas"]["IconChoices"]["glyphs"][number];
+export type IconColor = components["schemas"]["IconChoices"]["colors"][number];
+
+/** Every glyph GET /icons offers, by name. A name added to the api without a line here fails the type check. */
+const GLYPHS: Record<IconGlyph, LucideIcon> = {
+  "chart-line": ChartLine,
+  "chart-bar": ChartBar,
+  "chart-column": ChartColumn,
+  "chart-pie": ChartPie,
+  "chart-area": ChartArea,
+  "chart-scatter": ChartScatter,
+  "chart-no-axes-column": ChartNoAxesColumn,
+  "trending-up": TrendingUp,
+  "trending-down": TrendingDown,
+  activity: Activity,
+  gauge: Gauge,
+  target: Target,
+  percent: Percent,
+  sigma: Sigma,
+  "circle-dollar-sign": CircleDollarSign,
+  "dollar-sign": DollarSign,
+  euro: Euro,
+  banknote: Banknote,
+  coins: Coins,
+  wallet: Wallet,
+  "credit-card": CreditCard,
+  receipt: Receipt,
+  "piggy-bank": PiggyBank,
+  landmark: Landmark,
+  calculator: Calculator,
+  "badge-percent": BadgePercent,
+  scale: Scale,
+  "hand-coins": HandCoins,
+  user: User,
+  users: Users,
+  "user-round": UserRound,
+  "user-plus": UserPlus,
+  "user-check": UserCheck,
+  contact: Contact,
+  handshake: Handshake,
+  heart: Heart,
+  smile: Smile,
+  star: Star,
+  award: Award,
+  building: Building,
+  "building-2": Building2,
+  briefcase: Briefcase,
+  "shopping-cart": ShoppingCart,
+  "shopping-bag": ShoppingBag,
+  store: Store,
+  package: Package,
+  "package-check": PackageCheck,
+  box: Box,
+  boxes: Boxes,
+  truck: Truck,
+  tag: Tag,
+  tags: Tags,
+  ticket: Ticket,
+  gift: Gift,
+  shirt: Shirt,
+  warehouse: Warehouse,
+  barcode: Barcode,
+  "undo-2": Undo2,
+  calendar: Calendar,
+  "calendar-days": CalendarDays,
+  "calendar-check": CalendarCheck,
+  clock: Clock,
+  timer: Timer,
+  hourglass: Hourglass,
+  history: History,
+  "alarm-clock": AlarmClock,
+  repeat: Repeat,
+  "map-pin": MapPin,
+  map: Map,
+  globe: Globe,
+  earth: Earth,
+  compass: Compass,
+  flag: Flag,
+  plane: Plane,
+  ship: Ship,
+  house: House,
+  factory: Factory,
+  database: Database,
+  table: Table,
+  "table-2": Table2,
+  "columns-3": Columns3,
+  "rows-3": Rows3,
+  layers: Layers,
+  "layout-dashboard": LayoutDashboard,
+  filter: Filter,
+  search: Search,
+  funnel: Funnel,
+  network: Network,
+  workflow: Workflow,
+  "git-branch": GitBranch,
+  code: Code,
+  server: Server,
+  cloud: Cloud,
+  key: Key,
+  lock: Lock,
+  "shield-check": ShieldCheck,
+  file: File,
+  "file-text": FileText,
+  "file-spreadsheet": FileSpreadsheet,
+  "file-chart-column": FileChartColumn,
+  folder: Folder,
+  "folder-open": FolderOpen,
+  book: Book,
+  "book-open": BookOpen,
+  bookmark: Bookmark,
+  "clipboard-list": ClipboardList,
+  notebook: Notebook,
+  mail: Mail,
+  "message-square": MessageSquare,
+  bell: Bell,
+  info: Info,
+  "circle-help": CircleHelp,
+  lightbulb: Lightbulb,
+  square: Square,
+  circle: Circle,
+  triangle: Triangle,
+  diamond: Diamond,
+  hexagon: Hexagon,
+  pentagon: Pentagon,
+  octagon: Octagon,
+  zap: Zap,
+  sparkles: Sparkles,
+  flame: Flame,
+  leaf: Leaf,
+  sun: Sun,
+  moon: Moon,
+  "layout-grid": LayoutGrid,
+  hash: Hash,
+};
+
+const COLORS: Record<IconColor, true> = {
+  gray: true,
+  green: true,
+  teal: true,
+  blue: true,
+  violet: true,
+  red: true,
+  amber: true,
+  ink: true,
+};
+
+/** The icon for a glyph name, or undefined for a name the api does not offer. */
+export function glyphComponent(name: string): LucideIcon | undefined {
+  return Object.hasOwn(GLYPHS, name) ? GLYPHS[name as IconGlyph] : undefined;
+}
+
+/** The glyph names the map holds. */
+export const GLYPH_NAMES = Object.keys(GLYPHS) as IconGlyph[];
+
+/**
+ * What a book element looks like: the emoji or the coloured glyph a curator
+ * chose (`emoji:` and a character, `glyph:chart-line:green`), else the kind's own icon.
+ */
+export function ItemIcon({
+  icon,
+  fallback: Fallback,
+  size = 16,
+}: {
+  icon: string | null;
+  fallback: LucideIcon;
+  size?: number;
+}) {
+  if (icon?.startsWith("emoji:")) {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-block shrink-0 text-center leading-none"
+        style={{ width: size, fontSize: size - 2 }}
+      >
+        {icon.slice("emoji:".length)}
+      </span>
+    );
+  }
+  const [, name = "", color = ""] = icon?.split(":") ?? [];
+  const Glyph = icon?.startsWith("glyph:") ? glyphComponent(name) : undefined;
+  if (Glyph !== undefined && Object.hasOwn(COLORS, color)) {
+    return (
+      <Glyph
+        size={size}
+        strokeWidth={1.5}
+        aria-hidden="true"
+        className="shrink-0"
+        style={{ color: `var(--icon-${color})` }}
+      />
+    );
+  }
+  return (
+    <Fallback
+      size={size}
+      strokeWidth={1.5}
+      aria-hidden="true"
+      className="shrink-0"
+    />
+  );
+}

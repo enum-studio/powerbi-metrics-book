@@ -1,0 +1,232 @@
+---
+// Ported from Metrics Book's AnswerGrid (enum-studio/metrics-book,
+// apps/site/src/components/AnswerGrid.astro) so the two sites draw the same
+// benchmark the same way. Only the citation and the caption differ.
+import Cite from "./Cite.astro";
+
+// dbt Labs, Semantic Layer vs. Text-to-SQL: 2026 Benchmark Update: 11 x 20 = 220; 64.5% and 72.7% of 220 round to 142 and 160.
+const rawRight = 142;
+const rawWrong = 78;
+const semanticRight = 160;
+const semanticCantAnswer = 60;
+const total = rawRight + rawWrong;
+let seed = 2026;
+let remainingWrong = rawWrong;
+const rawMarks = Array.from({ length: total }, (_, index) => {
+  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+  const wrong = seed / 4294967296 < remainingWrong / (total - index);
+  if (wrong) remainingWrong -= 1;
+  return wrong ? "wrong" : "right";
+});
+const panels = [
+  {
+    id: "raw", title: "Text-to-SQL on raw tables", wrong: rawWrong, marks: rawMarks,
+    summary: `Text-to-SQL on raw tables: ${rawRight} of ${total} answers right, ${rawWrong} wrong.`,
+    rows: [{ kind: "right", label: "right", count: rawRight }, { kind: "wrong", label: "wrong", count: rawWrong }],
+  },
+  {
+    id: "semantic", title: "Through the semantic layer", wrong: 0,
+    marks: Array.from({ length: semanticRight + semanticCantAnswer }, (_, index) => index < semanticRight ? "right" : "cant-answer"),
+    summary: `Through the semantic layer: ${semanticRight} of ${total} answers right, ${semanticCantAnswer} can't answer, 0 wrong.`,
+    rows: [{ kind: "right", label: "right", count: semanticRight }, { kind: "cant-answer", label: "can't answer", count: semanticCantAnswer }, { kind: "wrong", label: "wrong", count: 0 }],
+  },
+];
+---
+
+<div class="answer-grid sheet" data-answer-grid>
+  <div class="sheet-head">
+    <span><span class="phrase">the same 11 questions,</span>{" "}<span class="phrase">20 times each</span></span>
+    <span>dbt Labs, 2026<Cite n={2} at="b" /></span>
+  </div>
+  <div class="panels">
+    {panels.map((panel) => (
+      <div class="panel" data-panel={panel.id}>
+        <h3>{panel.title}</h3>
+        <p class:list={["total", { "raw-total": panel.id === "raw" }]}>{panel.wrong} wrong</p>
+        <p class="sr-only">{panel.summary}</p>
+        <svg class="marks" viewBox="0 0 262 118" aria-hidden="true">
+          {panel.marks.map((kind, index) => (
+            <g class="mark" data-kind={kind} transform={`translate(${(index % 22) * 12} ${Math.floor(index / 22) * 12})`}>
+              <g class="reveal" style={`--i:${Math.floor(index / 22)}`}>
+                {kind !== "cant-answer" && <rect class:list={["right", { unchecked: kind === "wrong" }]} width="10" height="10" rx="1.5" />}
+                {kind === "wrong" && <path class="wrong" d="M1 1 9 9 M9 1 1 9" />}
+                {kind === "cant-answer" && <rect class="cant-answer" x="0.5" y="0.5" width="9" height="9" rx="1.5" />}
+              </g>
+            </g>
+          ))}
+        </svg>
+        <ul class="legend">
+          {panel.rows.map((row) => (
+            <li>
+              <button type="button" data-kind={row.kind}>
+                <svg viewBox="0 0 10 10" aria-hidden="true">
+                  {row.kind === "right" && <rect class="right" width="10" height="10" rx="1.5" />}
+                  {row.kind === "wrong" && <path class="wrong" d="M1 1 9 9 M9 1 1 9" />}
+                  {row.kind === "cant-answer" && <rect class="cant-answer" x="0.5" y="0.5" width="9" height="9" rx="1.5" />}
+                </svg>
+                <span>{row.label}</span><span class="count">{row.count}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+  <p class="caption">Each mark is one answer from one model. Claude Sonnet 4.6 and GPT-5.3 Codex got the same totals.</p>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>("[data-answer-grid]")) {
+    for (const panel of root.querySelectorAll<HTMLElement>("[data-panel]")) {
+      const marks = [...panel.querySelectorAll<SVGElement>(".mark")];
+      const light = (kind: string | undefined) => {
+        panel.classList.toggle("lighting", kind !== undefined);
+        for (const mark of marks) mark.classList.toggle("lit", mark.dataset.kind === kind);
+      };
+      for (const button of panel.querySelectorAll<HTMLButtonElement>(".legend button")) {
+        button.addEventListener("pointerenter", () => light(button.dataset.kind));
+        button.addEventListener("pointerleave", () => light(panel.querySelector<HTMLButtonElement>("button:focus")?.dataset.kind));
+        button.addEventListener("focus", () => light(button.dataset.kind));
+        button.addEventListener("blur", () => light(panel.querySelector<HTMLButtonElement>("button:hover")?.dataset.kind));
+      }
+    }
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      root.classList.add("will-play");
+      const watch = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          watch.disconnect();
+          root.classList.add("play");
+        },
+        { threshold: 0.45 },
+      );
+      watch.observe(root);
+    }
+  }
+</script>
+
+<style>
+  .sheet-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .sheet-head > span:last-child,
+  .phrase { white-space: nowrap; }
+  .phrase { display: inline-block; }
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-6);
+    padding: var(--space-5);
+  }
+  .panel h3 {
+    margin: 0;
+    font-size: var(--type-ui);
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .total {
+    margin: var(--space-3) 0 var(--space-4);
+    font: 500 var(--type-name) var(--font-mono);
+    color: var(--accent);
+  }
+  .raw-total {
+    color: var(--out);
+  }
+  .marks {
+    display: block;
+    width: 100%;
+  }
+  .right {
+    fill: var(--accent);
+  }
+  .wrong {
+    fill: none;
+    stroke: var(--out);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+  .cant-answer {
+    fill: none;
+    stroke: var(--line-control);
+    stroke-width: 1;
+  }
+  .unchecked {
+    opacity: 0;
+  }
+  .legend {
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .legend button {
+    display: grid;
+    grid-template-columns: var(--space-3) 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-1) 0;
+    border: 0;
+    background: none;
+    color: var(--ink-2);
+    font: var(--type-ui) var(--font-text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .legend svg {
+    width: var(--space-3);
+    height: var(--space-3);
+  }
+  .count {
+    font-family: var(--font-mono);
+    color: var(--ink-3);
+  }
+  .lighting .mark:not(.lit) {
+    opacity: 0.3;
+  }
+  .caption {
+    margin: 0;
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+    font-size: var(--type-meta);
+    color: var(--ink-3);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  @media (pointer: coarse) {
+    .legend button { min-height: var(--tap); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .will-play .reveal {
+      opacity: 0;
+      transform: translateY(var(--space-1));
+    }
+    .will-play .marks .wrong,
+    .will-play .raw-total { opacity: 0; }
+    .will-play .unchecked { opacity: 1; }
+    .will-play.play .reveal {
+      animation: answer-row 160ms ease-out both;
+      animation-delay: calc(var(--i) * 60ms);
+    }
+    .will-play.play .marks .wrong,
+    .will-play.play .raw-total { animation: answer-check 300ms 1200ms forwards; }
+    .will-play.play .unchecked { animation: answer-uncheck 300ms 1200ms forwards; }
+  }
+  @keyframes answer-row {
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes answer-check {
+    to { opacity: 1; }
+  }
+  @keyframes answer-uncheck {
+    to { opacity: 0; }
+  }
+</style>

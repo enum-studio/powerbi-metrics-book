@@ -1,0 +1,21 @@
+# Runs pbmb-backup.sh once; pbmb-backup.timer starts it every night.
+# Install: copy to /etc/systemd/system/ with pbmb-backup-failed.service, the
+# script to /usr/local/bin/, and backup.env.example to /etc/pbmb-backup.env.
+[Unit]
+Description=Back up Power BI Metrics Book (database dump and identity volumes)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+OnFailure=pbmb-backup-failed.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pbmb-backup.env
+ExecStart=/usr/local/bin/pbmb-backup.sh
+# The script writes to its own temporary directory, and rclone may save a
+# refreshed token into its config in /etc/pbmb-backup.
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/etc/pbmb-backup
+ProtectHome=true
+NoNewPrivileges=true

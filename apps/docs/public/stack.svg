@@ -1,0 +1,132 @@
+<svg
+  class="pbmb-stack"
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 720 450"
+  role="img"
+  aria-labelledby="pbmb-stack-title pbmb-stack-desc"
+>
+  <title id="pbmb-stack-title">The stack</title>
+  <desc id="pbmb-stack-desc">
+    People and agents reach the api. The api talks to Postgres, Cerbos, Power BI
+    (or the mock) and the embedding provider. The worker talks to Postgres,
+    Power BI's admin scanner and the embedding provider.
+  </desc>
+  <style>
+    /* One file for the docs page (inline, where the page tokens apply) and the
+       README (as an img, where only the --pbmb-* fallbacks exist). Every
+       selector sits under .pbmb-stack so the inline copy leaks nothing. */
+    .pbmb-stack {
+      --pbmb-surface: #ffffff;
+      --pbmb-raised: #ececea;
+      --pbmb-line-strong: #c9c9c4;
+      --pbmb-line-control: #838680;
+      --pbmb-ink: #161716;
+      --pbmb-ink-3: #5c5f5b;
+      --pbmb-accent: #1f4a3a;
+      --pbmb-accent-soft: #d5e0d8;
+    }
+    @media (prefers-color-scheme: dark) {
+      .pbmb-stack {
+        --pbmb-surface: #16191d;
+        --pbmb-raised: #1d2126;
+        --pbmb-line-strong: #343b42;
+        --pbmb-line-control: #6b737a;
+        --pbmb-ink: #e9ecef;
+        --pbmb-ink-3: #8c949b;
+        --pbmb-accent: #8fc1a6;
+        --pbmb-accent-soft: #1b2321;
+      }
+    }
+    .pbmb-stack .links path {
+      fill: none;
+      stroke: var(--line-control, var(--pbmb-line-control));
+      stroke-width: 1.5;
+      marker-end: url(#pbmb-stack-arrow);
+    }
+    .pbmb-stack .head {
+      fill: var(--line-control, var(--pbmb-line-control));
+    }
+    .pbmb-stack .box {
+      fill: var(--surface, var(--pbmb-surface));
+      stroke: var(--line-strong, var(--pbmb-line-strong));
+      stroke-width: 1.5;
+      rx: var(--radius, 2px);
+    }
+    .pbmb-stack .edge {
+      fill: var(--accent-soft, var(--pbmb-accent-soft));
+      stroke: var(--accent, var(--pbmb-accent));
+      stroke-width: 1.5;
+      rx: var(--radius, 2px);
+    }
+    .pbmb-stack .outside {
+      fill: var(--raised, var(--pbmb-raised));
+      stroke: var(--line-strong, var(--pbmb-line-strong));
+      stroke-width: 1.5;
+      stroke-dasharray: 5 4;
+      rx: var(--radius, 2px);
+    }
+    .pbmb-stack text {
+      fill: var(--ink, var(--pbmb-ink));
+      font-family: var(--font-text, system-ui, -apple-system, "Segoe UI", sans-serif);
+      font-size: var(--type-ui, 13px);
+      text-anchor: middle;
+    }
+    .pbmb-stack .name {
+      font-size: var(--type-heading, 18px);
+      font-weight: 600;
+    }
+    .pbmb-stack .sub {
+      fill: var(--ink-3, var(--pbmb-ink-3));
+      font-size: var(--type-meta, 12px);
+    }
+  </style>
+  <defs>
+    <marker
+      id="pbmb-stack-arrow"
+      viewBox="0 0 8 8"
+      refX="7"
+      refY="4"
+      markerWidth="7"
+      markerHeight="7"
+      orient="auto"
+    >
+      <path d="M0 0 L8 4 L0 8 z" class="head"></path>
+    </marker>
+  </defs>
+
+  <g class="links">
+    <path d="M150 230 L188 230"></path>
+    <path d="M200 270 L130 308"></path>
+    <path d="M320 230 L388 230"></path>
+    <path d="M580 230 L512 230"></path>
+    <path d="M270 190 L345 92"></path>
+    <path d="M645 190 L555 92"></path>
+    <path d="M300 270 L345 368"></path>
+    <path d="M630 270 L555 368"></path>
+  </g>
+
+  <rect class="edge" x="10" y="205" width="140" height="50"></rect>
+  <text x="80" y="235">People and agents</text>
+
+  <rect class="box" x="190" y="190" width="130" height="80"></rect>
+  <text class="name" x="255" y="224">api</text>
+  <text class="sub" x="255" y="246">the SPA, /api, /docs</text>
+
+  <rect class="box" x="30" y="310" width="140" height="50"></rect>
+  <text class="name" x="100" y="341">Cerbos</text>
+
+  <rect class="box" x="390" y="200" width="120" height="60"></rect>
+  <text class="name" x="450" y="236">Postgres</text>
+
+  <rect class="box" x="580" y="190" width="130" height="80"></rect>
+  <text class="name" x="645" y="224">worker</text>
+  <text class="sub" x="645" y="246">same image, no port</text>
+
+  <rect class="outside" x="340" y="30" width="220" height="60"></rect>
+  <text x="450" y="56">Microsoft Power BI</text>
+  <text class="sub" x="450" y="75">or the mock in development</text>
+
+  <rect class="outside" x="340" y="370" width="220" height="60"></rect>
+  <text x="450" y="396">Embedding provider</text>
+  <text class="sub" x="450" y="415">OpenAI or Gemini</text>
+</svg>

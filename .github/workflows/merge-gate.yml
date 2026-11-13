@@ -1,0 +1,84 @@
+# The merge gate catches merge accidents: formatting, lint, types, the
+# lockfiles and the migrations. It runs no tests and starts no services;
+# testing happens on the machine of whoever makes the change (docs/specs,
+# "Test tiers").
+name: merge-gate
+
+on:
+  pull_request:
+    # edited too: moving a pull request to another base changes what it merges into.
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merge-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its parents: the applied migrations are read
+          # from the first parent.
+          fetch-depth: 2
+          persist-credentials: false
+
+      # Reads the version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: 0.12.8
+
+      - name: Install Node dependencies from the lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python dependencies from the lockfile
+        run: uv sync --locked
+
+      - name: Prettier
+        run: pnpm exec prettier --check .
+
+      # The docs' astro:content types are generated into apps/docs/.astro,
+      # which is not committed; eslint needs them on a fresh checkout.
+      - name: Generate the docs' Astro types
+        run: pnpm --filter @powerbi-metrics-book/docs exec astro sync
+
+      # Typed linting of the whole repository peaks near 3 GB, which is about
+      # Node's default heap limit on the runner; past it eslint aborts.
+      - name: ESLint
+        run: pnpm exec eslint .
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: TypeScript
+        run: pnpm typecheck
+
+      - name: Ruff
+        run: uv run ruff check
+
+      - name: Mypy
+        run: uv run mypy apps/cli/src
+
+      # A pull request's checkout is a merge commit, so its first parent is the
+      # branch it merges into. Nothing applied changes, and what a branch adds
+      # is what db:generate writes from there.
+      - name: Migrations are safe and match the schema
+        run: node scripts/check-migrations.mjs HEAD^1
+
+      # The SPA's types come from this file. Generating it reads the routes
+      # and needs no database.
+      - name: OpenAPI file matches the routes
+        run: |
+          pnpm --filter @powerbi-metrics-book/api openapi
+          git diff --exit-code -- apps/api/openapi.json

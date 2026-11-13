@@ -1,0 +1,56 @@
+rules:
+  - id: no-sql-built-by-string-formatting-python
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL text built by an f-string, %, .format or + goes to execute. Pass values
+      as parameters (cursor.execute("... %s", (value,))) and build identifiers
+      with psycopg.sql.Identifier.
+    pattern-sources:
+      - pattern-either:
+          - pattern: f"...{...}..."
+          - pattern: '"..." % ...'
+          - pattern: '"...".format(...)'
+          - pattern: '"..." + $X'
+          - pattern: '$X + "..."'
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.execute($QUERY, ...)
+              - pattern: $DB.executemany($QUERY, ...)
+              - pattern: $DB.executescript($QUERY, ...)
+          - focus-metavariable: $QUERY
+    paths:
+      exclude:
+        - ".semgrep/**"
+        - "**/node_modules/**"
+    metadata:
+      spec: "docs/specs/2026-10-25-powerbi-metrics-book.md, Security: Checks that run and security tests"
+
+  - id: no-sql-built-by-string-formatting-typescript
+    mode: taint
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      SQL text built by a template literal or + goes to query or sql.raw. Pass
+      values as parameters (pool.query("... $1", [value])) or use the sql tag,
+      which parameterizes every interpolation.
+    pattern-sources:
+      - pattern-either:
+          - pattern: |
+              `...${$X}...`
+          - pattern: '"..." + $X'
+          - pattern: '$X + "..."'
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.query($QUERY, ...)
+              - pattern: sql.raw($QUERY)
+          - focus-metavariable: $QUERY
+    paths:
+      exclude:
+        - ".semgrep/**"
+        - "**/node_modules/**"
+    metadata:
+      spec: "docs/specs/2026-10-25-powerbi-metrics-book.md, Security: Checks that run and security tests"

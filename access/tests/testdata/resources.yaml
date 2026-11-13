@@ -1,0 +1,84 @@
+# Every resource at scope deployment, as the api asks: with no deployment
+# policy, lenient scope search falls back to the defaults.
+resources:
+  sales_dataset:
+    kind: dataset
+    id: sales_dataset
+    scope: deployment
+    attr: { workspace_id: sales_workspace, app_ids: [], custom: {} }
+
+  # Shown by the Sales app, in a workspace whose members are elsewhere.
+  app_dataset:
+    kind: dataset
+    id: app_dataset
+    scope: deployment
+    attr: { workspace_id: apps_workspace, app_ids: [sales_app], custom: {} }
+
+  # No custom fields at all, so the queries_off rule must cope with none.
+  finance_dataset:
+    kind: dataset
+    id: finance_dataset
+    scope: deployment
+    attr: { workspace_id: finance_workspace, app_ids: [] }
+
+  shared_dataset:
+    kind: dataset
+    id: shared_dataset
+    scope: deployment
+    attr: { workspace_id: other_workspace, app_ids: [], custom: {} }
+
+  queries_off_dataset:
+    kind: dataset
+    id: queries_off_dataset
+    scope: deployment
+    attr:
+      workspace_id: sales_workspace
+      app_ids: []
+      custom: { queries_off: true }
+
+  book:
+    kind: book
+    id: book
+    scope: deployment
+
+  thread:
+    kind: thread
+    id: thread
+    scope: deployment
+    attr:
+      author_kind: person
+      author_id: workspace_member
+      kind: question
+      status: open
+
+  query_log:
+    kind: query_log
+    id: query_log
+    scope: deployment
+    attr: { principal_kind: person, principal_id: app_only }
+
+  result:
+    kind: result
+    id: result
+    scope: deployment
+    attr: { owner_kind: person, owner_id: workspace_member }
+
+  admin:
+    kind: admin
+    id: admin
+    scope: deployment
+
+  request:
+    kind: request
+    id: request
+    scope: deployment
+    attr: { principal_kind: person, principal_id: workspace_member }
+  search_log:
+    kind: search_log
+    id: search_log
+    scope: deployment
+    attr: { principal_kind: person, principal_id: workspace_member }
+  usage_report:
+    kind: usage_report
+    id: usage_report
+    scope: deployment

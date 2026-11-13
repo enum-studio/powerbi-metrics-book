@@ -1,0 +1,27 @@
+server:
+  httpListenAddr: ":3592"
+  # gRPC on loopback only: the api speaks HTTP, and nothing else may call.
+  grpcListenAddr: "127.0.0.1:3593"
+  adminAPI:
+    enabled: false
+storage:
+  driver: disk
+  disk:
+    # The image's defaults in default/, the deployment's own in deployment/
+    # (stack/compose.yml). Read once at start: a policy change is a restart.
+    directory: /policies
+    watchForChanges: false
+engine:
+  # The api asks every question at scope "deployment". A resource with no
+  # deployment policy then falls back to the defaults at the root scope.
+  lenientScopeSearch: true
+schema:
+  # As Metrics Book: the policies declare no attribute schemas, so there is
+  # nothing to enforce.
+  enforcement: none
+audit:
+  # The api writes every decision that matters to audit_event; a second log
+  # here would hold the same facts with no principal names to read them by.
+  enabled: false
+telemetry:
+  disabled: true

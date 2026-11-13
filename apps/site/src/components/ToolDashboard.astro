@@ -1,0 +1,161 @@
+---
+// A small internal tool as a company would build it: one screen that runs
+// the agent's DAX with a service account's key. The numbers are the sample
+// tenant's net sales by month in 2025.
+import { NET_SALES_2025 as MONTHS } from "../net-sales-2025";
+
+const amount = (value: number) => Math.round(value).toLocaleString("en-US");
+const total = MONTHS.reduce((sum, [, value]) => sum + value, 0);
+const best = MONTHS.reduce((top, month) => (month[1] > top[1] ? month : top));
+const highest = best[1];
+---
+
+<figure class="dash sheet" data-reveal>
+  <div class="dash-head">
+    <b>Sales dashboard</b>
+    <span>service account sales-dashboard</span>
+  </div>
+  <div class="kpis">
+    <div><span>Net sales, 2025</span><b>{amount(total)}</b></div>
+    <div><span>Best month</span><b>{best[0]}, {amount(best[1])}</b></div>
+    <div><span>Rows</span><b>{MONTHS.length}</b></div>
+  </div>
+  <div class="bars" role="img" aria-label="Net sales by month in 2025, from 11,930 in September to 17,532 in May.">
+    {
+      MONTHS.map(([month, value], index) => (
+        <div class="bar" style={`--h:${String((value / highest) * 100)}%;--i:${String(index)}`}>
+          <span class="value">{amount(value)}</span>
+          <span class="fill" />
+          <span class="month">{month}</span>
+        </div>
+      ))
+    }
+  </div>
+  <figcaption>
+    <code>POST /api/v1/queries</code> answered 201 with 12 rows. Numbers from the sample tenant's Sales
+    dataset.
+  </figcaption>
+</figure>
+
+<style>
+  .dash {
+    font-size: var(--type-ui);
+  }
+  .dash-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+  }
+  .dash-head b {
+    color: var(--ink);
+  }
+  .dash-head span {
+    font: 500 var(--type-label) / 1.4 var(--font-mono);
+    color: var(--ink-3);
+  }
+  .kpis {
+    display: grid;
+    grid-template-columns: 1.3fr 1.3fr 0.7fr;
+    border-bottom: 1px solid var(--line);
+  }
+  .kpis div {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-3) var(--space-4);
+  }
+  .kpis div + div {
+    border-left: 1px solid var(--line);
+  }
+  @media (max-width: 559px) {
+    .kpis {
+      grid-template-columns: 1fr 1fr;
+    }
+    .kpis div:last-child {
+      display: none;
+    }
+  }
+  .kpis span {
+    font-size: var(--type-meta);
+    color: var(--ink-3);
+  }
+  .kpis b {
+    font-size: 1.15rem;
+    font-weight: 650;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .bars {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--space-1);
+    align-items: end;
+    height: 11rem;
+    padding: var(--space-6) var(--space-4) var(--space-2);
+  }
+  .bar {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: 100%;
+  }
+  .fill {
+    align-self: end;
+    height: var(--h);
+    background: color-mix(in oklab, var(--accent) 28%, transparent);
+    border-top: 2px solid var(--accent);
+    border-radius: var(--radius) var(--radius) 0 0;
+    transform-origin: bottom;
+    transition:
+      transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+      background-color 0.2s;
+    transition-delay: calc(var(--i) * 45ms), 0s;
+  }
+  .month {
+    padding-top: var(--space-1);
+    font: var(--type-label) / 1.4 var(--font-mono);
+    color: var(--ink-3);
+    text-align: center;
+  }
+  .value {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--h) + 1.6rem);
+    transform: translateX(-50%);
+    padding: 1px var(--space-1);
+    background: var(--ink);
+    border-radius: var(--radius);
+    font: 500 var(--type-label) / 1.4 var(--font-mono);
+    color: var(--bg);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .bar:hover .fill {
+    background: color-mix(in oklab, var(--accent) 55%, transparent);
+  }
+  .bar:hover .value {
+    opacity: 1;
+  }
+  .dash.pending .fill {
+    transform: scaleY(0);
+  }
+  .dash figcaption {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--line);
+    font-size: var(--type-meta);
+    color: var(--ink-3);
+  }
+  .dash figcaption code {
+    color: var(--ink-2);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dash.pending .fill {
+      transform: none;
+    }
+  }
+</style>

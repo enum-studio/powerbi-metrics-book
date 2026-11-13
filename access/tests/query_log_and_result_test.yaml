@@ -1,0 +1,35 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: query_log_and_result
+description: Everyone signed in reads the query log; only its owner reads a result.
+options:
+  lenientScopeSearch: true
+tests:
+  - name: the whole query log, for anyone signed in
+    input:
+      principals: [workspace_member, analyst, curator]
+      resources: [query_log]
+      actions: [read]
+    expected:
+      - principals: [workspace_member, analyst, curator]
+        resource: query_log
+        actions: { read: EFFECT_ALLOW }
+
+  # The result belongs to the person workspace_member, never to a service
+  # account of the same name.
+  - name: a result, for its owner only, admins included
+    input:
+      principals:
+        [
+          workspace_member,
+          app_only,
+          curator,
+          admin,
+          service_account_named_like_a_person,
+        ]
+      resources: [result]
+      actions: [read]
+    expected:
+      - principal: workspace_member
+        resource: result
+        actions: { read: EFFECT_ALLOW }

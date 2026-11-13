@@ -1,0 +1,40 @@
+# Who may see a dataset's metadata and who may query it.
+#
+# How a deployment layers on this: the defaults here sit at the root scope,
+# and the api asks every question at scope "deployment". A deployment writes
+# its own policies in its access/policies/ with `scope: deployment`; a
+# resource it writes none for falls back to these (lenient scope search, in
+# stack/cerbos/config.yaml). Cerbos makes every policy in one scope share one
+# scopePermissions, so a deployment picks one for all of its policies:
+# - SCOPE_PERMISSIONS_OVERRIDE_PARENT: its rules replace a default, an ALLOW
+#   widening and a DENY narrowing.
+# - SCOPE_PERMISSIONS_REQUIRE_PARENTAL_CONSENT_FOR_ALLOWS: its ALLOWs count
+#   only where a default allows too, so it can only narrow, with DENY rules.
+# Examples with their tests: access/layering_tests/. Whatever a deployment
+# writes, the api holds a service account to the workspaces and apps its
+# admin gave it.
+#
+# Lists and search apply describe inside their SQL through Cerbos's query
+# plan, so a condition here must stay one the api's translator knows
+# (src/services/access/plan.ts); one it does not know fails every list loudly.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: dataset
+  version: default
+  importDerivedRoles: [powerbi_metrics_book]
+  rules:
+    - actions: [describe]
+      effect: EFFECT_ALLOW
+      derivedRoles: [dataset_reader]
+
+    # Power BI then applies the person's own rights to the query itself.
+    # A deployment turns a dataset off for queries with its custom field
+    # queries_off.
+    - actions: [query]
+      effect: EFFECT_ALLOW
+      derivedRoles: [dataset_reader]
+      condition:
+        match:
+          none:
+            of:
+              - expr: has(R.attr.custom) && has(R.attr.custom.queries_off) && R.attr.custom.queries_off == true

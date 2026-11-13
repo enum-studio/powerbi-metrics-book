@@ -1,0 +1,24 @@
+# Prettier formats TypeScript, JSON, YAML and CSS. Markdown is written by hand.
+*.md
+
+# Written by their own tools
+pnpm-lock.yaml
+uv.lock
+.sudocode/
+.claude/settings.local.json
+
+# Never source
+node_modules/
+.venv/
+dist/
+coverage/
+.astro/
+playwright-report/
+test-results/
+.claude/worktrees/
+
+# Written by drizzle-kit on every generate.
+apps/api/drizzle/
+
+# Written by the api's openapi script from the routes.
+apps/api/openapi.json

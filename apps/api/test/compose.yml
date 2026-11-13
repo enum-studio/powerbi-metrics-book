@@ -1,0 +1,103 @@
+# The api's test Postgres and Cerbos, one of each per checkout.
+#
+# Do not run `docker compose up` on this file by hand: the port and the
+# project name are derived from the checkout's path in test/database.ts, and
+# this file has no defaults for them on purpose. `pnpm test` starts it;
+# `pnpm exec tsx test/database.ts down` removes it.
+#
+# The stack's own first-start script is mounted, so tests run against the
+# real roles, database and extension. The passwords are for this throwaway
+# server only, which listens on 127.0.0.1.
+services:
+  postgres:
+    image: pgvector/pgvector:pg18-trixie@sha256:5895949dfcdf308eb0cd31c950c93c14895c77f33fbedfecf1fa511ab1d4bcd2
+    # The default bridge rather than a network per project: every checkout is
+    # its own project, and a network each would use up Docker's address pools.
+    network_mode: bridge
+    # Most tests' rows are never committed, so all autovacuum can do is leave a
+    # table's statistics at empty. The planner then nests loops over the rows a
+    # transaction holds: 13 seconds to list the 91 measure sample on a busy
+    # machine. A test that holds a plan analyzes what it commits.
+    command: [postgres, -c, autovacuum=off]
+    environment:
+      POSTGRES_PASSWORD: postgres_test
+      MIGRATOR_PASSWORD: migrator_test
+      API_RW_PASSWORD: api_rw_test
+      WORKER_RW_PASSWORD: worker_rw_test
+      AUDIT_WRITER_PASSWORD: audit_writer_test
+    ports:
+      - "127.0.0.1:${PBMB_API_TEST_PG_PORT:?run pnpm test instead of docker compose directly}:5432"
+    volumes:
+      - ../../../stack/postgres/init:/docker-entrypoint-initdb.d:ro
+    # In memory: every new container starts from the init script, and no
+    # volume outlives it.
+    tmpfs:
+      - /var/lib/postgresql
+    mem_limit: 1g
+    healthcheck:
+      # Over TCP, which the image opens only after the init script finishes.
+      test:
+        ["CMD", "pg_isready", "--host", "127.0.0.1", "--username", "postgres"]
+      # Every second while the container starts, since `pnpm test` waits on
+      # `up --wait`; every 30 seconds once it is up, since it outlives the run
+      # and a check each second, in every checkout, kept Docker busy. A start
+      # that never succeeds fails in about two minutes: the 60 seconds of
+      # start, then three failed checks in a row (retries count only after
+      # the start period, so 60 of them would wait half an hour).
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s
+      timeout: 3s
+      retries: 3
+
+  cerbos: &cerbos
+    image: ghcr.io/cerbos/cerbos:0.57.0@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300
+    network_mode: bridge
+    # The stack's own settings, except that a policy edited while the
+    # container runs is picked up, since the container outlives a test run.
+    command:
+      - server
+      - --config=/config/config.yaml
+      - --set=storage.disk.watchForChanges=true
+    # A port Docker picks: test/global-setup.ts asks which, so no second
+    # derived port is needed.
+    ports:
+      - "127.0.0.1::3592"
+    volumes:
+      - ../../../stack/cerbos/config.yaml:/config/config.yaml:ro
+      # Where the stack mounts the image's defaults.
+      - ../../../access/policies:/policies/default:ro
+    tmpfs:
+      - /tmp
+      - /.cache
+      - /policies
+    # As the stack gives it: at 128m it was killed under parallel test runs.
+    mem_limit: 256m
+    healthcheck:
+      test:
+        [CMD, /cerbos, healthcheck, --config=/config/config.yaml, --kind=http]
+      # As Postgres's: every second while starting, every 30 seconds after.
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s
+      timeout: 3s
+      retries: 3
+
+  # The same, with the example deployment in access/layering_tests/override
+  # layered on the defaults: a policy that widens on purpose, so the tests
+  # can show what the api holds in code whatever a deployment writes.
+  cerbos_override:
+    <<: *cerbos
+    volumes:
+      - ../../../stack/cerbos/config.yaml:/config/config.yaml:ro
+      - ../../../access/policies:/policies/default:ro
+      - ../../../access/layering_tests/override/policies:/policies/deployment:ro
+
+  # The same, with the sample deployment's own policy in parental consent mode,
+  # so the tests ask Cerbos for that policy's query plan.
+  cerbos_sample:
+    <<: *cerbos
+    volumes:
+      - ../../../stack/cerbos/config.yaml:/config/config.yaml:ro
+      - ../../../access/policies:/policies/default:ro
+      - ../../../examples/sample/access/policies:/policies/deployment:ro

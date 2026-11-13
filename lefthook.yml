@@ -1,0 +1,26 @@
+# Install the hook once per checkout with `pnpm exec lefthook install`; no
+# install step does it for you. Each job checks only the staged files of its
+# own language, so a commit that touches no TypeScript runs no eslint.
+pre-commit:
+  jobs:
+    - name: prettier
+      glob: "*.{ts,tsx,js,mjs,cjs,json,yml,yaml,css}"
+      run: pnpm exec prettier --check {staged_files}
+    - name: eslint
+      glob: "*.{ts,tsx}"
+      run: pnpm exec eslint {staged_files}
+    - name: ruff format
+      glob: "*.py"
+      run: uv run ruff format --check {staged_files}
+    - name: ruff check
+      glob: "*.py"
+      run: uv run ruff check {staged_files}
+    # The repository is public. Names on the maintainer's private list (a
+    # client, a tenant, an internal host) stay out of every file and message.
+    - name: private names
+      run: node scripts/check-private-names.mjs {staged_files}
+
+commit-msg:
+  jobs:
+    - name: private names
+      run: node scripts/check-private-names.mjs {1}

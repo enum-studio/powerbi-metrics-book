@@ -1,0 +1,50 @@
+---
+// The page Caddy serves for a missing address outside /docs (the docs
+// build has its own 404 page). Same header and footer as the landing page.
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import ThemeChoice from "../components/ThemeChoice.astro";
+import { LINKS } from "../links";
+import "../styles/site.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>No page here | Power BI Metrics Book</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <ThemeChoice />
+  </head>
+  <body>
+    <SiteHeader />
+    <main class="wrap">
+      <h1>No page here</h1>
+      <p>
+        The address may be old, or mistyped. Start from <a href="/">the front page</a> or <a
+          href={LINKS.docs}>the docs</a
+        >.
+      </p>
+    </main>
+    <SiteFooter />
+  </body>
+</html>
+
+<style>
+  main {
+    min-height: 50vh;
+    padding-block: var(--section-y);
+  }
+  h1 {
+    margin: 0;
+    font-size: var(--type-title);
+  }
+  p {
+    max-width: var(--measure);
+  }
+  a {
+    color: var(--accent);
+  }
+</style>

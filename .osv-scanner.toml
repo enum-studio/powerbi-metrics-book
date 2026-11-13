@@ -1,0 +1,11 @@
+# osv-scanner reads this over pnpm-lock.yaml and uv.lock (pnpm check:all).
+# Every vulnerability it reports fails the run unless it is listed here, and
+# an entry is only for a finding that does not apply to this product or a real
+# risk accepted for a stated reason, never for a finding in code we can fix by
+# raising a version. Each entry names the vulnerability, why, and the date to
+# look again (ignoreUntil, after which the finding fails again):
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-31
+# reason = "Why it does not apply here, or why the risk is accepted."

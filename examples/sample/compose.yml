@@ -1,0 +1,215 @@
+# The stack a deployment's compose.yml is generated from. Only api publishes a
+# port, on loopback; cerbos and postgres sit on app, an internal network with
+# no route out; api and worker reach the internet through egress.
+# apps/api/src/stack/compose_security_test.ts fails if any of that opens.
+# The values come from .env beside this file (stack/env.example lists them).
+# Needs Docker Engine 28 or newer, for the image mount cerbos reads from.
+
+# Every service starts from this and states its exceptions where it is defined.
+x-hardened: &hardened
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: [/tmp:size=64m]
+  restart: unless-stopped
+
+# The one image this repository builds (apps/api/Dockerfile). Its user is
+# 10001, which owns /var/lib/pbmb/identity in the image, so a new identity
+# volume starts out writable by it. Naming the user here keeps it non-root
+# whatever the image says.
+x-app: &app
+  <<: *hardened
+  image: &image ghcr.io/enum-studio/powerbi-metrics-book:0.1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  user: "10001:10001"
+
+services:
+  api:
+    <<: *app
+    command: [api]
+    networks: [edge, app, egress]
+    ports:
+      # Loopback: the reverse proxy on the same machine is the public door.
+      # Under Dokploy, Traefik reaches the api over edge instead.
+      - 127.0.0.1:${PBMB_PORT:-3000}:3000
+    environment:
+      NODE_ENV: production
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL?PUBLIC_BASE_URL is not set; pbmb init writes it to .env}
+      DATABASE_URL: postgres://api_rw:${API_RW_PASSWORD?API_RW_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      MIGRATOR_DATABASE_URL: postgres://migrator:${MIGRATOR_PASSWORD?MIGRATOR_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      AUDIT_DATABASE_URL: postgres://audit_writer:${AUDIT_WRITER_PASSWORD?AUDIT_WRITER_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      AUTH_SECRET: ${AUTH_SECRET?AUTH_SECRET is not set; pbmb init writes it to .env}
+      CERBOS_URL: http://cerbos:3592
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # The reverse proxy's address or range: only a request from it may name
+      # the client in X-Forwarded-For, which sign-in rate limits count by.
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
+      # CLIENT_ADDRESS_HEADER is deliberately not passed through: Caddy and
+      # Traefik pass a client's X-Real-IP on, so x-real-ip is never safe in
+      # the VM and Dokploy shapes. It is for a platform edge, set there.
+      # Optional: the api's age identity from the environment instead of the
+      # identity volume. Passed by name, so it is absent when unset.
+      API_AGE_IDENTITY:
+    volumes:
+      - type: volume
+        source: api_identity
+        target: /var/lib/pbmb/identity
+    healthcheck:
+      # The image has node and nothing else to make a request with.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      postgres: { condition: service_healthy }
+      cerbos: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 512m, cpus: "1.0" } } }
+
+  worker:
+    <<: *app
+    command: [worker]
+    # No edge: nothing calls the worker. egress reaches the scanner API and
+    # the embedding provider.
+    networks: [app, egress]
+    environment:
+      NODE_ENV: production
+      # The core's config is shared with the api and refuses to load without it.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL?PUBLIC_BASE_URL is not set; pbmb init writes it to .env}
+      DATABASE_URL: postgres://worker_rw:${WORKER_RW_PASSWORD?WORKER_RW_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      AUDIT_DATABASE_URL: postgres://audit_writer:${AUDIT_WRITER_PASSWORD?AUDIT_WRITER_PASSWORD is not set; pbmb init writes it to .env}@postgres:5432/powerbi_metrics_book
+      CERBOS_URL: http://cerbos:3592
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WORKER_AGE_IDENTITY:
+    # Its own volume, never the api's: the scanner's secret is encrypted for
+    # the identity in here, and the api must not be able to read it.
+    volumes:
+      - type: volume
+        source: worker_identity
+        target: /var/lib/pbmb/identity
+    healthcheck:
+      # The worker serves nothing, so it proves it is alive by touching this
+      # file on a timer; a stalled event loop stops the touches.
+      test:
+        - CMD
+        - node
+        - -e
+        - "const age = Date.now() - require('node:fs').statSync('/tmp/worker-heartbeat').mtimeMs; process.exit(age < 90000 ? 0 : 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres: { condition: service_healthy }
+      # The api applies the migrations at start and is healthy only after.
+      api: { condition: service_healthy }
+    # The scanner's results for a large tenant are parsed here.
+    deploy: { resources: { limits: { memory: 768m, cpus: "1.0" } } }
+
+  postgres:
+    <<: *hardened
+    image: pgvector/pgvector:pg18-trixie@sha256:5895949dfcdf308eb0cd31c950c93c14895c77f33fbedfecf1fa511ab1d4bcd2
+    # The image's postgres user. Started as it, the entrypoint skips the
+    # chown it would need root and capabilities for: a new pgdata volume
+    # already belongs to it, copied from the image.
+    user: "999:999"
+    networks: [app]
+    tmpfs:
+      - /tmp:size=64m
+      - /var/run/postgresql:size=1m,uid=999,gid=999,mode=0775
+    environment:
+      POSTGRES_PASSWORD:
+      MIGRATOR_PASSWORD:
+      API_RW_PASSWORD:
+      WORKER_RW_PASSWORD:
+      AUDIT_WRITER_PASSWORD:
+    volumes:
+      # Postgres 18 images keep PGDATA under /var/lib/postgresql/18/docker.
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql
+      # Long syntax so a missing init directory stops the first start rather
+      # than being created empty, which would make a server with no roles.
+      - type: bind
+        source: ./postgres/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      # Over TCP: during first start the entrypoint runs a socket-only server
+      # for the init scripts, which pg_isready on the socket reports as ready.
+      test: [CMD, pg_isready, -h, 127.0.0.1, -p, "5432", -U, postgres]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    deploy: { resources: { limits: { memory: 1g, cpus: "1.0" } } }
+
+  cerbos:
+    <<: *hardened
+    image: ghcr.io/cerbos/cerbos:0.57.0@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300
+    # The upstream image runs as root; Cerbos needs no user of its own.
+    user: "10001:10001"
+    command: [server, --config=/config/config.yaml]
+    networks: [app]
+    # The image declares /policies, /tmp and /.cache volumes; each is covered
+    # here, so compose makes no anonymous volume to carry old policies across
+    # a recreate. /policies holds only the two mounts below.
+    tmpfs:
+      - /tmp:size=16m
+      - /.cache:size=16m
+      - /policies:size=1m,mode=0755
+    volumes:
+      - type: bind
+        source: ./cerbos/config.yaml
+        target: /config/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      # The default policies the image ships (access/policies in the
+      # repository). An image mount is read-only and follows the image, so a
+      # new release is a new set of defaults.
+      - type: image
+        source: *image
+        target: /policies/default
+        image:
+          subpath: app/access/policies
+      # The deployment's own policies, layered on the defaults.
+      - type: bind
+        source: ./access/policies
+        target: /policies/deployment
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        [CMD, /cerbos, healthcheck, --config=/config/config.yaml, --kind=http]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy: { resources: { limits: { memory: 256m, cpus: "0.5" } } }
+
+networks:
+  # The reverse proxy and the api. Its range is fixed so TRUSTED_PROXY can
+  # name a proxy that runs on edge (stack/env.example).
+  edge:
+    ipam:
+      config:
+        - subnet: ${PBMB_EDGE_SUBNET:-172.30.80.0/24}
+  # api and worker only: Microsoft identity, Power BI, Graph, the embedding
+  # provider.
+  egress: {}
+  app:
+    internal: true
+
+volumes:
+  pgdata: {}
+  # Each holds one container's age identity. Back them up apart from the
+  # database dumps: together they decrypt every secret in it.
+  api_identity: {}
+  worker_identity: {}

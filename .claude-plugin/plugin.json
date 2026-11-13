@@ -1,0 +1,14 @@
+{
+  "name": "powerbi-metrics-book",
+  "version": "0.1.0",
+  "description": "Five skills and a curator subagent for Power BI Metrics Book: deploy it, adapt its conventions, curate its metrics, query Power BI through it and answer its questions.",
+  "author": {
+    "name": "Enum Studio",
+    "url": "https://github.com/enum-studio"
+  },
+  "repository": "https://github.com/enum-studio/powerbi-metrics-book",
+  "license": "Apache-2.0",
+  "keywords": ["power-bi", "metrics", "semantic-layer", "dax"],
+  "skills": "./skills/",
+  "agents": ["./skills/agents/metrics_curator.md"]
+}

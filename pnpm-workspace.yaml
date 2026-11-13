@@ -1,0 +1,23 @@
+packages:
+  - apps/api
+  - apps/web
+  - apps/docs
+  - apps/site
+  - packages/tokens
+  - packages/powerbi-mock
+
+allowBuilds:
+  esbuild: true
+  # Its postinstall would write a hook into the shared .git/hooks; lefthook is installed on purpose with `pnpm exec lefthook install`.
+  lefthook: false
+
+overrides:
+  # drizzle-kit 0.31 loads its config through @esbuild-kit, which pins esbuild
+  # 0.18 and its dev-server advisory (GHSA-67mh-4wv8-2f99). drizzle-kit only
+  # transforms TypeScript, which 0.25 does the same way.
+  "@esbuild-kit/core-utils>esbuild": 0.25.12
+  # eslint and typescript-eslint ask for minimatch ^10, and 10.2.6, the last of
+  # that line, has a denial of service through a crafted pattern
+  # (GHSA-g3hv-75wg-m249). The fix exists only in 11. They use new Minimatch(),
+  # match() and minimatch(), which 11 keeps. Drop this once they ask for ^11.
+  "minimatch@10": 11.0.4

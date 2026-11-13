@@ -1,0 +1,19 @@
+# Caddy in front of the api (compose.caddy.yml). The site address is
+# PUBLIC_BASE_URL itself, such as https://metrics.example.com, so Caddy serves
+# that host over https, gets its certificate from Let's Encrypt and redirects
+# http to https. https://caddyserver.com/docs/caddyfile/concepts#addresses
+{
+	# Nothing changes this configuration while it runs: a change is a restart.
+	admin off
+}
+
+{$PUBLIC_BASE_URL} {
+	# Browsers keep to https for a year. The api sets the same header; the
+	# leading > replaces it once the response is written, so there is one.
+	header >Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Caddy ignores any X-Forwarded-For a client sends and sets the address it
+	# saw, which is what the api counts sign-in attempts by.
+	# https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#defaults
+	reverse_proxy api:3000
+}

@@ -1,0 +1,14 @@
+# Changing the book. Approving is also limited to the browser, which the api
+# enforces in code, since a policy cannot see how the caller signed in.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: book
+  version: default
+  rules:
+    - actions: [curate, verify, approve]
+      effect: EFFECT_ALLOW
+      roles: [curator, admin]
+
+    - actions: [edit_conventions]
+      effect: EFFECT_ALLOW
+      roles: [admin]

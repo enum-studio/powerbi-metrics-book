@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": { "type": "number", "const": 1 },
+    "settings": {
+      "type": "object",
+      "propertyNames": { "type": "string" },
+      "additionalProperties": {}
+    },
+    "conventions": {
+      "type": "object",
+      "propertyNames": { "type": "string" },
+      "additionalProperties": {}
+    },
+    "role_assignments": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "custom": { "type": "boolean", "const": true },
+              "subject_kind": {
+                "type": "string",
+                "enum": ["person", "email_domain"]
+              },
+              "subject": { "type": "string" }
+            },
+            "required": ["role", "subject_kind", "subject"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "custom": { "type": "boolean", "const": true },
+              "subject_kind": { "type": "string", "const": "group" },
+              "provider": { "type": "string" },
+              "subject": { "type": "string" }
+            },
+            "required": ["role", "subject_kind", "provider", "subject"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "custom": { "type": "boolean", "const": true },
+              "subject_kind": {
+                "type": "string",
+                "const": "everyone_in_tenant"
+              }
+            },
+            "required": ["role", "subject_kind"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "service_accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "owner_email": { "type": "string" },
+          "roles": { "type": "array", "items": { "type": "string" } },
+          "workspace_ids": { "type": "array", "items": { "type": "string" } },
+          "app_ids": { "type": "array", "items": { "type": "string" } },
+          "source_cidrs": { "type": "array", "items": { "type": "string" } },
+          "max_key_age_days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "owner_email",
+          "roles",
+          "workspace_ids",
+          "app_ids",
+          "source_cidrs",
+          "max_key_age_days"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "pii_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": { "type": "string", "enum": ["column", "measure", "table"] },
+          "table": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "name": {
+            "anyOf": [
+              { "type": "string", "minLength": 1, "maxLength": 200 },
+              { "type": "null" }
+            ]
+          },
+          "pii": { "type": "boolean" },
+          "note": {
+            "anyOf": [
+              { "type": "string", "maxLength": 500 },
+              { "type": "null" }
+            ]
+          }
+        },
+        "required": ["kind", "table", "pii"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["format"],
+  "additionalProperties": false
+}

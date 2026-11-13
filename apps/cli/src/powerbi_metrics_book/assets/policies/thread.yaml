@@ -1,0 +1,18 @@
+# Questions and feedback. An admin holds every curator's rights.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: thread
+  version: default
+  importDerivedRoles: [powerbi_metrics_book]
+  rules:
+    - actions: [create, reply, upvote]
+      effect: EFFECT_ALLOW
+      roles: ["*"]
+
+    - actions: [accept]
+      effect: EFFECT_ALLOW
+      derivedRoles: [thread_author]
+
+    - actions: [accept, archive]
+      effect: EFFECT_ALLOW
+      roles: [curator, admin]

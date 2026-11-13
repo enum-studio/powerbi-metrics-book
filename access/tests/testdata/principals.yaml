@@ -1,0 +1,159 @@
+# As the api sends them: kind, metadata_visibility from settings, and the
+# three lists, a person's from Power BI's access lists with their groups
+# already resolved into them.
+principals:
+  workspace_member:
+    id: workspace_member
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: [sales_workspace]
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  # In the Sales app's audience, a member of no workspace.
+  app_only:
+    id: app_only
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: [sales_app]
+      powerbi_dataset_ids: []
+
+  # Reaches the finance workspace only through a group it belongs to.
+  group_member:
+    id: group_member
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: [finance_workspace]
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  # A dataset shared with them directly.
+  shared_with:
+    id: shared_with
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: [shared_dataset]
+
+  no_access:
+    id: no_access
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  everyone_viewer:
+    id: everyone_viewer
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: everyone
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  # Power BI lists everything for them, which the defaults ignore under policy.
+  policy_viewer:
+    id: policy_viewer
+    roles: [viewer]
+    attr:
+      kind: person
+      metadata_visibility: policy
+      powerbi_workspace_ids:
+        [sales_workspace, finance_workspace, apps_workspace]
+      powerbi_app_ids: [sales_app]
+      powerbi_dataset_ids: [shared_dataset]
+
+  curator:
+    id: curator
+    roles: [curator]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  admin:
+    id: admin
+    roles: [admin]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  # A role a deployment names in its own policies: it gets what everyone
+  # signed in gets, and nothing a shipped role holds.
+  analyst:
+    id: analyst
+    roles: [analyst]
+    attr:
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  # Service accounts, in each mode: one given the finance workspace and the
+  # Sales app by its admin, one given nothing. A direct share in the lists
+  # is no part of a service account's grant.
+  service_account_powerbi:
+    id: service_account_powerbi
+    roles: [viewer]
+    attr: &granted
+      kind: service_account
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: [finance_workspace]
+      powerbi_app_ids: [sales_app]
+      powerbi_dataset_ids: [shared_dataset]
+
+  service_account_everyone:
+    id: service_account_everyone
+    roles: [viewer]
+    attr: { <<: *granted, metadata_visibility: everyone }
+
+  service_account_policy:
+    id: service_account_policy
+    roles: [viewer]
+    attr: { <<: *granted, metadata_visibility: policy }
+
+  # Named as workspace_member's id, which owns no result and wrote no thread.
+  service_account_named_like_a_person:
+    id: workspace_member
+    roles: [viewer]
+    attr: { <<: *granted }
+
+  ungranted_service_account_powerbi:
+    id: ungranted_service_account_powerbi
+    roles: [viewer]
+    attr: &ungranted
+      kind: service_account
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+
+  ungranted_service_account_everyone:
+    id: ungranted_service_account_everyone
+    roles: [viewer]
+    attr: { <<: *ungranted, metadata_visibility: everyone }
+
+  ungranted_service_account_policy:
+    id: ungranted_service_account_policy
+    roles: [viewer]
+    attr: { <<: *ungranted, metadata_visibility: policy }

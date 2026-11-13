@@ -1,0 +1,223 @@
+/* ---------------------------------------------------------------------------
+   The look Power BI Metrics Book and Metrics Book share: Enum Studio's brand
+   (docs/brand.md in the enumstudio repository), as custom properties.
+
+   Paper, white cards, neutral greys and one accent. Bottle green is what is
+   the reader's: the primary button, the selected thing, the current place.
+   The one red, --out, is for a rate getting worse and a stopped state; a
+   refusal and a delete are ink with a plain word.
+
+   Light is the default. The dark values follow the reader's system setting
+   (prefers-color-scheme) unless the product has set data-theme="light" on the
+   root, and a product with a theme toggle sets data-theme="dark" to force
+   them. The dark block is written twice, once for each way in, because CSS has
+   no way to share a declaration list between a media query and an attribute
+   selector. contrast.test.ts fails when the two copies differ.
+
+   Every text pair below is measured by contrast.test.ts, from these values,
+   at 4.5:1 or more on every ground it can sit on, in both themes. The ratios
+   in the comments are for the hardest of those grounds.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  /* ---- Grounds ------------------------------------------------------------ */
+  --bg: #f6f6f4; /* paper */
+  --surface: #ffffff; /* a card, the one raised surface */
+  --raised: #ececea; /* a hovered row, a chat bubble */
+  --canvas: #e8e9e4; /* the ground under a sheet laid on it: the deepest ground */
+  --line: #dededa;
+  --line-strong: #c9c9c4;
+  --line-control: #838680; /* a field's edge: 3.03:1 on --canvas, 3.12:1 on --raised, 3.41:1 on --bg, 3.69:1 on --surface */
+
+  /* ---- Ink ---------------------------------------------------------------- */
+  --ink: #161716; /* 15.2:1 on --raised */
+  --ink-2: #464946; /*  7.71:1 on --raised, 6.73:1 on --accent-soft */
+  --ink-3: #5c5f5b; /*  5.47:1 on --raised, 4.77:1 on --accent-soft */
+
+  /* ---- The one accent ------------------------------------------------------ */
+  --accent: #1f4a3a; /*  8.46:1 on --raised, 7.38:1 on --accent-soft */
+  --accent-hover: #131b17;
+  --accent-soft: #d5e0d8; /* the selected row's wash */
+  --on-accent: #f6f6f4; /*  9.25:1 on --accent, 16.22:1 on --accent-hover */
+
+  /* enumstudio.com's red, only for a rate getting worse and a stopped state. */
+  --out: #9a2f22; /*  5.52:1 on --accent-soft, 6.33:1 on --raised */
+
+  --select: rgba(22, 23, 22, 0.14);
+  --scrim: rgba(22, 23, 22, 0.3);
+
+  /* A chosen icon's eight colours; each is 3:1 or more on --surface. */
+  --icon-gray: #6b6f6b;
+  --icon-green: #2f7d4f;
+  --icon-teal: #117a7a;
+  --icon-blue: #2f6fb5;
+  --icon-violet: #7a55c2;
+  --icon-red: #c0443a;
+  --icon-amber: #a8650a;
+  --icon-ink: #161716;
+  --shadow:
+    0 1px 1px rgba(22, 23, 22, 0.04), 0 14px 40px rgba(22, 23, 22, 0.07);
+  /* A sheet on the canvas: a 1px ring, a 2px drop, a 30px blur. */
+  --shadow-sheet:
+    0 0 0 1px rgba(22, 23, 22, 0.07), 0 1px 2px rgba(22, 23, 22, 0.05),
+    0 10px 30px rgba(22, 23, 22, 0.05);
+
+  /* ---- Type ----------------------------------------------------------------
+     Two families, one job each, from fonts.css: Inter for every word, IBM
+     Plex Mono for figures, keys and small labels. No third family, no italic
+     (docs/brand.md in the enumstudio repository). */
+  --font-text: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Six sizes and no others. */
+  --type-title: 28px; /* a page's name: a metric, a folder, a book, Terms, Settings */
+  --type-heading: 18px; /* a heading inside a page, the book's name in the tree */
+  --type-body: 15px; /* reading text: description, when to use, the formula */
+  --type-ui: 13px; /* tree, tables, tabs, buttons, fields, notes, chips */
+  --type-meta: 12px; /* facts, counts, captions, hints */
+  --type-label: 11px; /* the small mono labels over sections */
+
+  /* A field's text under (pointer: coarse): iOS zooms the page in on a field below this, and stays zoomed. */
+  --type-field-touch: 16px;
+
+  /* The landing's hero only. */
+  --type-display: clamp(2.2rem, 1.5rem + 2.6vw, 3.25rem);
+  --type-lede: clamp(1.125rem, 1.02rem + 0.48vw, 1.4rem);
+
+  /* The product's name beside the mark (docs/brand.md, "The name"). */
+  --type-name: 1.3rem;
+
+  --measure: 38rem;
+  --section-y: clamp(2.5rem, 5.5vw, 6.5rem);
+
+  /* ---- Shape and space ----------------------------------------------------
+     Two radii: a control, a row, a table or a small box, and a sheet, the
+     search dialog and the assistant, which is the one rounder thing. Space
+     runs on a 4px grid. */
+  --radius: 8px;
+  --radius-sheet: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* The shell's columns. */
+  --rail-width: 220px; /* the second lane: the settings pages */
+  --tree-width: 268px; /* the first lane: the navigation, and the tree it folds out */
+  /* How far a person may drag the first lane. Both products have the lane and its edge; the narrowest
+     is Secoda's and still shows each place's name whole, and the widest gives a deep tree room. */
+  --tree-width-min: 240px;
+  --tree-width-max: 480px;
+  --assistant-width: 360px;
+  --page-min: 480px; /* the page column a saved tree or assistant width gives way to */
+  --bar-height: 48px;
+  --read-max: 860px;
+
+  /* The smallest thing a thumb may be asked to hit. Applied under (pointer: coarse) by each product. */
+  --tap: 44px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* The page column outside the shell. */
+  --page-max: 66rem;
+  --page-pad: clamp(1.25rem, 4vw, 3rem);
+}
+
+/* ---------------------------------------------------------------------------
+   Dark. Values from the admin's dark theme in the enumstudio repository: the
+   brand's near-black #0b0d0f for the ground and bottle green lifted to
+   #8fc1a6 so it reads on it. Same names as above; only colours change.
+
+   --canvas is the ground itself: the brand has no ground deeper than
+   #0b0d0f, so in dark a sheet shows by its --surface fill and its ring, not by
+   a darker canvas. --accent is both the fill and the text colour here, as the
+   admin's --accent and --accent-text are one value on this ground.
+--------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #0b0d0f;
+    --surface: #16191d;
+    --raised: #1d2126;
+    --canvas: #0b0d0f;
+    --line: #24292e;
+    --icon-gray: #9a9f9b;
+    --icon-green: #4fb87a;
+    --icon-teal: #3fb5b0;
+    --icon-blue: #6aa3e8;
+    --icon-violet: #a58be8;
+    --icon-red: #ec7a6d;
+    --icon-amber: #e0a23a;
+    --icon-ink: #e9ebe8;
+    --line-strong: #343b42;
+    --line-control: #6b737a; /* 3.36:1 on --raised, 3.66:1 on --surface, 4.04:1 on --bg and --canvas */
+
+    --ink: #e9ecef; /* 13.65:1 on --raised */
+    --ink-2: #a7b0b8; /*  7.36:1 on --raised, 7.29:1 on --accent-soft */
+    --ink-3: #8c949b; /*  5.26:1 on --raised, 5.21:1 on --accent-soft */
+
+    --accent: #8fc1a6; /*  7.97:1 on --raised, 7.90:1 on --accent-soft */
+    --accent-hover: #a3cfb6;
+    --accent-soft: #1b2321; /* the admin's rgba(143, 193, 166, 0.12) green wash over #0b0d0f, as one opaque value */
+    --on-accent: #0b0d0f; /*  9.59:1 on --accent, 11.27:1 on --accent-hover */
+
+    --out: #d98a80; /*  6.03:1 on --accent-soft, 6.09:1 on --raised */
+
+    --select: rgba(233, 236, 239, 0.18);
+    --scrim: rgba(0, 0, 0, 0.6);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.3);
+    --shadow-sheet:
+      0 0 0 1px rgba(233, 236, 239, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4),
+      0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b0d0f;
+  --surface: #16191d;
+  --raised: #1d2126;
+  --canvas: #0b0d0f;
+  --line: #24292e;
+  --icon-gray: #9a9f9b;
+  --icon-green: #4fb87a;
+  --icon-teal: #3fb5b0;
+  --icon-blue: #6aa3e8;
+  --icon-violet: #a58be8;
+  --icon-red: #ec7a6d;
+  --icon-amber: #e0a23a;
+  --icon-ink: #e9ebe8;
+  --line-strong: #343b42;
+  --line-control: #6b737a;
+
+  --ink: #e9ecef;
+  --ink-2: #a7b0b8;
+  --ink-3: #8c949b;
+
+  --accent: #8fc1a6;
+  --accent-hover: #a3cfb6;
+  --accent-soft: #1b2321;
+  --on-accent: #0b0d0f;
+
+  --out: #d98a80;
+
+  --select: rgba(233, 236, 239, 0.18);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.3);
+  --shadow-sheet:
+    0 0 0 1px rgba(233, 236, 239, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.3);
+}

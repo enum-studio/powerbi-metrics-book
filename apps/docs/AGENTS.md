@@ -1,0 +1,62 @@
+# apps/docs
+
+The docs site: Starlight, built static, served by the api at `/docs` and
+published with the repository, in the shared look. The people who set the
+product up, and more often their agents, read it before anything else.
+
+Standards: `docs/standards/typescript.md` for code; the writing rules at
+the end of the root `AGENTS.md` for every page.
+
+## The parts
+
+Start, Set up, Deploy, Use, Make it yours, Security, Reference (spec, Docs,
+skills and the open-source files). Pages live in
+`src/content/docs/<part>/`.
+
+## Rules here
+
+- Each page is written so a person and an agent can follow it step by
+  step: every command and value to copy, and the check that proves the step
+  worked at the end.
+- The setup pages use the same words as the setup screens, step for step,
+  so a person reading the guide and a person in the product see one
+  procedure. A change to a step's words changes both.
+- Reference pages (the CLI, the MCP tools, the settings) are generated
+  from the code. Change the code's help text or description, never the
+  generated page.
+- The security pages name the test that proves each checklist item; a
+  name that no longer exists fails the build.
+- Examples use the sample tenant and invented people. Never a real
+  company, tenant, person or credential. The sample's names are plain
+  ("Sales"): a command meant to be run as written on the sample tenant,
+  such as one under "## Check", and prose use the same name.
+- Commands that set a secret show `pbmb admin secrets set <name>`, never
+  a value on the command line or in an environment file.
+
+- A part's sidebar group is read from its folder, so a new page is a new
+  file with `sidebar.order` in its front matter; never edit the sidebar in
+  `astro.config.mjs`. The one exception is the Start part's opening page
+  (`start/index.md`), which has the slug `index` and is the front page at
+  `/docs/`: link to it as `/docs/`, not `/docs/start/`.
+- Links between pages are absolute from the base: `/docs/set-up/`.
+- `security/threat-model.md` and `security/reporting.md` are copies of
+  `docs/security/threat_model.md` and `SECURITY.md` made by
+  `scripts/sync-repo-docs.mjs` at build and git-ignored. Edit the source.
+- `reference/cli.md`, `mcp-tools.md`, `rest-api.md` and `settings.md` are
+  generated and committed. After a change to a command's help, a tool's
+  description, a route or a setting, run
+  `pnpm --filter @powerbi-metrics-book/docs gen:reference` and commit the
+  pages; `check` fails with the page's name when they are stale.
+- A new check is a new `scripts/check-*.mjs`; `scripts/check.mjs` runs every
+  one.
+
+## Check
+
+```bash
+pnpm --filter @powerbi-metrics-book/docs build
+pnpm --filter @powerbi-metrics-book/docs check
+node scripts/check-text.mjs apps/docs/src/content
+```
+
+`check` needs the build first (it reads `dist/`), and `uv` and the api's
+dependencies for the reference pages.

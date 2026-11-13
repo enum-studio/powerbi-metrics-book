@@ -1,0 +1,16 @@
+# An example deployment's own policy, for the tests only: certified datasets
+# are open to everyone signed in, whatever Power BI lists. A rule that
+# matches here decides; where none does, the defaults decide.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: dataset
+  version: default
+  scope: deployment
+  scopePermissions: SCOPE_PERMISSIONS_OVERRIDE_PARENT
+  rules:
+    - actions: [describe, query]
+      effect: EFFECT_ALLOW
+      roles: ["*"]
+      condition:
+        match:
+          expr: R.attr.endorsement == "Certified"

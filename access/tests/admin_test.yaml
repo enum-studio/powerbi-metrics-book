@@ -1,0 +1,46 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: admin
+description: Only admins administer.
+options:
+  lenientScopeSearch: true
+tests:
+  - name: every admin action
+    input:
+      principals: [workspace_member, curator, analyst, admin]
+      resources: [admin]
+      actions:
+        - manage_settings
+        - manage_secrets
+        - manage_people
+        - manage_service_accounts
+        - run_sync
+        - read_audit
+        - revoke_connection
+        - sign_out_person
+        - read_status
+        - run_check
+        - export_book
+        - import_book
+        - read_sync_events
+        - manage_pii
+        - manage_datasets
+    expected:
+      - principal: admin
+        resource: admin
+        actions:
+          manage_settings: EFFECT_ALLOW
+          manage_secrets: EFFECT_ALLOW
+          manage_people: EFFECT_ALLOW
+          manage_service_accounts: EFFECT_ALLOW
+          run_sync: EFFECT_ALLOW
+          read_audit: EFFECT_ALLOW
+          revoke_connection: EFFECT_ALLOW
+          sign_out_person: EFFECT_ALLOW
+          read_status: EFFECT_ALLOW
+          run_check: EFFECT_ALLOW
+          export_book: EFFECT_ALLOW
+          import_book: EFFECT_ALLOW
+          read_sync_events: EFFECT_ALLOW
+          manage_pii: EFFECT_ALLOW
+          manage_datasets: EFFECT_ALLOW

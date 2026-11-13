@@ -1,0 +1,607 @@
+# trivy reads this over the built image, the filesystem and the images
+# stack/compose.yml pins (pnpm check:all). A HIGH or CRITICAL finding fails
+# the run unless it is listed here, and an entry is only for a finding that
+# does not apply to this product or a real risk accepted for a stated reason,
+# never for a finding in code we can fix by raising a version. Each entry
+# names the finding, why, and the date to look again (expired_at, after which
+# the finding fails again).
+vulnerabilities:
+  # Debian 13.7 packages of the node:24-trixie-slim and pgvector:pg18-trixie
+  # bases. Debian has no fixed version for these (affected, or fix_deferred by
+  # its security team) as of 2026-10-27, so raising the base digest fixes none.
+  # Unless an entry says otherwise, the package is a tool the services do not
+  # run: the api and worker start node alone as a non-root user, and the
+  # postgres server does not call mount, login, gpg or perl at runtime.
+  - id: CVE-2025-69720
+    purls:
+      - "pkg:deb/debian/libncursesw6"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2025-69720
+    purls:
+      - "pkg:deb/debian/libtinfo6"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2025-69720
+    purls:
+      - "pkg:deb/debian/ncurses-base"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2025-69720
+    purls:
+      - "pkg:deb/debian/ncurses-bin"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-109518
+    purls:
+      - "pkg:deb/debian/apt"
+      - "pkg:deb/debian/libapt-pkg7.0"
+    statement:
+      Fixed in Debian as 3.0.4 (DSA-6607-1), and the node digest has it,
+      but the newest pgvector image (built 2026-10-31, checked 2026-11-05) still
+      ships 3.0.3. The flaw needs apt to install a package over tampered HTTP, and
+      nothing runs apt in the postgres container or builds on it with apt. That
+      alone protects root, since Azure's database-init job runs as root and on
+      Railway the entry point starts as root. The server runs as user 999 on
+      Compose and Railway, and user 999 cannot install. This entry would also hide
+      the finding on an old node digest, because trivy cannot scope it to one
+      image. Take the fix by raising the pgvector digest when a rebuild lands.
+    expired_at: 2026-11-27
+  - id: CVE-2026-119373
+    purls:
+      - "pkg:deb/debian/libsqlite3-0"
+    statement: No fixed version in Debian 13 yet, marked no-dsa, minor issue
+      (checked 2026-11-05). The flaw corrupts memory when SQLite runs crafted SQL
+      or opens a crafted database file. Node and postgres with its extensions do
+      not link this library. Only lslogins, through liblastlog2, and in the
+      pgvector image gpg and keyboxd link it, and no service runs them or opens a
+      SQLite file. So it takes a shell in the container already, where lslogins
+      with a crafted file does crash (tested 2026-11-05). That gains nothing, since
+      the crash runs with the shell's own rights and no setuid program links the
+      library. Node's own bundled SQLite 3.53.4 has the same flaw and trivy does
+      not see it, and nothing in the api loads node:sqlite. Raise the node pin
+      when a 24.x release ships SQLite 3.54.
+    expired_at: 2027-02-05
+  - id: CVE-2026-119374
+    purls:
+      - "pkg:deb/debian/libsqlite3-0"
+    statement: No fixed version in Debian 13 yet, marked no-dsa, minor issue
+      (checked 2026-11-07). The flaw overflows the heap when SQLite deletes from
+      a crafted FTS5 index with secure-delete on, so it needs a crafted database
+      file. As for CVE-2026-119373, only lslogins and in the pgvector image gpg
+      and keyboxd link the library, no service runs them or opens a SQLite file,
+      and no setuid program or PAM module links it (checked again 2026-11-07).
+      Node's own bundled SQLite 3.53.4 has the flaw too and trivy does not see
+      it. The api opens no SQLite database. The auth adapter is drizzle on
+      Postgres, and nothing creates undici's SQLite cache store. Raise the node
+      pin when a 24.x release ships SQLite 3.54.
+    expired_at: 2027-02-07
+  - id: CVE-2026-119379
+    purls:
+      - "pkg:deb/debian/libsqlite3-0"
+    statement: No fixed version in Debian 13 yet, marked no-dsa, minor issue
+      (checked 2026-11-07). The flaw overflows the heap when
+      sqlite3changeset_apply reads a crafted changeset. No program in these
+      images calls it. A scan of every ELF file found the name only in
+      libsqlite3 itself and in node, whose bundled SQLite 3.53.4 has the flaw
+      too and trivy does not see it. Node offers it as applyChangeset in
+      node:sqlite, and the api opens no SQLite database. The auth adapter is
+      drizzle on Postgres, and nothing creates undici's SQLite cache store.
+      Raise the node pin when a 24.x release ships SQLite 3.54.
+    expired_at: 2027-02-07
+  - id: CVE-2026-16742
+    purls:
+      - "pkg:deb/debian/libsystemd0"
+    statement: The flaw is in systemd-homed, which is not present in the image.
+    expired_at: 2027-01-27
+  - id: CVE-2026-16742
+    purls:
+      - "pkg:deb/debian/libudev1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/dirmngr"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/gnupg"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/gnupg-l10n"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/gpg"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/gpg-agent"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/gpgconf"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-24882
+    purls:
+      - "pkg:deb/debian/gpgsm"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-54369
+    purls:
+      - "pkg:deb/debian/libacl1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-6653
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-74860
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/bsdutils"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/libblkid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/liblastlog2-2"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/libmount1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/libsmartcols1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/libuuid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/login"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/mount"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76642
+    purls:
+      - "pkg:deb/debian/util-linux"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-76844
+    purls:
+      - "pkg:deb/debian/zlib1g"
+    statement: Fixed in Debian 13 as 1:1.3.dfsg+really1.3.1-1+deb13u1
+      (DSA-6613-1, in trixie-security since 2026-11-02), but the pinned node and
+      pgvector digests, each still the newest, ship 1:1.3.dfsg+really1.3.1-1+b1
+      (checked 2026-11-07). Raise both digests when a rebuild carries it.
+      Trivy's title names webpack-dev-middleware, but this is a zlib
+      flaw. After a failed write, gz_write keeps a stale pointer to the caller's
+      buffer. On Debian's zlib 1.3.1 that overflows if the program calls gzclearerr
+      and writes again. Without gzclearerr later writes return an error, but gzclose
+      still reads the pointer if writing works again by then, which can crash or
+      copy freed memory into the output (tested 2026-11-05 on amd64 and arm64). No
+      service or backup step reaches this. The postgres server imports no gz
+      function, pg_dump's custom format and pg_restore from a pipe made no gz call
+      when traced, and no program in these images calls gzclearerr. Node's own
+      bundled zlib 1.3.2.1 has the flaw too and trivy does not see it. There a write
+      that stalls on a non-blocking descriptor is enough, without gzclearerr.
+      Nothing in node calls its gz functions, and the api image has no native addon
+      that could. Raise the node pin when a 24.x release carries zlib commit df84af2.
+    expired_at: 2026-12-05
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/bsdutils"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/libblkid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/liblastlog2-2"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/libmount1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/libsmartcols1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/libuuid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/login"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/mount"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78408
+    purls:
+      - "pkg:deb/debian/util-linux"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/bsdutils"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/libblkid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/liblastlog2-2"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/libmount1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/libsmartcols1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/libuuid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/login"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/mount"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78409
+    purls:
+      - "pkg:deb/debian/util-linux"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/bsdutils"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/libblkid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/liblastlog2-2"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/libmount1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/libsmartcols1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/libuuid1"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/login"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/mount"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-78410
+    purls:
+      - "pkg:deb/debian/util-linux"
+    statement: No fixed version in Debian 13 yet (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-85091
+    purls:
+      - "pkg:deb/debian/zlib1g"
+    statement: Fixed in Debian 13 as 1:1.3.dfsg+really1.3.1-1+deb13u1
+      (DSA-6613-1, in trixie-security since 2026-11-02, with CVE-2026-76844),
+      but the pinned node and pgvector digests, each still the newest, ship
+      1:1.3.dfsg+really1.3.1-1+b1 (checked 2026-11-07). The overflow needs a
+      program to call gzprintf or gzvprintf after a write stalls. No program in
+      these images calls either. A scan of every ELF file found the names only
+      in libz itself and in node, whose bundled zlib 1.3.2.1 trivy does not see.
+      Nothing in node calls its gz functions, and the api image has no native
+      addon that could (no .node file, checked 2026-11-07). Raise both digests
+      when a rebuild carries the fix, and the node pin when a 24.x release
+      carries zlib commit df84af2.
+    expired_at: 2026-12-05
+  - id: CVE-2026-86138
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-86139
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-86140
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-86142
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-86143
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-86144
+    purls:
+      - "pkg:deb/debian/libxml2"
+    statement: The postgres server links libxml2 for its SQL XML functions. The api and worker call none of them, and only our own database roles can send SQL.
+    expired_at: 2027-01-27
+  - id: CVE-2026-9538
+    purls:
+      - "pkg:deb/debian/libperl5.40"
+    statement: Debian's security team deferred the fix (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-9538
+    purls:
+      - "pkg:deb/debian/perl"
+    statement: Debian's security team deferred the fix (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-9538
+    purls:
+      - "pkg:deb/debian/perl-base"
+    statement: Debian's security team deferred the fix (checked 2026-10-27).
+    expired_at: 2027-01-27
+  - id: CVE-2026-9538
+    purls:
+      - "pkg:deb/debian/perl-modules-5.40"
+    statement: Debian's security team deferred the fix (checked 2026-10-27).
+    expired_at: 2027-01-27
+  # Go modules in the cerbos:0.57.0 binary. Cerbos 0.57.0 is its newest
+  # release (checked 2026-11-07), so raising the pin fixes nothing yet.
+  - id: CVE-2026-116587
+    purls:
+      - "pkg:golang/github.com/go-jose/go-jose/v4"
+    statement: The flaw is in parsing a JWKS with RSA keys. Our Cerbos config
+      (stack/cerbos/config.yaml, and the deployment's copy) sets no JWT or JWKS
+      source, so Cerbos never parses one, and it sits on the internal app
+      network, reachable by the api and worker alone. Raise the pin when a
+      Cerbos release with go-jose 4.1.6 lands.
+    expired_at: 2026-11-28
+  - id: CVE-2026-78661
+    purls:
+      - "pkg:golang/golang.org/x/net"
+    statement: The flaw is in golang.org/x/net/html, which the binary does not
+      contain. Trivy reads the x/net 0.61.0 module from the build info, but Go
+      links only the packages a program imports, and the binary's function names
+      cover x/net's http2, hpack, trace, idna, dnsmessage, httpguts and
+      httpproxy, never html (checked 2026-11-07). Cerbos serves its check API
+      over HTTP on the internal app network, gRPC on loopback. Cerbos main still
+      requires x/net 0.61.0 (checked 2026-11-07). Raise the pin when a Cerbos
+      release with x/net 0.62.0 lands.
+    expired_at: 2027-01-07
+  - id: CVE-2026-112321
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-10).
+    expired_at: 2027-02-10
+  - id: CVE-2026-112322
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-10).
+    expired_at: 2027-02-10
+  - id: CVE-2026-112323
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-10).
+    expired_at: 2027-02-10
+  - id: CVE-2026-107364
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-112315
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-112316
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-112317
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-112318
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-112319
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-112320
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-118380
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-71199
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in how a KDC or a Kerberos service checks the
+      authentication indicators in a ticket's CAMMAC. The pgvector image runs
+      no KDC, and our Postgres takes no GSSAPI logins, so it never checks a
+      ticket. No fixed version in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-71200
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-11).
+    expired_at: 2027-02-11
+  - id: CVE-2026-119079
+    purls:
+      - "pkg:deb/debian/libgssapi-krb5-2"
+      - "pkg:deb/debian/libk5crypto3"
+      - "pkg:deb/debian/libkrb5-3"
+      - "pkg:deb/debian/libkrb5support0"
+    statement: The flaw is in MIT krb5's kadmind or KDC, servers the
+      pgvector image does not hold or run; Postgres links only the client
+      libraries, and our Postgres takes no GSSAPI logins. No fixed version
+      in Debian 13 yet (checked 2026-11-10).
+    expired_at: 2027-02-10
+
+secrets: []
+misconfigurations:
+  # Railway has no bind mounts, so this image is the stock pgvector image with
+  # the init script copied in (deploy/railway/postgres.Dockerfile). The stock
+  # Postgres entrypoint starts as root only to set the owner of the data
+  # volume, then runs the server as the postgres user. A USER line here would
+  # stop it from preparing Railway's volume.
+  - id: DS-0002
+    paths:
+      - "deploy/railway/postgres.Dockerfile"
+    statement: The upstream Postgres entrypoint starts as root to prepare the volume and runs the server as postgres.
+    expired_at: 2027-04-30

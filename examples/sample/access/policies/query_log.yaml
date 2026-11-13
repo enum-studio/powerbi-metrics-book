@@ -1,0 +1,21 @@
+# The sample company's own rule: a viewer reads only the query log entries
+# they ran themselves. Curators and admins still read the whole log.
+#
+# Parental consent mode: a rule here can only narrow what the defaults the
+# image ships allow, never widen it.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: query_log
+  version: default
+  scope: deployment
+  scopePermissions: SCOPE_PERMISSIONS_REQUIRE_PARENTAL_CONSENT_FOR_ALLOWS
+  rules:
+    - actions: [read]
+      effect: EFFECT_DENY
+      roles: [viewer]
+      condition:
+        match:
+          # Both fields: a service account's name could equal a person's id.
+          expr: >-
+            !(request.resource.attr.principal_kind == request.principal.attr.kind &&
+            request.resource.attr.principal_id == request.principal.id)

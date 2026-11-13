@@ -1,0 +1,11 @@
+/* Inter and IBM Plex Mono, served from this package's own dependencies, so no
+   page asks a third party for a font. The @import paths resolve from this
+   file, which is how Vite and Tailwind read them in either product.
+
+   Inter is the variable file with its optical-size axis, weights 100 to 900.
+   The browser picks the optical size from the text size (font-optical-sizing
+   is auto by default), so never set font-variation-settings. Plex Mono has the
+   two weights the brand uses: 400 for figures and 500 for labels. No italics. */
+@import "@fontsource-variable/inter/opsz.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";

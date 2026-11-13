@@ -1,0 +1,102 @@
+# Layered over the compose.yml that pbmb init writes, on one VM. Copy it and
+# the Caddyfile beside compose.yml, then:
+#
+#   docker compose -f compose.yml -f compose.caddy.yml up -d
+#
+# Caddy is the only service that publishes a port. It gets a certificate from
+# Let's Encrypt for the host in PUBLIC_BASE_URL and passes each request to the
+# api over edge. deploy/check.sh fails if the api publishes a port here.
+#
+# Caddy has a fixed address on edge, 172.30.80.10. Set TRUSTED_PROXY in .env
+# to that one address: Caddy connects from it and names the client in
+# X-Forwarded-For. Docker hands out edge addresses from 172.30.80.128/25
+# only, so no other container can ever get Caddy's. With PBMB_EDGE_SUBNET
+# changed, set PBMB_CADDY_ADDRESS to an address in the new range,
+# PBMB_EDGE_IP_RANGE to the range's upper half, and TRUSTED_PROXY to
+# PBMB_CADDY_ADDRESS.
+
+services:
+  api:
+    # The base file publishes the api on 127.0.0.1 for a proxy on the host.
+    # Caddy reaches it over edge, so nothing of the api is published.
+    ports: !reset []
+
+  caddy:
+    image: caddy:2.11.7@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
+    # Not root. The image's caddy binary carries the file capability
+    # cap_net_bind_service, so the kernel refuses to start it unless that
+    # capability is allowed; it is the only one kept, and it only lets Caddy
+    # listen on 80 and 443. A sysctl for low ports instead does not help: the
+    # start is refused all the same.
+    user: "10001:10001"
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    restart: unless-stopped
+    # edge only: Caddy reaches the api and, for certificates, the internet.
+    networks:
+      edge:
+        ipv4_address: ${PBMB_CADDY_ADDRESS:-172.30.80.10}
+    ports:
+      - 80:80
+      - 443:443
+      # HTTP/3.
+      - 443:443/udp
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL?PUBLIC_BASE_URL is not set; pbmb init writes it to .env}
+    volumes:
+      - type: bind
+        source: ./Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: false
+      # Certificates and the ACME account. Losing it means new certificates,
+      # and Let's Encrypt limits how many a host gets in a week.
+      - type: volume
+        source: caddy_data
+        target: /data
+      - type: volume
+        source: caddy_config
+        target: /config
+    depends_on:
+      api: { condition: service_healthy }
+      caddy-volumes: { condition: service_completed_successfully }
+    deploy: { resources: { limits: { memory: 128m, cpus: "0.5" } } }
+
+  # Gives Caddy's two volumes to its user, then exits. A new volume takes the
+  # image's root-owned directories; this runs as root with only CHOWN and
+  # DAC_READ_SEARCH and no network. Caddy makes its own directories mode 0700,
+  # so on every start after the first, chown can open them only with
+  # DAC_READ_SEARCH; without it docker compose up fails with "Permission
+  # denied" and the stack does not come back after a restore or an upgrade.
+  caddy-volumes:
+    image: caddy:2.11.7@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
+    entrypoint: [chown, -R, "10001:10001", /data, /config]
+    network_mode: none
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_READ_SEARCH]
+    read_only: true
+    volumes:
+      - type: volume
+        source: caddy_data
+        target: /data
+      - type: volume
+        source: caddy_config
+        target: /config
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}
+
+networks:
+  edge:
+    ipam:
+      # Replaces compose.yml's list: the same subnet, plus the range Docker
+      # may assign from, which leaves out PBMB_CADDY_ADDRESS.
+      config: !override
+        - subnet: ${PBMB_EDGE_SUBNET:-172.30.80.0/24}
+          ip_range: ${PBMB_EDGE_IP_RANGE:-172.30.80.128/25}

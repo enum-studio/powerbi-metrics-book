@@ -1,0 +1,15 @@
+---
+// Goes in the head, before anything paints. The reader's theme choice is
+// kept under Starlight's key, so the landing page and the docs match. With
+// no choice kept, the system setting decides.
+---
+
+<script is:inline>
+  try {
+    const theme = localStorage.getItem("starlight-theme");
+    if (theme === "light" || theme === "dark")
+      document.documentElement.dataset.theme = theme;
+  } catch {
+    // Storage can be blocked; the system setting then decides.
+  }
+</script>

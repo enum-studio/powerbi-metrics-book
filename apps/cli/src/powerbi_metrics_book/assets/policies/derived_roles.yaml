@@ -1,0 +1,73 @@
+# Roles that depend on the resource as well as on who is asking. Every
+# principal attribute read here is set by the api: kind (person or
+# service_account), metadata_visibility from the setting
+# access.metadata_visibility, and the three lists. A person's lists come from
+# Power BI's access lists, with their groups already resolved into them; a
+# service account's workspace and app lists are what its admin gave it.
+apiVersion: api.cerbos.dev/v1
+derivedRoles:
+  name: powerbi_metrics_book
+  definitions:
+    # May describe a dataset. A person: under `everyone`, always; under
+    # `powerbi`, when Power BI lets them reach it through its workspace, an
+    # app showing it, or a direct share; under `policy`, never here, since
+    # the deployment's own policy decides. A service account, in every mode:
+    # when its admin gave it the dataset's workspace or an app showing it.
+    # The api also holds a service account to that grant in code, so no
+    # deployment policy can widen it.
+    - name: dataset_reader
+      parentRoles: ["*"]
+      condition:
+        match:
+          any:
+            of:
+              - all:
+                  of:
+                    - expr: P.attr.kind == "person"
+                    - any:
+                        of:
+                          - expr: P.attr.metadata_visibility == "everyone"
+                          - all:
+                              of:
+                                - expr: P.attr.metadata_visibility == "powerbi"
+                                - any:
+                                    of:
+                                      - expr: R.attr.workspace_id in P.attr.powerbi_workspace_ids
+                                      - expr: hasIntersection(R.attr.app_ids, P.attr.powerbi_app_ids)
+                                      - expr: R.id in P.attr.powerbi_dataset_ids
+              - all:
+                  of:
+                    - expr: P.attr.kind == "service_account"
+                    - any:
+                        of:
+                          - expr: R.attr.workspace_id in P.attr.powerbi_workspace_ids
+                          - expr: hasIntersection(R.attr.app_ids, P.attr.powerbi_app_ids)
+
+    # Authorship and ownership compare the kind as well as the id: a service
+    # account's name could equal a person's id.
+    - name: thread_author
+      parentRoles: ["*"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: R.attr.author_kind == P.attr.kind
+              - expr: R.attr.author_id == P.id
+
+    - name: result_owner
+      parentRoles: ["*"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: R.attr.owner_kind == P.attr.kind
+              - expr: R.attr.owner_id == P.id
+
+    - name: record_owner
+      parentRoles: ["*"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: R.attr.principal_kind == P.attr.kind
+              - expr: R.attr.principal_id == P.id

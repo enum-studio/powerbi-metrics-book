@@ -1,0 +1,20 @@
+# The query log holds the DAX everyone ran, never its results. Each entry is
+# asked about with the principal_kind and principal_id of who ran it, so a
+# deployment that narrows this rule compares both: a service account's name
+# could equal a person's id. Whatever this rule says, the api shows Power
+# BI's error sentence only to the entry's own principal.
+#
+# A search of the log applies read inside its SQL through Cerbos's query plan,
+# so a condition here must stay one the api's translator knows
+# (src/services/access/plan.ts): principal_kind, principal_id and the entry's
+# id, with and, or, not, == and in. One it does not know fails every search
+# loudly, and pbmb check does not catch that: R.attr.principal_id != P.id
+# compiles, then answers 500. Write !(R.attr.principal_id == P.id).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: query_log
+  version: default
+  rules:
+    - actions: [read]
+      effect: EFFECT_ALLOW
+      roles: ["*"]

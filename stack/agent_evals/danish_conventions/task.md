@@ -1,0 +1,1 @@
+Our Power BI measures are named in Danish, with spaces, like "Omsætning netto" and "Antal ordrer". The metrics book wants snake_case English names. Set up the conventions so they fit how we name things, and save them. You can go ahead without asking me first.

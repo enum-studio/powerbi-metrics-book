@@ -1,0 +1,23 @@
+# What Codex may do here: it asks before anything its sandbox does not allow,
+# and its commands cannot read a secret file. docs/security/agents.md lists what
+# this file and rules/default.rules enforce, and what Codex cannot express.
+#
+# Permission profiles are a beta Codex feature, and they replace sandbox_mode: a
+# sandbox_mode in any other config file, or --sandbox, switches this profile off.
+approval_policy = "on-request"
+default_permissions = "powerbi-metrics-book"
+
+# The local connector. Uncomment these two lines and use the port pnpm dev:up
+# prints for this checkout's stack. The port differs in every checkout, so the
+# block cannot be committed live: an unfilled <port> is an invalid URL.
+# [mcp_servers.powerbi_metrics_book_dev]
+# url = "http://localhost:<port>/api/mcp"
+
+[permissions.powerbi-metrics-book]
+description = "Edit this checkout; read no secret file."
+extends = ":workspace"
+
+[permissions.powerbi-metrics-book.filesystem.":workspace_roots"]
+"**/.env*" = "deny"
+"**/*.key" = "deny"
+"**/identity/**" = "deny"

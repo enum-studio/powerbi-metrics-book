@@ -1,0 +1,16 @@
+# A list applies read inside SQL through Cerbos query plans.
+# A condition here must stay one the api's translator knows
+# (src/services/access/plan.ts): principal_kind, principal_id and the entry's
+# id, with and, or, not, == and in. One it does not know fails every search
+# loudly, and pbmb check does not catch that: R.attr.principal_id != P.id
+# compiles, then answers 500. Write !(R.attr.principal_id == P.id).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: search_log
+  version: default
+  importDerivedRoles: [powerbi_metrics_book]
+  rules:
+    - actions: [read]
+      effect: EFFECT_ALLOW
+      roles: [curator, admin]
+      derivedRoles: [record_owner]

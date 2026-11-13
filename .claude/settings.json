@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm install --frozen-lockfile)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm fmt)",
+      "Bash(pnpm fmt:check)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm check:all)",
+      "Bash(pnpm dev:up)",
+      "Bash(pnpm --filter *)",
+      "Bash(uv sync)",
+      "Bash(uv sync *)",
+      "Bash(uv run *)",
+      "Bash(pbmb *)",
+      "Bash(docker compose *)"
+    ],
+    "deny": [
+      "Read(**/.env*)",
+      "Read(**/*.key)",
+      "Read(**/identity/**)",
+      "Read(//proc/*/environ)",
+      "Bash(env)",
+      "Bash(env *)",
+      "Bash(printenv)",
+      "Bash(printenv *)",
+      "Bash(cat /proc/*/environ*)",
+      "Bash(docker inspect *)",
+      "Bash(docker container inspect *)",
+      "Bash(docker compose config*)",
+      "Bash(docker compose * config*)",
+      "Bash(docker compose exec *)",
+      "Bash(docker compose * exec *)",
+      "Bash(docker exec *)",
+      "Bash(docker container exec *)",
+      "Bash(docker compose run *)",
+      "Bash(docker compose * run *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)"
+    ]
+  }
+}

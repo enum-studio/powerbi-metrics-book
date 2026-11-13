@@ -1,0 +1,12 @@
+# A result holds data under its owner's row-level security, so only the owner
+# reads it. The api checks the owner in code as well, whatever a deployment's
+# policy says.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: result
+  version: default
+  importDerivedRoles: [powerbi_metrics_book]
+  rules:
+    - actions: [read]
+      effect: EFFECT_ALLOW
+      derivedRoles: [result_owner]

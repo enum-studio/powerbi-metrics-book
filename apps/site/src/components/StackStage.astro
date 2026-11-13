@@ -1,0 +1,320 @@
+---
+// The stack on its one VM beside five steps, one question's path through it.
+// Each step lights the parts and traces it uses, lifts the containers and
+// dims the rest. Only the current step's text shows.
+import { drawStack } from "../drawing/stack";
+
+const STEPS = [
+  {
+    name: "Sync",
+    text: "The worker reads the workspaces you chose with the admin scanner, keeps them in Postgres and embeds them for search. About $0.10 embeds 5,000 documents.",
+  },
+  {
+    name: "Ask",
+    text: "Your agent asks over MCP, through the proxy you run. Only the api takes requests. The worker, Postgres and Cerbos have no route in.",
+  },
+  {
+    name: "Check",
+    text: "Cerbos decides every request, from the web app, the CLI, MCP or a service account, before it reaches Power BI or the book.",
+  },
+  {
+    name: "Query",
+    text: "The api runs the DAX on Power BI with the asking person's own sign-in. Power BI is read, never written.",
+  },
+  {
+    name: "Keep",
+    text: "The result is kept in Postgres for that person alone. The agent reads 100 rows and gets a CSV link for the rest, valid for 15 minutes.",
+  },
+];
+---
+
+<div class="stage" data-stage>
+  <figure class="drawing" set:html={drawStack() + drawStack(true)} />
+  <ol class="steps" aria-label="One question's path">
+    {
+      STEPS.map((step, index) => (
+        <li>
+          <button type="button" data-run={index + 1} aria-pressed={index === 0 ? "true" : "false"}>
+            <span class="n">{String(index + 1).padStart(2, "0")}</span>
+            <span class="name">{step.name}</span>
+            <span class="text">{step.text}</span>
+            <span class="timer" aria-hidden="true" />
+          </button>
+        </li>
+      ))
+    }
+  </ol>
+</div>
+
+<script>
+  import { stepThrough } from "../scripts/stepper";
+
+  const stage = document.querySelector<HTMLElement>("[data-stage]");
+  if (stage) stepThrough(stage, { count: 5, ms: 4200, showFirst: true });
+</script>
+
+<style>
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    align-items: center;
+    margin-top: var(--space-8);
+  }
+  @media (min-width: 960px) {
+    .stage {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+  }
+  .drawing {
+    margin: 0;
+  }
+  /* On a wide screen the drawing reaches into the margin, so its labels keep their size. */
+  @media (min-width: 1280px) {
+    .drawing {
+      margin-left: calc(-1 * min(7rem, (100vw - var(--page-max)) / 2));
+    }
+  }
+  .drawing :global(.iso) {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-text);
+  }
+  /* On a phone, only the VM, edge to edge, with the containers' names larger. */
+  .drawing :global(.narrow) {
+    display: none;
+  }
+  @media (max-width: 559px) {
+    .drawing {
+      margin-inline: calc(-1 * var(--page-pad));
+    }
+    .drawing :global(.wide) {
+      display: none;
+    }
+    .drawing :global(.narrow) {
+      display: block;
+    }
+    .drawing :global(.narrow :is(.note, .label)) {
+      display: none;
+    }
+    .drawing :global(.narrow .name) {
+      font-size: var(--type-ui);
+    }
+  }
+
+  /* The ground, the VM and what stands on it. */
+  .drawing :global(.ground) {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 0.6;
+    opacity: 0.7;
+  }
+  .drawing :global(.server .t) {
+    fill: var(--surface);
+    stroke: var(--line-strong);
+  }
+  .drawing :global(.server .l),
+  .drawing :global(.server .r) {
+    fill: var(--raised);
+    stroke: var(--line-strong);
+  }
+  .drawing :global(.part .t),
+  .drawing :global(.panel) {
+    fill: var(--surface);
+    stroke: var(--line-strong);
+  }
+  .drawing :global(.part .l),
+  .drawing :global(.part .r) {
+    fill: var(--raised);
+    stroke: var(--line-strong);
+  }
+  .drawing :global(.part .r) {
+    fill: color-mix(in oklab, var(--raised) 80%, var(--line-strong));
+  }
+
+  /* Text. */
+  .drawing :global(.name) {
+    fill: var(--ink);
+    font-weight: 600;
+  }
+  .drawing :global(.tile-name) {
+    fill: var(--ink);
+    font-weight: 550;
+  }
+  .drawing :global(.note),
+  .drawing :global(.label) {
+    fill: var(--ink-3);
+    font-family: var(--font-mono);
+  }
+  .drawing :global(.say) {
+    fill: var(--ink);
+    font-weight: 500;
+  }
+  .drawing :global(.dot),
+  .drawing :global(.bar-line) {
+    fill: var(--line-strong);
+  }
+  .drawing :global(.rule) {
+    stroke: var(--line);
+  }
+
+  /* The traces: a dashed line always, and the accent while its step is lit. */
+  .drawing :global(.trace .under) {
+    fill: none;
+    stroke: var(--line-control);
+    stroke-width: 1.2;
+    stroke-dasharray: 3 3;
+  }
+  .drawing :global(.trace .over) {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.25;
+    stroke-linejoin: round;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .drawing :global(.trace .end) {
+    fill: var(--surface);
+    stroke: var(--line-strong);
+    stroke-width: 1;
+  }
+  .drawing :global(.trace.hot .over) {
+    opacity: 1;
+  }
+  .drawing :global(.trace.hot .end) {
+    fill: var(--accent);
+    stroke: var(--accent);
+  }
+
+  /* A lit part. The api, the one that takes requests, fills with the accent. */
+  .drawing :global(.part.hot .t),
+  .drawing :global(.part.hot .panel) {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  .drawing :global(.part.hot .l),
+  .drawing :global(.part.hot .r) {
+    stroke: var(--accent);
+  }
+  .drawing :global(.part.hot .name) {
+    fill: var(--accent);
+  }
+  .drawing :global(.public.hot .t) {
+    fill: var(--accent);
+  }
+  .drawing :global(.public.hot .l) {
+    fill: color-mix(in oklab, var(--accent) 78%, var(--ink));
+  }
+  .drawing :global(.public.hot .r) {
+    fill: color-mix(in oklab, var(--accent) 62%, var(--ink));
+  }
+  .drawing :global(.public.hot :is(.name, .note)) {
+    fill: var(--on-accent);
+  }
+
+  /* While a step is lit, the parts it doesn't use step back. */
+  .drawing :global(.part) {
+    transition:
+      opacity 0.35s ease,
+      transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .drawing :global(.part *) {
+    transition:
+      fill 0.3s ease,
+      stroke 0.3s ease;
+  }
+  .stage[data-active] .drawing :global(.part:not(.hot) .name) {
+    fill: var(--ink-3);
+  }
+  .stage[data-active] .drawing :global(.outside:not(.hot)) {
+    opacity: 0.45;
+  }
+  .stage[data-active] .drawing :global(.part.hot:not(.outside)) {
+    transform: translateY(-7px);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .drawing :global(.trace.hot .over) {
+      stroke-dasharray: 6 6;
+      animation: run 0.9s linear infinite;
+    }
+  }
+  @keyframes run {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+
+  /* The steps. */
+  .steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line-strong);
+  }
+  .steps li {
+    border-bottom: 1px solid var(--line);
+  }
+  .steps button {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    width: 100%;
+    padding: var(--space-3) 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+  .n {
+    font: 500 var(--type-meta) / 1.9 var(--font-mono);
+    color: var(--ink-3);
+  }
+  .steps .name {
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .text {
+    grid-column: 2;
+    display: none;
+    margin-top: var(--space-1);
+    font-size: var(--type-ui);
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  [aria-pressed="true"] .name {
+    color: var(--ink);
+  }
+  [aria-pressed="true"] .n {
+    color: var(--accent);
+  }
+  [aria-pressed="true"] .text {
+    display: block;
+  }
+  .timer {
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  [aria-pressed="true"] .timer {
+    transform: scaleX(1);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .playing [aria-pressed="true"] .timer {
+      animation: fill var(--step-ms) linear;
+    }
+  }
+  @keyframes fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+</style>

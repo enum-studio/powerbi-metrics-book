@@ -1,0 +1,63 @@
+# Commands no agent runs here, from docs/security/agents.md. Codex matches the
+# first words of a command exactly, so a flag put before the subcommand
+# (docker compose --project-name x config) is not matched, and it cannot match
+# `echo $NAME` or `cat /proc/*/environ` at all. docs/security/agents.md says so.
+
+prefix_rule(
+    pattern = ["env"],
+    decision = "forbidden",
+    justification = "env prints secret values. Ask a person to run it, or use pbmb admin secrets list for names.",
+    match = ["env", "env FOO=1 true"],
+    not_match = ["envsubst"],
+)
+
+prefix_rule(
+    pattern = ["printenv"],
+    decision = "forbidden",
+    justification = "printenv prints secret values. Use pbmb admin secrets list for names.",
+    match = ["printenv", "printenv PATH"],
+)
+
+prefix_rule(
+    pattern = ["docker", "inspect"],
+    decision = "forbidden",
+    justification = "docker inspect prints a container's environment, passwords included. Use docker compose logs for output.",
+    match = ["docker inspect pbmb_1a2b3c4d-api-1"],
+)
+
+prefix_rule(
+    pattern = ["docker", "container", "inspect"],
+    decision = "forbidden",
+    justification = "docker container inspect prints a container's environment, passwords included. Use docker compose logs for output.",
+    match = ["docker container inspect pbmb_1a2b3c4d-api-1"],
+)
+
+prefix_rule(
+    pattern = ["docker", "exec"],
+    decision = "forbidden",
+    justification = "docker exec runs a command inside a container, where env prints its secrets. Use docker compose logs for output.",
+    match = ["docker exec pbmb_1a2b3c4d-api-1 env"],
+)
+
+prefix_rule(
+    pattern = ["docker", "container", "exec"],
+    decision = "forbidden",
+    justification = "docker container exec runs a command inside a container, where env prints its secrets. Use docker compose logs for output.",
+    match = ["docker container exec pbmb_1a2b3c4d-api-1 env"],
+)
+
+prefix_rule(
+    pattern = ["docker", "compose", ["config", "exec", "run"]],
+    decision = "forbidden",
+    justification = "docker compose config, exec and run print .env.local and password values, and exec is how the setup link is made, which is a person's step. Use docker compose logs for output.",
+    match = ["docker compose config", "docker compose exec api server setup-link", "docker compose run api env"],
+    not_match = ["docker compose ps"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f", "--force-with-lease", "--force-if-includes"]],
+    decision = "forbidden",
+    justification = "A force push rewrites shared history. Ask a person.",
+    match = ["git push --force", "git push -f origin main", "git push --force-with-lease"],
+    not_match = ["git push origin main"],
+)

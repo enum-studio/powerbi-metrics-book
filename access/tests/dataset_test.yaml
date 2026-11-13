@@ -1,0 +1,79 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: dataset
+description: Who may describe and query a dataset, in each metadata visibility mode.
+options:
+  lenientScopeSearch: true
+tests:
+  - name: powerbi follows Power BI's workspaces, app audiences and direct shares
+    input:
+      principals:
+        - workspace_member
+        - app_only
+        - group_member
+        - shared_with
+        - no_access
+      resources: [sales_dataset, app_dataset, finance_dataset, shared_dataset]
+      actions: [describe, query]
+    expected:
+      - principal: workspace_member
+        resource: sales_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }
+      - principal: app_only
+        resource: app_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }
+      - principal: group_member
+        resource: finance_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }
+      - principal: shared_with
+        resource: shared_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }
+
+  - name: everyone lets anyone signed in describe and query every dataset
+    input:
+      principals: [everyone_viewer]
+      resources: [sales_dataset, app_dataset, finance_dataset, shared_dataset]
+      actions: [describe, query]
+    expected:
+      - principal: everyone_viewer
+        resources: [sales_dataset, app_dataset, finance_dataset, shared_dataset]
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }
+
+  - name: policy allows nothing in the defaults, whatever Power BI lists
+    input:
+      principals: [policy_viewer]
+      resources: [sales_dataset, app_dataset, finance_dataset, shared_dataset]
+      actions: [describe, query]
+    expected:
+      - principal: policy_viewer
+        resources: [sales_dataset, app_dataset, finance_dataset, shared_dataset]
+        actions: { describe: EFFECT_DENY, query: EFFECT_DENY }
+
+  - name: queries_off stops queries but not describing
+    input:
+      principals: [workspace_member, everyone_viewer, curator]
+      resources: [queries_off_dataset]
+      actions: [describe, query]
+    expected:
+      - principals: [workspace_member, everyone_viewer]
+        resource: queries_off_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_DENY }
+
+  - name: a service account reaches its grant in every mode, and nothing beyond
+    input:
+      principals:
+        - service_account_powerbi
+        - service_account_everyone
+        - service_account_policy
+        - ungranted_service_account_powerbi
+        - ungranted_service_account_everyone
+        - ungranted_service_account_policy
+      resources: [sales_dataset, app_dataset, finance_dataset, shared_dataset]
+      actions: [describe, query]
+    expected:
+      - principals:
+          - service_account_powerbi
+          - service_account_everyone
+          - service_account_policy
+        resources: [app_dataset, finance_dataset]
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }

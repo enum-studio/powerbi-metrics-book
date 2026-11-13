@@ -1,0 +1,37 @@
+name: query_log_override
+description: The test policy leaves each principal its own entries, comparing kind and id.
+options:
+  lenientScopeSearch: true
+principals:
+  person:
+    id: same_name
+    roles: [viewer]
+    attr: { kind: person }
+  account:
+    id: same_name
+    roles: [viewer]
+    attr: { kind: service_account }
+resources:
+  persons_entry:
+    kind: query_log
+    id: persons_entry
+    scope: deployment
+    attr: { principal_kind: person, principal_id: same_name }
+  accounts_entry:
+    kind: query_log
+    id: accounts_entry
+    scope: deployment
+    attr: { principal_kind: service_account, principal_id: same_name }
+tests:
+  - name: each reads its own and not the namesake's
+    input:
+      principals: [person, account]
+      resources: [persons_entry, accounts_entry]
+      actions: [read]
+    expected:
+      - principal: person
+        resource: persons_entry
+        actions: { read: EFFECT_ALLOW }
+      - principal: account
+        resource: accounts_entry
+        actions: { read: EFFECT_ALLOW }

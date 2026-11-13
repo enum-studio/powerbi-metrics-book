@@ -1,0 +1,67 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: query_log
+description: A viewer reads their own query log entries only.
+options:
+  lenientScopeSearch: true
+principals:
+  ada:
+    id: ada
+    roles: [viewer]
+    attr: &person
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+  grace:
+    id: grace
+    roles: [curator]
+    attr: *person
+  account_named_ada:
+    id: ada
+    roles: [viewer]
+    attr:
+      kind: service_account
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: []
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+resources:
+  ada_query:
+    kind: query_log
+    id: ada_query
+    scope: deployment
+    attr: { principal_kind: person, principal_id: ada }
+  grace_query:
+    kind: query_log
+    id: grace_query
+    scope: deployment
+    attr: { principal_kind: person, principal_id: grace }
+  service_account_named_ada:
+    kind: query_log
+    id: service_account_named_ada
+    scope: deployment
+    attr: { principal_kind: service_account, principal_id: ada }
+tests:
+  - name: a viewer reads their own entries, a curator reads them all
+    input:
+      principals: [ada, grace, account_named_ada]
+      resources: [ada_query, grace_query, service_account_named_ada]
+      actions: [read]
+    expected:
+      - principal: ada
+        resource: ada_query
+        actions: { read: EFFECT_ALLOW }
+      - principal: account_named_ada
+        resource: service_account_named_ada
+        actions: { read: EFFECT_ALLOW }
+      - principals: [grace]
+        resource: ada_query
+        actions: { read: EFFECT_ALLOW }
+      - principals: [grace]
+        resource: grace_query
+        actions: { read: EFFECT_ALLOW }
+      - principals: [grace]
+        resource: service_account_named_ada
+        actions: { read: EFFECT_ALLOW }

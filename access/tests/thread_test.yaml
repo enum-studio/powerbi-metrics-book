@@ -1,0 +1,41 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: thread
+description: Anyone signed in asks, replies and upvotes; the author or a curator accepts; a curator archives.
+options:
+  lenientScopeSearch: true
+tests:
+  - name: by role and authorship
+    input:
+      # The thread's author is the person workspace_member, never a service
+      # account of the same name.
+      principals:
+        [
+          workspace_member,
+          app_only,
+          analyst,
+          curator,
+          admin,
+          service_account_named_like_a_person,
+        ]
+      resources: [thread]
+      actions: [create, reply, upvote, accept, archive]
+    expected:
+      - principals:
+          [
+            workspace_member,
+            app_only,
+            analyst,
+            curator,
+            admin,
+            service_account_named_like_a_person,
+          ]
+        resource: thread
+        actions:
+          { create: EFFECT_ALLOW, reply: EFFECT_ALLOW, upvote: EFFECT_ALLOW }
+      - principals: [workspace_member, curator, admin]
+        resource: thread
+        actions: { accept: EFFECT_ALLOW }
+      - principals: [curator, admin]
+        resource: thread
+        actions: { archive: EFFECT_ALLOW }

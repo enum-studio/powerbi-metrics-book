@@ -1,0 +1,131 @@
+@import "tailwindcss";
+@import "@enum-studio/tokens/tokens.css";
+@import "@enum-studio/tokens/theme.css";
+@import "@enum-studio/tokens/fonts.css";
+@import "@xyflow/react/dist/style.css";
+
+@layer base {
+  body {
+    @apply bg-bg font-sans text-body text-ink;
+    /* A long key, address or name breaks anywhere rather than push the page past the screen. */
+    overflow-wrap: anywhere;
+  }
+
+  /* A table's cells keep their words, and a table too wide for its box scrolls inside it. */
+  table {
+    overflow-wrap: normal;
+  }
+
+  /* WebKit ignores a select's min-height and padding, so its height is set outright. */
+  select {
+    height: var(--space-8);
+  }
+
+  /* What the keyboard or a link brings into view lands clear of the sticky bar on a phone. */
+  html {
+    scroll-padding-top: calc(var(--tap) + var(--safe-top));
+  }
+
+  /* The page stays put behind the drawer and the search dialog on a phone. On a wider screen the page scrolls on, so a classic scrollbar does not vanish and shift it sideways. */
+  @media (width < 64rem) {
+    html:has(dialog[open]) {
+      overflow: hidden;
+    }
+  }
+
+  /* Every scrolling box, on the tokens, so a long tree or code block does not carry a thick grey bar. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  /* One ring for every control a keyboard reaches, in the accent, outside the control's own edge. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* Outside the layers, to beat a field's own text size. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: var(--type-field-touch);
+  }
+
+  select {
+    height: var(--tap);
+  }
+}
+
+/* A wait this short shows nothing, so a fast screen does not flash its loading line. */
+.appear-late {
+  animation: appear-late 120ms ease-out 300ms backwards;
+}
+
+@keyframes appear-late {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The diagram's React Flow, on the tokens, so it follows dark mode. */
+.react-flow {
+  --xy-background-pattern-dots-color-default: var(--line-strong);
+}
+
+.react-flow__controls {
+  overflow: clip;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sheet);
+}
+
+.react-flow__controls-button {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--raised);
+}
+
+@media (pointer: coarse) {
+  .react-flow__controls-button {
+    width: var(--tap);
+    height: var(--tap);
+  }
+}
+
+/* On a phone's width the minimap covers a third of the diagram and is too small to steer with a finger. */
+@media (width < 40rem) {
+  .react-flow__minimap {
+    display: none;
+  }
+}
+
+.react-flow__controls-button svg {
+  fill: currentcolor;
+}
+
+.react-flow__minimap {
+  overflow: clip;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__edge,
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  transition:
+    stroke 120ms ease-out,
+    opacity 120ms ease-out;
+}

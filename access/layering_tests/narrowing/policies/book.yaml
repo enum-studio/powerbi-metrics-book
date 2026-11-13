@@ -1,0 +1,17 @@
+# An example deployment's own policy, for the tests only: curators no longer
+# approve, so only admins do. Its ALLOW for everyone to curate has no effect:
+# with parental consent an ALLOW counts only where a default allows too.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: book
+  version: default
+  scope: deployment
+  scopePermissions: SCOPE_PERMISSIONS_REQUIRE_PARENTAL_CONSENT_FOR_ALLOWS
+  rules:
+    - actions: [approve]
+      effect: EFFECT_DENY
+      roles: [curator]
+
+    - actions: [curate]
+      effect: EFFECT_ALLOW
+      roles: ["*"]

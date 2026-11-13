@@ -1,0 +1,20 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: book
+description: Curators and admins change the book; only admins edit the conventions.
+options:
+  lenientScopeSearch: true
+tests:
+  - name: by role
+    input:
+      principals: [workspace_member, analyst, curator, admin]
+      resources: [book]
+      actions: [curate, verify, approve, edit_conventions]
+    expected:
+      - principals: [curator, admin]
+        resource: book
+        actions:
+          { curate: EFFECT_ALLOW, verify: EFFECT_ALLOW, approve: EFFECT_ALLOW }
+      - principal: admin
+        resource: book
+        actions: { edit_conventions: EFFECT_ALLOW }

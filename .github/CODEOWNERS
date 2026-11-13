@@ -1,0 +1,28 @@
+# Martin reviews every pull request.
+#
+# The sensitive paths are listed again on purpose: if the catch-all line is
+# ever narrowed, these stay owned. The last matching line wins, so keep this
+# list below the catch-all.
+#
+# Ownership blocks a merge only while the branch rule on main requires a
+# review from code owners.
+
+*                                                   @mbrummerstedt
+
+apps/api/src/http/                                  @mbrummerstedt
+apps/api/src/services/auth/                         @mbrummerstedt
+apps/api/src/services/access/                       @mbrummerstedt
+apps/api/src/services/secrets/                      @mbrummerstedt
+apps/api/src/services/settings/                     @mbrummerstedt
+apps/api/src/services/connection/                   @mbrummerstedt
+apps/api/src/mcp/                                   @mbrummerstedt
+stack/                                              @mbrummerstedt
+access/                                             @mbrummerstedt
+.github/                                            @mbrummerstedt
+docs/security/                                      @mbrummerstedt
+
+# A migration applies itself to every deployment at its next start.
+apps/api/drizzle/                                   @mbrummerstedt
+apps/api/drizzle.config.ts                          @mbrummerstedt
+apps/api/src/db/                                    @mbrummerstedt
+scripts/check-migrations.mjs                        @mbrummerstedt

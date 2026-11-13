@@ -1,0 +1,172 @@
+# The default conventions: Metrics Book's naming standard and its idea of
+# metrics and variants. A company that wants them changes nothing. One that
+# names things its own way overrides any key (pbmb conventions edit), and the
+# checks then read its rules instead of these.
+preset: metrics_book
+guide: |
+  Our metrics book follows Metrics Book's naming standard: a name says what a thing is in the words the business uses, so a newcomer reads it without a glossary. Read this guide before you name, describe, group or verify anything in the book. The rules below are also data in these conventions, and `pbmb metrics check` reports against them.
+
+  ## Metric keys
+
+  A metric's key says what kind of number it is, then what it counts, then its qualifiers, in snake_case: `number_of_orders`, never `orders`.
+
+  | Kind | Form | Example |
+  |---|---|---|
+  | count | `number_of_<objects>` | `number_of_orders`, `number_of_active_customers` |
+  | sum of an amount or quantity | `total_<amount>` | `total_net_sales_excl_vat` |
+  | mean | `average_<thing>[_per_<unit>]` | `average_number_of_items_per_order` |
+  | median or percentile | `median_<thing>`, `percentile_<n>_<thing>` | `median_time_to_ship_in_hours` |
+  | part of a whole | `share_of_<thing>` | `share_of_total_net_sales_excl_vat` |
+  | how often an event happens | `<event>_rate[_<base>]`, the base named when more than one exists | `return_rate_items`, `conversion_rate` |
+  | two different quantities | `<a>_to_<b>_ratio`, `<name>_ratio` | `marketing_efficiency_ratio` |
+  | a snapshot | `latest_<kind>...`, `opening_<kind>...` | `latest_total_stock_value_at_cost_excl_vat` |
+
+  Use business words, not the model's: the measure a model calls "Spend" is filed under `total_marketing_spend_excl_vat`. Write no abbreviation a newcomer would not read as a word: `vat` is a word, `aov` and `cogs` are not. Abbreviations go into the aliases, where search finds them.
+
+  ## Qualifiers, in this order
+
+  1. Deduction stage: `_after_returns`, `_before_discounts`.
+  2. Basis: `_at_cost`.
+  3. Unit: `_per_order`, `_in_hours`.
+  4. VAT: `_excl_vat` or `_incl_vat`, on every money metric, after every other qualifier.
+  5. Currency, only when a dataset holds more than one, after VAT: `total_net_sales_excl_vat_eur`. Otherwise the currency is the metric's format and description, and the key names none.
+
+  `average_order_costs_per_order_excl_vat` follows the order; `average_order_costs_excl_vat_per_order` does not.
+
+  ## A period comparison or a currency conversion is a variant
+
+  Last year, year to date and growth on last month are the same calculation on a shifted period. A currency conversion is the same calculation in another unit. So none of them is a metric of its own. In Power BI each is a measure of its own; in the book each measure is a variant of its metric, with its shift on the variant axes (period, comparison, currency).
+
+  - Right: one metric `total_net_sales_excl_vat`, with the measures "Net Sales LY" and "Net Sales YTD" filed under it as variants (period `previous_year`, period `year_to_date`).
+  - Wrong: `total_net_sales_excl_vat_last_year`, `total_net_sales_ytd`, `total_net_sales_excl_vat_dkk`.
+
+  A different calculation is a different metric, with its own name. `total_net_sales_after_returns_excl_vat` subtracts returns, so it is a metric of its own, never a variant of `total_net_sales_excl_vat`.
+
+  ## Labels
+
+  The label is the key in words, in sentence case, with acronyms in upper case: `total_net_sales_excl_vat` is "Total net sales excl VAT".
+
+  ## Descriptions
+
+  Each metric is described in fixed fields, one each, and every one is required:
+
+  - definition: the first sentence, in words a business user would say.
+  - aliases: the other names people use, abbreviations included (AOV, ROAS), and the names the company's measures already go by ("Net Sales"). Set none when there are none.
+  - when to use: the question the metric answers, and the metric to use for the question next to it.
+  - not the same as: how it differs from another metric whose label shares a content word with its own. Required only then.
+  - grain and filters: what one counted thing is, and what is left out.
+  - unit: money, count, quantity, rate, ratio or duration.
+  - category: where it sits in the tree, as a path of keys (`sales/orders`).
+
+  For example:
+
+  ```
+  key:                average_order_value_excl_vat
+  label:              Average order value excl VAT
+  definition:         The average net sales of one order: total net sales divided by the number of orders.
+  aliases:            AOV, Basket size, Average basket value
+  when_to_use:        To see if customers spend more each time. For how many items they buy, use Average number of items per order.
+  not_the_same_as:    Average sales price excl VAT, which is per item.
+  grain_and_filters:  One order. Cancelled and test orders left out. VAT excluded.
+  unit:               money
+  category:           sales/orders
+  ```
+
+  ## Terms and columns
+
+  The book never renames a Power BI column: agents write DAX with the column's own name (`'Sales'[Order Date]`). The book adds what the column means: a description beside Power BI's own and, for an important dimension, a term. Terms are named in sentence case, singular: "Cancelled order", "Channel", "Cohort".
+
+  - A dimension term is backed by one or more columns, linked in every dataset that has one: "Channel" is `'Sales'[Channel]`. Its shape is a metric's (the definition first, then aliases and not the same as). A categorical one also lists its values, each with what it means. Every metric whose variants filter or group by one of its columns links to it.
+  - A concept term has no column behind it: a cohort, a season, a business rule. Same shape, no columns. When a column exists, define the word on it: a concept term whose name or alias matches a column already backing a dimension term is refused.
+naming:
+  case: snake_case
+  kinds:
+    - number_of_
+    - total_
+    - average_
+    - median_
+    - percentile_
+    - share_of_
+    - _rate
+    - _ratio
+    - latest_
+    - opening_
+  forbidden_words: [last_year, ly, py, ytd, mtd, qtd, yoy, mom, vs, growth]
+  money_qualifier:
+    required: true
+    values: [excl_vat, incl_vat]
+    units: [money] # the units that are money
+  qualifier_order: [deduction_stage, basis, unit, vat, currency]
+  qualifiers: # the words that start each qualifier, read in qualifier_order
+    deduction_stage: [after, before]
+    basis: [at_cost]
+    unit: [per, in_hours]
+    vat: [excl_vat, incl_vat]
+    currency: [eur, usd, gbp, dkk, sek, nok, chf]
+  label: sentence_case
+metric_fields:
+  definition: { required: true }
+  aliases: { required: true }
+  when_to_use: { required: true }
+  not_the_same_as:
+    required: when_label_shares_a_word
+    # beside the words of the kinds and the qualifiers, the label words that are not content words
+    ignore_words: [a, an, and, or, the, of, to, for, by, on, with]
+  grain_and_filters: { required: true }
+  unit:
+    required: true
+    values: [money, count, quantity, rate, ratio, duration]
+  category: { required: true }
+  custom: []
+term_fields:
+  definition: { required: true }
+  values: { required: when_categorical }
+  custom: []
+element_fields:
+  custom: []
+variants:
+  axes:
+    period:
+      values:
+        - current
+        - previous_year
+        - previous_quarter
+        - previous_month
+        - previous_week
+        - previous_day
+        - year_to_date
+        - quarter_to_date
+        - month_to_date
+        - previous_year_to_date
+        - rolling_12_months
+        - other
+    comparison: { values: [none, difference, growth_rate, ratio] }
+    currency: { values: iso_4217_or_local }
+    custom: []
+drafting:
+  group_by_fingerprint: true
+  recognise_time_intelligence: true
+  recognise_blank_as_zero: true
+  period_words:
+    previous_year: [LY, PY, "Last year", "Previous year", "Sidste år"]
+    previous_quarter:
+      [LQ, PQ, "Last quarter", "Previous quarter", "Sidste kvartal"]
+    previous_month: [LM, PM, "Last month", "Previous month", "Sidste måned"]
+    previous_week: [LW, PW, "Last week", "Previous week", "Sidste uge"]
+    previous_day: [LD, PD, "Last day", "Previous day", Yesterday, "I går"]
+  name_hints:
+    period: [LY, PY, YTD, MTD, QTD, "Last year", "Sidste år", ÅTD]
+    currency: [EUR, DKK, SEK, NOK, USD, Local]
+  skip:
+    hidden_measures: false
+    display_folders: []
+    tables: []
+    name_patterns: []
+  dismiss:
+    - name_pattern: "^_"
+      reason: "Helper measure (name starts with an underscore)"
+trust:
+  agent_verify_requires: all_checks
+  human_verify_from: browser
+checks:
+  off: []

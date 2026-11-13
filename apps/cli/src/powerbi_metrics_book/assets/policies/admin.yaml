@@ -1,0 +1,16 @@
+# The admin section: settings, secrets, checks, people, service accounts,
+# sync, audit, book.yml export and import, revoking a person's Power BI
+# connection, and signing a person out everywhere (sign_out_person).
+# read_status (the status page and `pbmb admin status`) is the one action a
+# deployment's own policy may also give a read-only role; the api refuses
+# every admin action to a service account, whatever a policy says.
+# read_sync_events lets the change feed (GET /api/v1/events) show the sync's
+# sync.finished and sync.failed events; only the shipped admin role holds it.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: admin
+  version: default
+  rules:
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      roles: [admin]

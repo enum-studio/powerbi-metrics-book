@@ -1,0 +1,151 @@
+import type { ServiceContext } from "../../context.js";
+import { BOOK } from "../book/changes.js";
+import type { Conventions, CustomFieldSpec } from "./schema.js";
+import {
+  currentConventions,
+  diffConventions,
+  listVersions,
+  resolve,
+  setConventions,
+} from "./store.js";
+
+/** The rules as agents get them: everything in the conventions but the guide. */
+export type Rules = Omit<Conventions, "guide">;
+
+const words = (items: string[]) => items.join(", ");
+
+const FIELD_TYPES = {
+  text: "text",
+  number: "a number",
+  boolean: "true or false",
+  date: "a date written YYYY-MM-DD",
+  choice: "one of the listed values",
+};
+
+function customFieldsIn(subject: string, fields: CustomFieldSpec[]): string[] {
+  return fields.map((field) => {
+    const values = field.values === undefined ? "" : `: ${words(field.values)}`;
+    return `${subject} have the custom field ${field.key} (${field.label}), ${FIELD_TYPES[field.type]}${values}; ${field.required ? "required" : "optional"}.`;
+  });
+}
+
+/**
+ * What the rules say, in plain sentences, generated from them so it never
+ * drifts from them. A rule that is off or empty has no sentence.
+ */
+export function summariseRules(rules: Rules): string[] {
+  const { naming, metric_fields, term_fields, variants, drafting, trust } =
+    rules;
+  const metricRules = [
+    "definition",
+    "aliases",
+    "when_to_use",
+    "grain_and_filters",
+    "unit",
+    "category",
+  ] as const;
+  const needed = metricRules.filter((name) => metric_fields[name].required);
+  const { not_the_same_as: differs } = metric_fields;
+  const { money_qualifier: money } = naming;
+  const { axes } = variants;
+  const currency = axes.currency.values;
+  const { skip } = drafting;
+  const skipped = [
+    skip.hidden_measures && "hidden measures",
+    skip.display_folders.length > 0 &&
+      `measures in the display folders ${words(skip.display_folders)}`,
+    skip.tables.length > 0 && `measures in the tables ${words(skip.tables)}`,
+    skip.name_patterns.length > 0 &&
+      `measures whose name matches ${words(skip.name_patterns)}`,
+  ].filter((part) => part !== false);
+  return [
+    naming.case === "snake_case" &&
+      "A metric key is snake_case: lowercase words joined by underscores.",
+    naming.kinds.length > 0 &&
+      `A metric key starts or ends with a kind: ${words(naming.kinds)}. A kind with a trailing underscore opens the key; one with a leading underscore closes it.`,
+    naming.forbidden_words.length > 0 &&
+      `A metric key never holds these words: ${words(naming.forbidden_words)}. A shifted measure is a variant of its metric, not a metric.`,
+    money.required &&
+      money.values.length > 0 &&
+      `A metric in ${words(money.units)} carries one of ${words(money.values)} in its key.`,
+    naming.qualifier_order.length > 0 &&
+      `Qualifiers follow this order: ${naming.qualifier_order
+        .map((group) => `${group} (${words(naming.qualifiers[group] ?? [])})`)
+        .join(", ")}.`,
+    naming.label === "sentence_case" &&
+      "A metric's label is its key in words, in sentence case.",
+    needed.length > 0 && `A metric needs these fields: ${words(needed)}.`,
+    differs.required === "when_label_shares_a_word" &&
+      "not_the_same_as is needed when another metric's label shares a content word with this one's.",
+    differs.required === true && "A metric needs not_the_same_as.",
+    metric_fields.unit.values.length > 0 &&
+      `A metric's unit is one of: ${words(metric_fields.unit.values)}.`,
+    ...customFieldsIn("Metrics", metric_fields.custom),
+    term_fields.definition.required && "A term needs a definition.",
+    term_fields.values.required === "when_categorical" &&
+      "A dimension term on a text column lists its values, each with what it means.",
+    term_fields.values.required === true &&
+      "A term lists its values, each with what it means.",
+    ...customFieldsIn("Terms", term_fields.custom),
+    ...customFieldsIn(
+      "Datasets, tables, columns and measures",
+      rules.element_fields.custom,
+    ),
+    `A variant differs from its metric on its period (${words(axes.period.values)}), its comparison (${words(axes.comparison.values)}) and its currency (${typeof currency === "string" ? "an ISO 4217 code, or local" : words(currency)}).`,
+    ...axes.custom.map(
+      (axis) => `A variant also differs on ${axis.key}: ${words(axis.values)}.`,
+    ),
+    drafting.group_by_fingerprint &&
+      "The sync groups measures with the same calculation under one draft metric.",
+    drafting.recognise_time_intelligence &&
+      "The sync files time-intelligence measures (last year, year to date) as variants of their base measure's metric.",
+    drafting.recognise_time_intelligence &&
+      drafting.recognise_blank_as_zero &&
+      "It counts a shift or comparison that shows 0 where the calculation is blank as that shift, and says so in the variant's note.",
+    skipped.length > 0 && `The sync drafts nothing from: ${words(skipped)}.`,
+    ...drafting.dismiss.map(
+      (rule) =>
+        `A measure whose name matches ${rule.name_pattern} is drafted as dismissed: ${rule.reason}`,
+    ),
+    trust.agent_verify_requires === "all_checks"
+      ? "An agent verifies a metric once every check that is on passes."
+      : `An agent verifies a metric once these checks pass: ${words(trust.agent_verify_requires)}.`,
+    trust.human_verify_from === "browser"
+      ? "Only a person in a browser session approves a metric."
+      : "A person approves a metric from the browser, the CLI or the API.",
+    rules.checks.off.length > 0 &&
+      `These checks are off: ${words(rules.checks.off)}.`,
+  ].filter((line) => line !== false);
+}
+
+/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. */
+export async function getConventionsForAgents(
+  context: Pick<ServiceContext, "db">,
+) {
+  const { guide, ...rules } = await currentConventions(context.db);
+  return { preset: rules.preset, guide, summary: summariseRules(rules), rules };
+}
+
+/** Validates, versions and announces; see setConventions. */
+export async function setConventionsAsAdmin(
+  context: ServiceContext,
+  document: unknown,
+) {
+  await context.access.require(context.principal, BOOK, "edit_conventions");
+  return setConventions(context, context.principal, document);
+}
+
+/** Every saved version, newest first, for whoever may edit the conventions. */
+export async function listVersionsAsAdmin(context: ServiceContext) {
+  await context.access.require(context.principal, BOOK, "edit_conventions");
+  return listVersions(context.db);
+}
+
+/** What a document would change against the conventions in force, saving nothing. */
+export async function diffAsAdmin(context: ServiceContext, document: unknown) {
+  await context.access.require(context.principal, BOOK, "edit_conventions");
+  return diffConventions(
+    await currentConventions(context.db),
+    resolve(document),
+  );
+}

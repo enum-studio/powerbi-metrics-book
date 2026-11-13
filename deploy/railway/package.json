@@ -1,0 +1,9 @@
+{
+  "name": "pbmb-deployment",
+  "private": true,
+  "description": "The Railway SDK that .railway/railway.ts imports. Copy this file and package-lock.json to the deployment repository's root, then npm ci.",
+  "devDependencies": {
+    "railway": "3.16.0",
+    "typescript": "6.0.3"
+  }
+}

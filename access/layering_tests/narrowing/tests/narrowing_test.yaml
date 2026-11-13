@@ -1,0 +1,57 @@
+# Cerbos expects EFFECT_DENY for every combination of a test's input that
+# expected leaves out, so each test checks the refusals too.
+name: narrowing
+description: A deployment policy in parental consent mode, layered on the defaults.
+options:
+  lenientScopeSearch: true
+principals:
+  viewer:
+    id: viewer
+    roles: [viewer]
+    attr: &lists
+      kind: person
+      metadata_visibility: powerbi
+      powerbi_workspace_ids: [sales_workspace]
+      powerbi_app_ids: []
+      powerbi_dataset_ids: []
+  curator:
+    id: curator
+    roles: [curator]
+    attr: *lists
+  admin:
+    id: admin
+    roles: [admin]
+    attr: *lists
+resources:
+  book:
+    kind: book
+    id: book
+    scope: deployment
+  sales_dataset:
+    kind: dataset
+    id: sales_dataset
+    scope: deployment
+    attr: { workspace_id: sales_workspace, app_ids: [] }
+tests:
+  - name: curators stop approving, and the ALLOW for everyone widens nothing
+    input:
+      principals: [viewer, curator, admin]
+      resources: [book]
+      actions: [curate, approve]
+    expected:
+      - principals: [curator, admin]
+        resource: book
+        actions: { curate: EFFECT_ALLOW }
+      - principal: admin
+        resource: book
+        actions: { approve: EFFECT_ALLOW }
+
+  - name: a resource with no deployment policy keeps the defaults
+    input:
+      principals: [viewer]
+      resources: [sales_dataset]
+      actions: [describe, query]
+    expected:
+      - principal: viewer
+        resource: sales_dataset
+        actions: { describe: EFFECT_ALLOW, query: EFFECT_ALLOW }

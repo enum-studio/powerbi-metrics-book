@@ -1,0 +1,14 @@
+# An example deployment's own policy, for the tests only: a role it names,
+# integration, may do anything in the admin section. The api still refuses
+# a service account holding it every admin action but read_status, in code
+# (service_account_bound_security_test.ts).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: admin
+  version: default
+  scope: deployment
+  scopePermissions: SCOPE_PERMISSIONS_OVERRIDE_PARENT
+  rules:
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      roles: [integration]

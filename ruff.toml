@@ -1,0 +1,34 @@
+line-length = 88
+target-version = "py313"
+# The package lives under src/ in the workspace member, so isort needs to be
+# told which imports are first-party.
+src = ["apps/cli/src"]
+
+[lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+  "B",    # bugbear
+  "UP",   # pyupgrade
+  "N",    # pep8-naming
+  "SIM",  # simplify
+  "RUF",  # ruff's own rules
+  "PLE",  # pylint errors
+  "PLW",  # pylint warnings
+]
+
+[lint.isort]
+known-first-party = ["powerbi_metrics_book"]
+
+[lint.per-file-ignores]
+# These fixtures hold the bad code the semgrep rules must catch: a % format and
+# a .format call passed to execute.
+".semgrep/rules/*.py" = ["UP031", "UP032"]
+
+[format]
+quote-style = "double"
+# Ruff 0.17 also formats Python code blocks inside Markdown. The docs show
+# signatures and sketches, not runnable modules, so they stay as written.
+exclude = ["*.md"]

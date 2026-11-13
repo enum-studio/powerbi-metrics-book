@@ -1,0 +1,4 @@
+ALTER TABLE "thread" ADD COLUMN "accepted_by_role" text;--> statement-breakpoint
+ALTER TABLE "thread" ADD COLUMN "accepted_by_kind" text;--> statement-breakpoint
+ALTER TABLE "thread" ADD COLUMN "accepted_by_via" text;--> statement-breakpoint
+ALTER TABLE "thread" ADD CONSTRAINT "thread_accepted_by_check" CHECK (("thread"."accepted_by_role" is null or "thread"."accepted_by_role" in ('asker', 'asker_own_reply', 'curator', 'other')) and ("thread"."accepted_by_kind" is null or "thread"."accepted_by_kind" in ('person', 'service_account')) and ("thread"."accepted_by_via" is null or "thread"."accepted_by_via" in ('browser', 'mcp', 'api', 'cli')) and ("thread"."accepted_by_role" is null) = ("thread"."accepted_by_via" is null) and ("thread"."accepted_by_role" is null) = ("thread"."accepted_by_kind" is null) and ("thread"."accepted_by_role" is null or "thread"."accepted_reply_id" is not null));

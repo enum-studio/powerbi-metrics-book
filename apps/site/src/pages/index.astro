@@ -1,0 +1,1301 @@
+---
+// The landing page of powerbimetricsbook.io. Its sections and their words are
+// settled in docs/specs/2026-10-27-website.md; change them there first.
+import AnswerGrid from "../components/AnswerGrid.astro";
+import Cite from "../components/Cite.astro";
+import Code from "../components/Code.astro";
+import GitHubMark from "../components/GitHubMark.astro";
+import HeroStack from "../components/HeroStack.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import StackStage from "../components/StackStage.astro";
+import ThemeChoice from "../components/ThemeChoice.astro";
+import ToolDashboard from "../components/ToolDashboard.astro";
+import { LINKS } from "../links";
+import "../styles/site.css";
+
+const title = "Power BI Metrics Book: Agent First BI for Power BI";
+const description =
+  "An open-source metrics book over your own Power BI. Your agents get one definition per metric, run DAX as the person asking, and take big results as a file.";
+
+const start = [
+  {
+    id: "install",
+    name: "Install",
+    what: "The pbmb command",
+    where: "the VM",
+    time: "",
+    code: "uv tool install powerbi-metrics-book",
+    note: "pbmb writes the deployment and runs the admin commands.",
+  },
+  {
+    id: "write",
+    name: "Write",
+    what: "The deployment",
+    where: "the VM",
+    time: "",
+    code: `pbmb init ./deployment \\
+    --public-base-url https://metrics.example.com
+cd ./deployment`,
+    note: "Writes compose.yml, .env with new random passwords, access/ for your own policies and an AGENTS.md for your agent.",
+  },
+  {
+    id: "start",
+    name: "Start",
+    what: "Four containers",
+    where: "the VM",
+    time: "17 s on the VM guide's test run",
+    code: "docker compose up -d --wait",
+    note: "The api, the worker, Postgres and Cerbos start and report healthy.",
+  },
+  {
+    id: "open",
+    name: "Open",
+    what: "The setup link",
+    where: "the VM",
+    time: "works once, for 24 hours",
+    code: "docker compose exec api server setup-link",
+    note: "Prints a link. Open it in your browser to start the setup.",
+  },
+  {
+    id: "setup",
+    name: "Set up",
+    what: "Ten checked steps",
+    where: "your browser",
+    time: "tenant settings take up to 15 min",
+    code: "",
+    note: "Each step gives the values to copy and checks the result with a real call before the next.",
+  },
+  {
+    id: "ask",
+    name: "Ask",
+    what: "Your agent",
+    where: "your laptop",
+    time: "",
+    code: `claude mcp add --transport http powerbi_metrics_book \\
+  https://metrics.example.com/api/mcp
+
+# then run /mcp, choose powerbi_metrics_book and sign in`,
+    note: "Codex and Cursor take the same address. The section below has both.",
+  },
+];
+
+const setupSteps = [
+  "Address",
+  "The app registration",
+  "The scanner",
+  "What to sync",
+  "Sign-in",
+  "Who gets in",
+  "Search",
+  "Agents",
+  "First sync",
+  "Security",
+];
+
+const clients = [
+  {
+    id: "claude",
+    name: "Claude Code",
+    code: `claude mcp add --transport http powerbi_metrics_book \\
+  https://metrics.example.com/api/mcp
+
+# then run /mcp, choose powerbi_metrics_book and sign in`,
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    code: `# ~/.codex/config.toml
+[mcp_servers.powerbi_metrics_book]
+url = "https://metrics.example.com/api/mcp"
+
+# then sign in
+codex mcp login powerbi_metrics_book`,
+  },
+  {
+    id: "cursor",
+    name: "Cursor",
+    code: `// ~/.cursor/mcp.json
+{
+  "mcpServers": {
+    "powerbi_metrics_book": {
+      "url": "https://metrics.example.com/api/mcp"
+    }
+  }
+}`,
+  },
+];
+
+const compare = [
+  { what: "Connects to", agent: "The MCP connector", tool: "The REST API, /api/v1" },
+  {
+    what: "Signs in with",
+    agent: "Your own sign-in, in your browser",
+    tool: "An API key of a service account",
+  },
+  {
+    what: "Sees",
+    agent: "What Power BI lets you see",
+    tool: "The workspaces an admin gave it",
+  },
+  {
+    what: "Good for",
+    agent: "Finding the metric and writing the DAX",
+    tool: "Running that DAX in a screen or on a schedule",
+  },
+];
+
+const toolCode = `# once, as an admin
+pbmb sa create sales-dashboard \\
+    --owner data-team@example.com \\
+    --role viewer --workspace <workspace id>
+pbmb sa keys create sales-dashboard \\
+    --expires-in-days 30
+
+# then from your tool, with the DAX your agent wrote
+curl -X POST "$PBMB_URL/api/v1/queries" \\
+    -H "Authorization: Bearer $PBMB_API_KEY" \\
+    -H "Content-Type: application/json" \\
+    -d '{"dataset": "Sales", "dax": "EVALUATE ..."}'`;
+
+// The outside sources the page cites, numbered in the order they first
+// appear. `back` names the citations each entry links back to.
+const sources = [
+  {
+    href: LINKS.microsoftPrepForAi,
+    who: "Microsoft",
+    title: "Prepare your data for AI to improve Copilot results",
+    when: "Read 29 October 2026",
+    note: "Documentation for Copilot in Power BI. Microsoft sells Copilot.",
+    back: ["a"],
+  },
+  {
+    href: LINKS.dbtBenchmark,
+    who: "dbt Labs",
+    title: "Semantic Layer vs. Text-to-SQL: 2026 Benchmark Update",
+    when: "7 April 2026",
+    note: "11 questions from the ACME Insurance benchmark, each asked 20 times, with Claude Sonnet 4.6 and GPT-5.3 Codex, in SQL, not DAX. Run by dbt Labs, which makes a semantic layer. The counts on this page apply its overall scores, 64.5% and 72.7%, to the 220 answers.",
+    back: ["a", "b"],
+  },
+  {
+    href: LINKS.anthropicAnalytics,
+    who: "Anthropic",
+    title: "How Anthropic enables self-service data analytics with Claude",
+    when: "3 June 2026",
+    note: "Anthropic's report on its own internal analytics. Anthropic makes Claude.",
+    back: ["a", "b"],
+  },
+  {
+    href: LINKS.sigmaSurvey,
+    who: "Sigma Computing",
+    title:
+      "New Research from Sigma Computing Reveals Frustration, Embarrassment, and Insecurity Dominate the Data Conversation",
+    when: "16 June 2020",
+    note: "Survey by Atomik Research of 801 data experts and 800 business staff at US companies with 201 to 10,000 employees, March 2020. Commissioned by Sigma, which sells BI software.",
+    back: ["a"],
+  },
+];
+
+const deployments = [
+  {
+    name: "One VM with Docker Compose",
+    href: LINKS.deployVm,
+    what: "The reference deployment, and the cheapest. Caddy in front for TLS, and nightly backups off the VM.",
+    status: "The guide has been followed.",
+  },
+  {
+    name: "Dokploy or Coolify on a VM",
+    href: LINKS.deployDokploy,
+    what: "The same compose file, with the domain and certificate from Dokploy.",
+    status: "Not yet followed on a real account.",
+  },
+  {
+    name: "Railway",
+    href: LINKS.deployRailway,
+    what: "A service per container, with no server to look after.",
+    status: "Not yet followed on a real account.",
+  },
+  {
+    name: "Azure Container Apps",
+    href: LINKS.deployAzure,
+    what: "For a company that already runs Power BI in Azure.",
+    status: "Not yet followed on a real account.",
+  },
+  {
+    name: "Kubernetes",
+    href: LINKS.deployKubernetes,
+    what: "No chart yet. The page lists what the containers already meet.",
+    status: "No guide yet.",
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={Astro.site} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={Astro.site} />
+    <meta property="og:type" content="website" />
+    <ThemeChoice />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to the content</a>
+    <SiteHeader />
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-h">
+        <div class="wrap">
+          <div>
+            <h1 id="hero-h">Agent First BI for Power BI.</h1>
+            <p class="lede">Your agents ask. Your Power BI answers, with one definition per metric.</p>
+            <div class="actions">
+              <a class="btn btn-primary" href="#start">Get started</a>
+              <a class="btn btn-secondary" href={LINKS.github}><GitHubMark /> See the code on GitHub</a>
+              <a class="btn btn-secondary" href={LINKS.demo}>Try the demo</a>
+            </div>
+          </div>
+
+          <HeroStack />
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="gap-h">
+        <div class="wrap split even">
+          <div>
+            <h2 id="gap-h">Power BI has the numbers you trust. Your agents can't use them yet.</h2>
+            <ul class="points">
+              <li><b>Power BI reports</b> hold the right numbers, for people to read.</li>
+              <li><b>An agent on raw DAX</b> can ask anything, and guesses what each measure means.</li>
+              <li><b>Microsoft's own connectors</b> are built for Fabric and the Microsoft stack.</li>
+            </ul>
+            <p class="closer">Power BI Metrics Book gives any agent the definitions your reports use.</p>
+          </div>
+
+          <svg class="quad" viewBox="0 0 480 420" role="img" aria-labelledby="quad-t" data-reveal>
+            <title id="quad-t">
+              Power BI reports have the same numbers as your reports but are closed to agents. An agent
+              on raw DAX is open to any agent but guesses. Power BI Metrics Book is both.
+            </title>
+            {/* A fine grid, the two axes with arrows, and the middle lines. */}
+            <g><line class="q-grid" x1="100" y1="20" x2="100" y2="360"></line><line class="q-grid" x1="140" y1="20" x2="140" y2="360"></line><line class="q-grid" x1="180" y1="20" x2="180" y2="360"></line><line class="q-grid" x1="220" y1="20" x2="220" y2="360"></line><line class="q-grid" x1="260" y1="20" x2="260" y2="360"></line><line class="q-grid" x1="300" y1="20" x2="300" y2="360"></line><line class="q-grid" x1="340" y1="20" x2="340" y2="360"></line><line class="q-grid" x1="380" y1="20" x2="380" y2="360"></line><line class="q-grid" x1="420" y1="20" x2="420" y2="360"></line><line class="q-grid" x1="60" y1="54" x2="460" y2="54"></line><line class="q-grid" x1="60" y1="88" x2="460" y2="88"></line><line class="q-grid" x1="60" y1="122" x2="460" y2="122"></line><line class="q-grid" x1="60" y1="156" x2="460" y2="156"></line><line class="q-grid" x1="60" y1="190" x2="460" y2="190"></line><line class="q-grid" x1="60" y1="224" x2="460" y2="224"></line><line class="q-grid" x1="60" y1="258" x2="460" y2="258"></line><line class="q-grid" x1="60" y1="292" x2="460" y2="292"></line><line class="q-grid" x1="60" y1="326" x2="460" y2="326"></line></g>
+            <line class="q-mid" x1="250" y1="20" x2="250" y2="360"></line>
+            <line class="q-mid" x1="60" y1="190" x2="460" y2="190"></line>
+            <polyline class="q-axis" points="60,14 60,360 466,360"></polyline>
+            <polyline class="q-axis" points="55,22 60,14 65,22"></polyline>
+            <polyline class="q-axis" points="458,355 466,360 458,365"></polyline>
+            <text class="q-label" x="255" y="392" text-anchor="middle"
+              >Open to any agent</text
+            >
+            <text class="q-label" transform="translate(38 190) rotate(-90)" text-anchor="middle"
+              >Same numbers as your reports</text
+            >
+            <rect class="q-wash" x="258" y="26" width="196" height="158" rx="6"></rect>
+            <circle class="q-dot" cx="78" cy="64" r="7"></circle>
+            <text class="q-name" x="92" y="69">Power BI reports</text>
+            <text class="q-note" x="92" y="87">Right numbers, for people</text>
+            <circle class="q-dot" cx="330" cy="300" r="7"></circle>
+            <text class="q-name" x="316" y="262" text-anchor="middle">Agent on raw DAX</text>
+            <text class="q-note" x="316" y="280" text-anchor="middle">Asks anything, guesses</text>
+            <circle class="q-halo" cx="356" cy="72" r="16"></circle>
+            <circle class="q-us" cx="356" cy="72" r="8"></circle>
+            <text class="q-us-name" x="356" y="130" text-anchor="middle">Power BI Metrics Book</text>
+            <text class="q-note" x="356" y="149" text-anchor="middle">Any agent, your definitions</text>
+          </svg>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="right-h">
+        <div class="wrap">
+          <h2 id="right-h">Right every time, so your agent can do the work that matters</h2>
+          <p class="intro">
+            An agent that is right 9 times in 10 can draft a report, and you still check every number.
+            The tenth answer looks just like the other nine. An agent that is right every time can
+            run the reorder list or the month-end check. Microsoft's guide to Copilot in Power BI says
+            it too: on ambiguous data, outputs "might be generic, inaccurate, or even misleading."<Cite
+              n={1}
+              at="a"
+            />
+          </p>
+          <p class="intro">
+            Your semantic models, the datasets behind your reports, already hold the measures your
+            reports use. But one number often sits in several datasets under several names, like Net
+            sales, Revenue and Net Sales. Power BI Metrics Book makes them one definition per metric
+            that any agent reads before it queries Power BI, so the same question gets the same
+            number.
+          </p>
+
+          <div class="split evidence">
+            <ul class="ruled">
+              <li>
+                <h3>Every time, not most of the time</h3>
+                <p>
+                  dbt Labs asked a current model the same 11 business questions, 20 times each.
+                  Writing SQL on raw tables, 78 of the 220 answers were wrong. Through a semantic
+                  layer, none were: 160 were right, and the other 60 times it said it couldn't
+                  answer. A second model got the same totals.<Cite n={2} at="a" /> dbt Labs tested
+                  SQL, not DAX. The same can happen with DAX an agent writes from scratch: a wrong
+                  number looks just like a right one.
+                </p>
+              </li>
+              <li>
+                <h3>One definition, not forty lookalikes</h3>
+                <p>
+                  At Anthropic, most wrong answers came from an agent that couldn't tell which of
+                  several similar definitions was the right one. Their agents now go to the semantic
+                  layer first. Claude now takes 95% of their business analytics questions, and about
+                  95% of its answers are right. Definitions a model wrote by itself did worse in
+                  their tests than a smaller set a person owned.<Cite n={3} at="a" /> Here every
+                  metric starts as a draft the book makes from your measures, and a person approves
+                  it.
+                </p>
+              </li>
+              <li>
+                <h3>Answers without the wait</h3>
+                <p>
+                  In a survey for Sigma, a BI vendor, 55% of data experts said a data request takes 1
+                  to 4 weeks.<Cite n={4} at="a" /> At Anthropic, handing the routine questions to
+                  Claude freed the data team for forecasting and modelling.<Cite n={3} at="b" />
+                </p>
+              </li>
+              <li>
+                <h3>Hand over the work with real upside</h3>
+                <p>
+                  Because the numbers hold, your agent can take over the work around your reports.
+                  It can build the reorder list from stock on hand, review returns by reason, check
+                  actuals against budget at month end, and write the Monday note on what moved in
+                  each store. It uses the measures your reports show, and it never changes a model,
+                  a report or a permission.
+                </p>
+              </li>
+            </ul>
+
+            <AnswerGrid />
+          </div>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="wrong-h">
+        <div class="wrap">
+          <h2 id="wrong-h">Three things break when an agent writes its own DAX</h2>
+          <ol class="wrong">
+            <li>
+              <div>
+                <h3>It picks the wrong measure</h3>
+                <p>
+                  Net sales, Revenue and Net Sales are one calculation in three datasets. The agent
+                  can't tell.
+                </p>
+              </div>
+              <p class="fix">
+                <b>Here:</b> the sync finds they are one metric, <code>net_sales</code>, and names its
+                variants.
+              </p>
+              <div class="mini" aria-hidden="true">
+                <span class="chip">Net sales</span><span class="chip">Revenue</span><span class="chip"
+                  >Net Sales</span
+                ><br /><span class="chip on">net_sales</span>
+              </div>
+            </li>
+            <li>
+              <div>
+                <h3>It fills its context</h3>
+                <p>A year of daily sales lands in the chat, and the agent loses the thread.</p>
+              </div>
+              <p class="fix">
+                <b>Here:</b> the agent downloads the full result as a CSV file into its folder. Only a
+                preview of up to 100 rows goes into the context.
+              </p>
+              <div class="mini" aria-hidden="true">
+                <span>in the context: 100 rows</span><span class="fill short"></span>
+                <span>in the CSV file: every row</span><span class="fill on"></span>
+              </div>
+            </li>
+            <li>
+              <div>
+                <h3>It runs as someone else</h3>
+                <p>A shared account answers with its own rights, not the rights of the person asking.</p>
+              </div>
+              <p class="fix">
+                <b>Here:</b> every query runs with the asking person's own Power BI sign-in, so
+                row-level security holds.
+              </p>
+              <div class="mini" aria-hidden="true">
+                <span class="chip">shared account: its rows</span><br /><span class="chip on"
+                  >you: your rows</span
+                >
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="part" id="start" aria-labelledby="start-h">
+        <div class="wrap">
+          <div class="start-head">
+            <h2 id="start-h">From an empty VM to your first agent query in under 30 minutes</h2>
+            <p>Three commands start the stack. Then a setup in your browser checks each step before the next.</p>
+          </div>
+
+          <div class="track" role="tablist" aria-label="Get started">
+            {
+              start.map((step, index) => (
+                <button
+                  type="button"
+                  role="tab"
+                  id={`tab-${step.id}`}
+                  aria-controls={`panel-${step.id}`}
+                  aria-selected={index === 0 ? "true" : "false"}
+                  tabindex={index === 0 ? "0" : "-1"}
+                >
+                  <span class="dot" />
+                  <span class="name">
+                    {index + 1} {step.name}
+                  </span>
+                  <span class="what">{step.what}</span>
+                </button>
+              ))
+            }
+          </div>
+
+          <div class="sheet terminal">
+            {
+              start.map((step, index) => (
+                <div
+                  role="tabpanel"
+                  id={`panel-${step.id}`}
+                  aria-labelledby={`tab-${step.id}`}
+                  hidden={index !== 0}
+                >
+                  <div class="sheet-head">
+                    <span>{step.where}</span>
+                    <span>{step.time}</span>
+                  </div>
+                  {step.code ? (
+                    <Code code={step.code} prompt />
+                  ) : (
+                    <ol class="setup-steps">
+                      {setupSteps.map((name) => (
+                        <li>{name}</li>
+                      ))}
+                    </ol>
+                  )}
+                  <p class="note">{step.note}</p>
+                </div>
+              ))
+            }
+          </div>
+
+          <p class="unreleased">
+            Not released yet. These commands work from 0.1, the first release. Until then, <a
+              href={LINKS.contributing}>run it on the sample tenant</a
+            >.
+          </p>
+          <p class="more"><a href={LINKS.quickstart}>The quickstart, step by step</a></p>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="agents-h">
+        <div class="wrap">
+          <h2 id="agents-h">Add one address to your agent</h2>
+          <p class="intro">
+            The MCP connector is the main way in. Each agent signs in as you, through your browser,
+            so it reads only what your Power BI already lets you read.
+          </p>
+
+          <div class="split">
+            <ol class="ruled steps">
+              <li>
+                <h3>Add the address</h3>
+                <p>
+                  Your deployment's address with <code>/api/mcp</code> on the end. One command in Claude
+                  Code or Codex, one file in Cursor.
+                </p>
+              </li>
+              <li>
+                <h3>Sign in through your browser</h3>
+                <p>Press Allow on the consent screen. It names you, the client and where it sends you back.</p>
+              </li>
+              <li>
+                <h3>Ask</h3>
+                <p>
+                  The agent searches the book, reads the metric's definition and runs its DAX as you.
+                  A big result stays on the server until the agent asks for it.
+                </p>
+              </li>
+            </ol>
+
+            <div class="sheet clients">
+              <div class="tabs" role="tablist" aria-label="Agent">
+                {
+                  clients.map((client, index) => (
+                    <button
+                      type="button"
+                      role="tab"
+                      id={`tab-${client.id}`}
+                      aria-controls={`panel-${client.id}`}
+                      aria-selected={index === 0 ? "true" : "false"}
+                      tabindex={index === 0 ? "0" : "-1"}
+                    >
+                      {client.name}
+                    </button>
+                  ))
+                }
+              </div>
+              {
+                clients.map((client, index) => (
+                  <div
+                    role="tabpanel"
+                    id={`panel-${client.id}`}
+                    aria-labelledby={`tab-${client.id}`}
+                    hidden={index !== 0}
+                  >
+                    <Code code={client.code} />
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+
+          <div class="split other">
+            <div>
+              <h3>The command line</h3>
+              <p>
+                For scripts, and for agents without MCP:
+                <code class="inline-code">pbmb login --url https://metrics.example.com</code>
+              </p>
+            </div>
+            <div>
+              <h3>The REST API</h3>
+              <p>For a job that runs without a person, with a service-account key and the same rules as everyone else.</p>
+            </div>
+          </div>
+          <p class="more"><a href={LINKS.agents}>Connect an agent, step by step</a></p>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="tools-h">
+        <div class="wrap">
+          <h2 id="tools-h">Build internal tools on the same numbers</h2>
+          <p class="intro">
+            Your agent finds the data with you over MCP. Then your tool runs the same DAX with an API
+            key. You never write Power BI sign-in code.
+          </p>
+
+          <div class="split even tools">
+            <div class="sheet"><Code code={toolCode} prompt /></div>
+            <ToolDashboard />
+          </div>
+          <div class="rows compare" role="table" aria-label="Your agent and your tool">
+              <div class="row head" role="row">
+                <span role="columnheader"></span>
+                <span role="columnheader">Your agent</span>
+                <span role="columnheader">Your tool</span>
+              </div>
+              {
+                compare.map((row) => (
+                  <div class="row" role="row">
+                    <span role="rowheader">{row.what}</span>
+                    <span role="cell">{row.agent}</span>
+                    <span role="cell">{row.tool}</span>
+                  </div>
+                ))
+              }
+            </div>
+          <p class="fine-print">
+            A service account queries only after an admin turns on
+            <code class="inline-code">powerbi.service_account_queries</code>. It runs as the app's own
+            service principal, so it never queries a dataset with row-level security.
+          </p>
+          <p class="more"><a href={LINKS.buildOnApi}>Build on the API, step by step</a></p>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="runs-h">
+        <div class="wrap">
+          <h2 id="runs-h">Everything runs on one VM</h2>
+          <p class="intro">
+            You run it yourself, with Docker Compose on one VM of at least 2 vCPUs, 4 GB of memory and 40 GB
+            of disk. <a href={LINKS.deploy}>The deploy guides</a> say where to get one. One deployment
+            serves one organisation and one Power BI tenant.
+          </p>
+
+          <StackStage />
+          <p class="more"><a href={LINKS.stack}>See the stack, container by container</a></p>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="where-h">
+        <div class="wrap">
+          <h2 id="where-h">Where to run it</h2>
+          <p class="intro">
+            Each guide ends with <code class="inline-code">pbmb admin status</code> passing against the
+            new address, and says who acts at each step.
+          </p>
+
+          <div class="rows two" role="table" aria-label="Deploy guides">
+            <div class="row head" role="row">
+              <span role="columnheader">Guide</span>
+              <span role="columnheader">What runs where</span>
+              <span role="columnheader">Followed</span>
+            </div>
+            {
+              deployments.map((deployment) => (
+                <div class="row" role="row">
+                  <span role="cell">
+                    <a href={deployment.href}>
+                      <b>{deployment.name}</b>
+                    </a>
+                  </span>
+                  <span role="cell">{deployment.what}</span>
+                  <span role="cell" class="status">{deployment.status}</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="open-h">
+        <div class="wrap">
+          <div class="split open">
+            <div>
+              <h2 id="open-h">Open source, under Apache 2.0</h2>
+              <p class="intro">
+                The code, the docs and the issues are on GitHub. Nothing is held back for a paid
+                edition, because there is none.
+              </p>
+              <div class="actions">
+                <a class="btn btn-primary" href={LINKS.github}><GitHubMark /> See the code on GitHub</a>
+              </div>
+            </div>
+            <ul class="ruled">
+              <li>
+                <h3><a href={LINKS.issues}>Report a bug or ask for a feature</a></h3>
+                <p>Open an issue on GitHub. The templates ask for what a fix needs.</p>
+              </li>
+              <li>
+                <h3><a href={LINKS.security}>Report a security issue</a></h3>
+                <p>Privately, never in a public issue. The page says how, and what happens next.</p>
+              </li>
+              <li>
+                <h3><a href={LINKS.contributing}>Contribute</a></h3>
+                <p>
+                  How to set up, run the whole stack on the sample tenant, check a change and open a
+                  pull request.
+                </p>
+              </li>
+              <li>
+                <h3><a href={LINKS.metricsBook}>Metrics Book</a> (coming soon)</h3>
+                <p>
+                  The sister project, for a company that is not tied to Power BI. The two share one
+                  look and one set of words.
+                </p>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="sources-h">
+        <div class="wrap sources-layout">
+          <div>
+            <h2 id="sources-h">Sources</h2>
+            <p class="intro">Where the outside numbers on this page come from, and what to keep in mind.</p>
+          </div>
+          <ol class="source-notes">
+            {
+              sources.map((source, index) => (
+                <li id={`source-${String(index + 1)}`}>
+                  <div>
+                    <p>
+                      <b>{source.who}.</b> <a href={source.href}>{source.title}</a>. {source.when}.
+                    </p>
+                    <p class="source-detail">{source.note}</p>
+                    <p class="source-backs">
+                      {source.back.length === 1 ? (
+                        <a href={`#cite-${String(index + 1)}${source.back[0] ?? ""}`}>Back to text</a>
+                      ) : (
+                        <Fragment>
+                          <span>Back to text:</span>
+                          {source.back.map((at, n) => (
+                            <a
+                              class="letter"
+                              href={`#cite-${String(index + 1)}${at}`}
+                              aria-label={`Back to ${source.who}, citation ${String(n + 1)}`}
+                            >
+                              {at}
+                            </a>
+                          ))}
+                        </Fragment>
+                      )}
+                    </p>
+                  </div>
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+      </section>
+
+      <section class="part help" aria-labelledby="help-h">
+        <div class="wrap">
+          <div>
+            <h2 id="help-h">Need help with implementation or strategy?</h2>
+            <p class="intro">
+              Enum Studio builds and maintains Power BI Metrics Book, and helps companies set it up and
+              build on it.
+            </p>
+          </div>
+          <a class="btn btn-primary" href={LINKS.enumStudio}>Get help from Enum Studio</a>
+        </div>
+      </section>
+    </main>
+
+    <SiteFooter />
+
+    <script>
+      import "../scripts/page.ts";
+    </script>
+  </body>
+</html>
+
+<style>
+  .hero {
+    padding-block: clamp(2.5rem, 6vw, 5rem) var(--section-y);
+  }
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    align-items: center;
+  }
+  @media (min-width: 960px) {
+    .hero .wrap {
+      grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
+      gap: var(--space-4);
+    }
+  }
+  h1 {
+    margin: 0;
+    font-size: var(--type-display);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 650;
+  }
+  .lede {
+    max-width: 34ch;
+    margin: var(--space-5) 0 0;
+    font-size: var(--type-lede);
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-7);
+  }
+  .split.open {
+    margin-top: 0;
+  }
+
+  /* Where it sits: the points beside the chart. */
+  .split.even {
+    align-items: center;
+  }
+  .part > .split.even {
+    margin-top: 0;
+  }
+  @media (min-width: 960px) {
+    .split.even {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+  .points {
+    display: grid;
+    gap: var(--space-3);
+    margin: var(--space-7) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .points li {
+    position: relative;
+    max-width: 40ch;
+    padding-left: var(--space-5);
+  }
+  .points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.75em;
+    width: var(--space-2);
+    height: 1px;
+    background: var(--ink-3);
+  }
+  .points b,
+  .closer {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .closer {
+    max-width: 40ch;
+    margin: var(--space-7) 0 0;
+  }
+  .quad {
+    display: block;
+    width: 100%;
+    height: auto;
+    font-family: var(--font-text);
+  }
+  .q-grid {
+    stroke: var(--line);
+    stroke-width: 0.5;
+  }
+  .q-mid {
+    stroke: var(--line-strong);
+    stroke-dasharray: 3 4;
+  }
+  .q-axis {
+    fill: none;
+    stroke: var(--line-control);
+  }
+  .q-wash {
+    fill: color-mix(in oklab, var(--accent-soft) 80%, transparent);
+    stroke: var(--accent);
+    stroke-width: 0.75;
+  }
+  .q-label {
+    fill: var(--ink-3);
+    font-size: 13px;
+  }
+  .q-dot {
+    fill: var(--surface);
+    stroke: var(--ink-3);
+    stroke-width: 1.5;
+  }
+  .q-name {
+    fill: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .q-note {
+    fill: var(--ink-3);
+    font-size: 13px;
+  }
+  .q-us {
+    fill: var(--accent);
+  }
+  .q-halo {
+    fill: var(--accent);
+    opacity: 0.18;
+  }
+  .q-us-name {
+    fill: var(--accent);
+    font-size: 15px;
+    font-weight: 650;
+  }
+  /* Revealed when it scrolls into view: the corner, then the dot. */
+  @media (prefers-reduced-motion: no-preference) {
+    .quad :is(.q-wash, .q-us, .q-halo, .q-us-name) {
+      transform-box: fill-box;
+      transform-origin: center;
+      transition:
+        opacity 0.6s ease,
+        transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+    .quad.pending :is(.q-wash, .q-us, .q-halo, .q-us-name) {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    .quad :is(.q-us, .q-halo, .q-us-name) {
+      transition-delay: 0.35s;
+    }
+    .quad.seen .q-halo {
+      animation: halo 2.4s ease-in-out 1s infinite;
+    }
+  }
+  @keyframes halo {
+    50% {
+      transform: scale(1.5);
+      opacity: 0.08;
+    }
+  }
+  /* Three things break: one row per failure, with what happens here instead. */
+  .wrong {
+    margin: var(--space-8) 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line-strong);
+    counter-reset: wrong;
+  }
+  .wrong li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3) var(--space-8);
+    padding-block: var(--space-7);
+    border-bottom: 1px solid var(--line);
+    counter-increment: wrong;
+  }
+  .wrong li::before {
+    content: "0" counter(wrong);
+    font: 500 var(--type-meta) / 1.9 var(--font-mono);
+    color: var(--ink-3);
+  }
+  @media (min-width: 1024px) {
+    .wrong li {
+      grid-template-columns: 2.5rem minmax(0, 1fr) minmax(0, 1fr) 14rem;
+      align-items: start;
+    }
+  }
+  .wrong h3 {
+    margin: 0;
+    font-size: var(--type-heading);
+    font-weight: 600;
+  }
+  .wrong p {
+    max-width: 36ch;
+    margin: var(--space-2) 0 0;
+  }
+  .wrong .fix {
+    color: var(--ink);
+  }
+  .wrong .fix b {
+    color: var(--accent);
+  }
+  .wrong code {
+    font-size: 0.9em;
+  }
+  .mini {
+    font: var(--type-meta) / 1.6 var(--font-mono);
+    color: var(--ink-2);
+  }
+  .mini .chip {
+    display: inline-block;
+    margin: 0 var(--space-1) var(--space-1) 0;
+    padding: 0 6px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+  }
+  .mini .chip.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+  .mini .fill {
+    display: block;
+    height: var(--space-2);
+    margin: var(--space-1) 0 var(--space-2);
+    background: var(--accent);
+    border-radius: 1px;
+  }
+  .mini .fill.short {
+    width: 12%;
+    background: var(--line-strong);
+  }
+
+  /* Get started: a step track over the step's command. */
+  .start-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-4) var(--space-8);
+  }
+  .start-head p {
+    max-width: 34ch;
+    margin: 0;
+  }
+  .track {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    margin-top: var(--space-8);
+  }
+  .track::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 9px;
+    height: 2px;
+    background: var(--line);
+  }
+  .track button {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: var(--tap);
+    padding: 0 var(--space-2) 0 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+  }
+  .track .dot {
+    position: relative;
+    display: block;
+    width: 20px;
+    height: 20px;
+    background: var(--bg);
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+  }
+  .track .name {
+    display: block;
+    margin-top: var(--space-3);
+    font: 500 var(--type-label) / 1.4 var(--font-mono);
+    color: var(--ink-3);
+  }
+  .track .what {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--type-ui);
+    color: var(--ink-2);
+  }
+  .track button:has(~ [aria-selected="true"]) .dot,
+  .track [aria-selected="true"] .dot {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .track [aria-selected="true"] .what {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  @media (max-width: 699px) {
+    .track {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      row-gap: var(--space-5);
+    }
+    .track::before {
+      display: none;
+    }
+  }
+  .terminal {
+    margin-top: var(--space-7);
+  }
+  .terminal [role="tabpanel"] {
+    min-height: 13rem;
+  }
+  .terminal .note {
+    margin: 0;
+    padding: 0 var(--space-5) var(--space-5);
+    font-size: var(--type-ui);
+    color: var(--ink-3);
+  }
+  .setup-steps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(5, auto);
+    grid-auto-flow: column;
+    gap: var(--space-1) var(--space-6);
+    margin: 0;
+    padding: var(--space-4) var(--space-5) var(--space-4) var(--space-8);
+    font: 12.5px / 1.75 var(--font-mono);
+    color: var(--ink);
+  }
+  @media (max-width: 559px) {
+    .setup-steps {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      grid-auto-flow: row;
+    }
+  }
+  .unreleased {
+    margin: var(--space-4) 0 0;
+    font-size: var(--type-meta);
+    color: var(--ink-3);
+  }
+  .unreleased a {
+    color: var(--ink-2);
+  }
+
+  /* Right every time: the parts beside the answer marks. */
+  .evidence .ruled p {
+    max-width: 44ch;
+  }
+  /* On a wide screen the marks stay in view beside the longer text. */
+  @media (min-width: 960px) {
+    .evidence {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+    .evidence > :last-child {
+      position: sticky;
+      top: var(--space-8);
+    }
+  }
+
+  .sources-layout {
+    display: grid;
+    gap: var(--space-8);
+  }
+  @media (min-width: 768px) {
+    .sources-layout {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+  }
+  .source-notes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: source;
+  }
+  .source-notes > li {
+    display: grid;
+    grid-template-columns: var(--space-6) minmax(0, 1fr);
+    gap: var(--space-3);
+    padding-block: var(--space-5);
+    border-bottom: 1px solid var(--line);
+    counter-increment: source;
+    font-size: var(--type-ui);
+  }
+  .source-notes > li::before {
+    content: counter(source) ".";
+    font-family: var(--font-mono);
+    color: var(--ink-3);
+  }
+  .source-notes p {
+    margin: 0;
+  }
+  .source-notes b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .source-notes .source-detail {
+    margin-top: var(--space-2);
+    font-size: var(--type-meta);
+    color: var(--ink-3);
+  }
+  .source-notes .source-backs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    margin-top: var(--space-2);
+    color: var(--accent);
+    font-size: var(--type-meta);
+  }
+  .source-backs .letter {
+    font-family: var(--font-mono);
+  }
+
+  .help .wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-6) var(--space-8);
+  }
+
+  .tools {
+    align-items: start;
+  }
+  .compare {
+    margin-top: var(--space-8);
+  }
+  .compare .row {
+    grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .compare .head {
+    display: grid;
+  }
+  .compare [role="rowheader"] {
+    font: 500 var(--type-label) / 1.9 var(--font-mono);
+    color: var(--ink-3);
+  }
+  .compare [role="cell"]:last-child {
+    color: var(--ink);
+  }
+  .fine-print {
+    max-width: var(--measure);
+    margin: var(--space-5) 0 0;
+    font-size: var(--type-meta);
+    color: var(--ink-3);
+  }
+
+  .rows a {
+    text-decoration: none;
+  }
+  .rows a:hover b {
+    text-decoration: underline;
+  }
+  .status {
+    color: var(--ink-3);
+  }
+
+  .steps {
+    counter-reset: step;
+  }
+  .steps li {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    counter-increment: step;
+  }
+  .steps li::before {
+    content: counter(step);
+    grid-row: span 2;
+    padding-top: 2px;
+    font: 500 var(--type-ui) var(--font-mono);
+    color: var(--ink-3);
+  }
+  .steps code {
+    padding: 1px 5px;
+    background: var(--raised);
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: var(--ink);
+  }
+
+  .tabs {
+    display: flex;
+    padding-inline: var(--space-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .tabs button {
+    margin-bottom: -1px;
+    padding: var(--space-3);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    font: 500 var(--type-ui) var(--font-text);
+    color: var(--ink-3);
+    cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+  .clients .copy {
+    top: var(--space-3);
+    right: var(--space-3);
+  }
+
+  .other {
+    font-size: var(--type-ui);
+  }
+  .other h3 {
+    margin: 0 0 var(--space-1);
+    font-size: var(--type-ui);
+    font-weight: 600;
+  }
+  .other p {
+    margin: 0;
+  }
+
+  .ruled h3 a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .ruled h3 a:hover {
+    text-decoration: underline;
+  }
+</style>

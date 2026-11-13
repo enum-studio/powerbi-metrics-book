@@ -1,0 +1,19 @@
+---
+// The stack as a drawing in the shared look. One file, public/stack.svg,
+// serves the docs and the README: here it is inlined, so it reads the page
+// tokens and follows the theme switch; on GitHub it is an img and falls back
+// to its own colours. The page lists the same facts as text under it, for a
+// reader who cannot see the drawing.
+import svg from "../../public/stack.svg?raw";
+---
+
+<Fragment set:html={svg} />
+
+<style is:global>
+  .pbmb-stack {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-block: var(--space-6);
+  }
+</style>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    The mark: a square register with two rules inside it, the longer above the
+    shorter, the same drawing as `Mark.astro`. The rules are heavier than the
+    masthead's, so they stay apart at 16px instead of blurring into the frame.
+
+    Paper on the site's bottle green (Martin, 10 October 2026). The green is
+    dark enough to show on a light tab strip and light enough on a dark one, so
+    one drawing serves both and no `prefers-color-scheme` is needed.
+  -->
+  <rect width="32" height="32" rx="6" fill="#1f4a3a" />
+  <g fill="#f6f6f4">
+    <rect x="7" y="7" width="18" height="2.2" />
+    <rect x="7" y="7" width="2.2" height="18" />
+    <rect x="22.8" y="7" width="2.2" height="18" />
+    <rect x="7" y="22.8" width="18" height="2.2" />
+    <rect x="11" y="12" width="10" height="2.2" />
+    <rect x="11" y="17.6" width="5.5" height="2.2" />
+  </g>
+</svg>

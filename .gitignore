@@ -1,0 +1,38 @@
+# Dependencies and builds
+node_modules/
+.pnpm-store/
+.venv/
+dist/
+.astro/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage/
+playwright-report/
+test-results/
+
+# Secrets: only .env.example is ever committed. The identity volumes hold the
+# containers' age keys and never belong in a checkout.
+.env
+.env.*
+!.env.example
+*.key
+**/identity/
+
+# The local connector's configs: pnpm dev:up writes them with this checkout's
+# port, which differs in every checkout.
+/.mcp.json
+/.cursor/mcp.json
+
+# Agent worktrees made by the harness
+.claude/worktrees/
+
+.DS_Store
+
+.sudocode/merge-driver.log
+
+# An agent's notes on curating; they hold DAX
+curation_progress.md
+.uvenv/

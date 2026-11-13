@@ -1,0 +1,107 @@
+# The Power BI mock as the tenant, layered over a deployment's compose.yml:
+#
+#   GIT_SHA=$(git rev-parse HEAD) docker compose -p powerbi-metrics-book-sample -f compose.yml -f compose.mock.yml up -d --build --wait
+#
+# The api and the worker refuse to start without the commit's sha, so the
+# build takes it from GIT_SHA, as stack/compose.yml does.
+#
+# It builds two images from a checkout of this repository: the mock, which is
+# never released, and the product itself, so the stack runs the code checked
+# out there. PBMB_REPOSITORY names the checkout. Its default, ../.., is right
+# from examples/sample; over any other deployment (such as /srv/pbmb) set it
+# to the checkout's path, because compose reads relative paths in every file
+# from the first file's directory.
+#
+# Every Microsoft and embedding address points at the mock. The guarded
+# fetcher allows its http origin only when NODE_ENV is development, which is
+# why this file sets it.
+#
+# The sample is its own Compose project, so it gets its own Postgres volume
+# even when this file is laid over a company's deployment directory. Pass
+# -p powerbi-metrics-book-sample on every command, as above: -p and
+# COMPOSE_PROJECT_NAME (from the shell or .env) both override the name below,
+# and `down --volumes` deletes whichever project is named. Without -p, a
+# COMPOSE_PROJECT_NAME naming your own deployment makes `down --volumes`
+# delete your deployment's own database. The api also refuses to start a real
+# tenant's database on the mock. Moving on to your own tenant is deleting this
+# project's volumes: see /docs/start/sample-tenant/. Never lay this file over
+# a deployment with real people in it.
+
+name: powerbi-metrics-book-sample
+
+x-mock: &mock
+  NODE_ENV: development
+  POWERBI_AUTHORITY: http://powerbi-mock.localhost:${PBMB_MOCK_PORT:-3001}
+  POWERBI_API_URL: http://powerbi-mock.localhost:${PBMB_MOCK_PORT:-3001}/powerbi
+  POWERBI_GRAPH_URL: http://powerbi-mock.localhost:${PBMB_MOCK_PORT:-3001}/graph
+  # OpenAI's shape: pick OpenAI in the setup's search step.
+  SEARCH_BASE_URL: http://powerbi-mock.localhost:${PBMB_MOCK_PORT:-3001}/openai
+
+x-needs-the-mock: &needs_the_mock
+  powerbi-mock: { condition: service_healthy }
+
+services:
+  api:
+    image: powerbi-metrics-book:sample
+    build:
+      context: ${PBMB_REPOSITORY:-../..}
+      dockerfile: apps/api/Dockerfile
+      args: [GIT_SHA]
+    environment: *mock
+    depends_on: *needs_the_mock
+
+  worker:
+    image: powerbi-metrics-book:sample
+    environment: *mock
+    depends_on: *needs_the_mock
+
+  cerbos:
+    volumes:
+      # The default policies from the image built above, in place of the
+      # release's. Same target, so it replaces the mount in compose.yml.
+      - type: image
+        source: powerbi-metrics-book:sample
+        target: /policies/default
+        image:
+          subpath: app/access/policies
+
+  powerbi-mock:
+    build:
+      context: ${PBMB_REPOSITORY:-../..}
+      dockerfile: packages/powerbi-mock/Dockerfile
+    image: powerbi-metrics-book-mock:sample
+    user: "10001:10001"
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    restart: unless-stopped
+    # egress only, where the api and the worker would meet Microsoft. On app
+    # the mock could reach postgres and cerbos.
+    networks:
+      egress:
+        aliases: [powerbi-mock.localhost]
+    # A browser on this machine signs in through the mock at the same origin
+    # the api uses: any *.localhost name resolves to loopback.
+    ports:
+      - 127.0.0.1:${PBMB_MOCK_PORT:-3001}:${PBMB_MOCK_PORT:-3001}
+    environment:
+      PORT: ${PBMB_MOCK_PORT:-3001}
+      MOCK_ORIGIN: http://powerbi-mock.localhost:${PBMB_MOCK_PORT:-3001}
+      # The mock accepts only the api's own callbacks as redirect URIs.
+      SAMPLE_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL?PUBLIC_BASE_URL is not set in .env}
+      # The test control routes (/_mock/...), for the end-to-end test.
+      MOCK_CONTROL: "1"
+    healthcheck:
+      # The sample tenant's signing keys: public, and served only once the
+      # tenant is loaded.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch(`http://127.0.0.1:$${process.env.PORT}/11111111-1111-4111-8111-111111111111/discovery/v2.0/keys`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy: { resources: { limits: { memory: 256m, cpus: "0.5" } } }

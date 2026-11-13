@@ -1,0 +1,15 @@
+# Started by systemd when pbmb-backup.service fails (its OnFailure=). Writes
+# the failure to the journal at error priority and, when
+# PBMB_BACKUP_ALERT_URL is set, posts it there. Each $$ is a $ for the shell:
+# systemd would expand a single one itself.
+[Unit]
+Description=Report a failed Power BI Metrics Book backup
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pbmb-backup.env
+ExecStart=/bin/sh -c 'message="pbmb backup failed on $$(hostname); journalctl -u pbmb-backup.service shows why"; logger --priority user.err "$$message"; if [ -n "$$PBMB_BACKUP_ALERT_URL" ]; then curl --fail --silent --show-error --max-time 10 --retry 3 --data "$$message" "$$PBMB_BACKUP_ALERT_URL"; fi'
+DynamicUser=true
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true

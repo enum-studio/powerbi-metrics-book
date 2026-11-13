@@ -1,0 +1,92 @@
+/* The shared look (packages/tokens) under Starlight's names. tokens.css holds
+   the light values and both dark ones, so each Starlight variable is set once
+   to a token and follows the theme switch: Starlight sets data-theme on the
+   root, and tokens.css reads it. Unlayered, so these win over Starlight's own
+   layers. */
+@import "@enum-studio/tokens/fonts.css";
+@import "@enum-studio/tokens/tokens.css";
+
+:root,
+:root[data-theme="light"],
+::backdrop {
+  /* Ink and grounds: white is the strongest ink, black the page's ground. */
+  --sl-color-white: var(--ink);
+  --sl-color-gray-1: var(--ink);
+  --sl-color-gray-2: var(--ink-2);
+  --sl-color-gray-3: var(--ink-3);
+  --sl-color-gray-4: var(--line-control);
+  --sl-color-gray-5: var(--line-strong);
+  --sl-color-gray-6: var(--raised);
+  --sl-color-gray-7: var(--surface);
+  --sl-color-black: var(--bg);
+
+  /* The one accent. The notice colours Starlight names are the accent, the
+     ink or the one red, so a page holds no hue the brand does not. */
+  --sl-color-accent-low: var(--accent-soft);
+  --sl-color-accent: var(--accent);
+  --sl-color-accent-high: var(--accent);
+  --sl-color-blue-low: var(--accent-soft);
+  --sl-color-blue: var(--accent);
+  --sl-color-blue-high: var(--accent);
+  --sl-color-purple-low: var(--accent-soft);
+  --sl-color-purple: var(--accent);
+  --sl-color-purple-high: var(--accent);
+  --sl-color-green-low: var(--accent-soft);
+  --sl-color-green: var(--accent);
+  --sl-color-green-high: var(--accent);
+  --sl-color-orange-low: var(--raised);
+  --sl-color-orange: var(--ink-3);
+  --sl-color-orange-high: var(--ink);
+  --sl-color-red-low: var(--raised);
+  --sl-color-red: var(--out);
+  --sl-color-red-high: var(--out);
+
+  --sl-color-text: var(--ink-2);
+  --sl-color-text-accent: var(--accent);
+  --sl-color-text-invert: var(--on-accent);
+  --sl-color-bg: var(--bg);
+  --sl-color-bg-nav: var(--bg);
+  --sl-color-bg-sidebar: var(--canvas);
+  --sl-color-bg-inline-code: var(--raised);
+  --sl-color-bg-accent: var(--accent);
+  --sl-color-hairline-light: var(--line-strong);
+  --sl-color-hairline: var(--line);
+  --sl-color-hairline-shade: var(--line);
+  --sl-color-backdrop-overlay: var(--scrim);
+
+  --sl-shadow-sm: var(--shadow-sheet);
+  --sl-shadow-md: var(--shadow-sheet);
+  --sl-shadow-lg: var(--shadow);
+
+  /* Inter for every word, IBM Plex Mono for code. */
+  --sl-font: var(--font-text);
+  --sl-font-mono: var(--font-mono);
+
+  /* The six sizes: a page's name, a heading, reading text, interface text,
+     facts and captions. */
+  --sl-text-body: var(--type-body);
+  --sl-text-body-sm: var(--type-ui);
+  --sl-text-code: var(--type-ui);
+  --sl-text-code-sm: var(--type-meta);
+  --sl-text-h1: var(--type-title);
+  --sl-text-h2: var(--type-heading);
+  --sl-text-h3: var(--type-body);
+  --sl-text-h4: var(--type-body);
+  --sl-text-h5: var(--type-body);
+  --sl-line-height: 1.6;
+
+  --sl-search-corners: var(--radius);
+  --ec-brdRad: var(--radius);
+}
+
+/* Starlight rounds these by hard-coded length, with no variable to set. */
+.sl-link-button,
+.sl-badge,
+.card,
+.sl-link-card,
+.pagination-links a,
+mobile-starlight-toc nav,
+.sidebar-content a,
+.right-sidebar a {
+  border-radius: var(--radius);
+}
