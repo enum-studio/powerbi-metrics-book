@@ -148,8 +148,8 @@ A key the sync generated from a measure name (`net_sales`) is reported by
 The book never renames a Power BI column: the sync mirrors it as the model
 names it (`'Sales'[Order Date]`), and agents write DAX with that name. The
 book adds what the column means: our `description` beside Power BI's own,
-and, for an important dimension, a term. When a company asks its agent to
-name new columns in its models, the advice is Metrics Book's, in the
+and a term that can point to it. When a company asks its agent to name new
+columns in its models, the advice is Metrics Book's, in the
 model's own style, and no check reads it: booleans say what true means
 ("Is cancelled order", "Has discount code"); categories are singular nouns
 ("Channel", never "Channels"); dates name the object and the event ("Order
@@ -167,7 +167,8 @@ Terms are named in sentence case, singular. A term with columns has type
 
 ### A term with columns
 
-"Cancelled order" is the boolean column `'Orders'[Is Cancelled]`, "Channel" is `'Sales'[Channel]`.
+"Cancelled order" is the boolean column `'Orders'[Is Cancelled]`,
+"Channel" is `'Sales'[Channel]`.
 Such a term is linked to the columns that back it, in every dataset that
 has one (`pbmb terms link <term> <column_id>`):
 
@@ -207,9 +208,10 @@ definition:       The customers whose first order fell in the same calendar mont
 ```
 
 A term with no column must not have a name or alias that matches a column
-already backing another term. Link to the existing term instead.
+already backing another term. Add the word to that term as an alias
+instead.
 `term_fields` refuses a term without a definition, and a categorical term
-with columns without values.
+with columns but no values.
 
 ## Categories, custom fields and variant axes
 

@@ -13,7 +13,7 @@ guide: |
 
   A term is a word the business uses that a newcomer needs explained: "Returning customer", "Sign-up attribution", "Cohort", "Channel". It can point to the columns that hold it and the metrics that use it. Whether it has columns is a detail of the term, not what it is.
 
-  A term with columns has type `dimension`; one with none has type `concept`. A term with columns, such as "Channel", can point to `'Sales'[Channel]`. A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Link to the existing term instead.
+  A term with columns has type `dimension`; one with none has type `concept`. A term with columns, such as "Channel", can point to `'Sales'[Channel]`. A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Add the word to that term as an alias instead.
 
 naming:
   case: none

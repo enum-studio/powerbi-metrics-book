@@ -68,7 +68,7 @@ A term is a word the business uses that a newcomer needs explained: "Returning c
 A term with columns has type `dimension`; one with none has type `concept`.
 
 - A term with columns, such as "Channel", points to `'Sales'[Channel]` in every dataset that has it. A categorical term lists its values and what each means.
-- A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Link to the existing term instead.
+- A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Add the word to that term as an alias instead.
 
 Terms are named in sentence case, singular. A metric links to the terms whose columns its variants filter or group by, so an agent that reads the metric finds the column.
 

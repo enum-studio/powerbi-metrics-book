@@ -79,7 +79,7 @@ guide: |
   Terms are named in sentence case, singular. A term with columns has type `dimension`; one with none has type `concept`.
 
   - A term with columns is linked in every dataset that has one: "Channel" is `'Sales'[Channel]`. Its shape is a metric's (the definition first, then aliases and not the same as). A categorical one also lists its values, each with what it means. Every metric whose variants filter or group by one of its columns links to it.
-  - A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Link to the existing term instead.
+  - A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Add the word to that term as an alias instead.
 
   ## Columns
 
