@@ -80,6 +80,39 @@ function answering(body: unknown): GuardedFetcher {
 }
 
 describe("executeQuery", () => {
+  it.each(["oii", "ccon", "pii"])(
+    "strips %s tags from Power BI errors",
+    async (tag) => {
+      const message = `The value for '<${tag}>Number Of Ordrs</${tag}>' cannot be determined`;
+      const error = { code: "DatasetExecuteQueriesError", message };
+      const input = {
+        token: "token",
+        dataset_id: "id",
+        dax: "EVALUATE 'Typed'",
+        timeout_ms: 1_000,
+      };
+      const clean = "The value for 'Number Of Ordrs' cannot be determined";
+      const fetcher = answering({ results: [{ error }] });
+      await expect(
+        executeQuery({ ...power.deps, fetcher }, input),
+      ).rejects.toMatchObject({ message: clean });
+      const refused = {
+        ...fetcher,
+        fetchFixed: () =>
+          Promise.resolve(Response.json({ error }, { status: 400 })),
+      };
+      await expect(
+        executeQuery({ ...power.deps, fetcher: refused }, input),
+      ).rejects.toMatchObject({ message: clean });
+      const partial = answering({
+        results: [{ tables: [{ rows: [], error }] }],
+      });
+      await expect(
+        executeQuery({ ...power.deps, fetcher: partial }, input),
+      ).resolves.toMatchObject({ truncated: true, note: clean });
+    },
+  );
+
   it("returns the rows Power BI had and its sentence when the answer stops at a limit", async () => {
     const answer = await query(
       await tokenOf("admin"),
@@ -171,6 +204,7 @@ describe("executeQuery", () => {
       query(token, "Sales", "EVALUATE 'Typed'"),
     ).rejects.toMatchObject({
       kind: "needs_connection",
+      message: `Power BI no longer accepts your connection's token. Connect Power BI again at https://metrics.example.com/settings/connections, then run this again.`,
       detail: { status: 401 },
     });
   });
