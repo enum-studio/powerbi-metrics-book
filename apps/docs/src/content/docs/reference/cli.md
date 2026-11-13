@@ -1787,7 +1787,7 @@ pbmb sync status
 
 ## `pbmb terms`
 
-The glossary: terms, the columns behind them and their values, and the metrics they relate to.
+A term is a word the business uses that a newcomer needs explained: Returning customer, Sign-up attribution, Cohort, Channel. A term can point to the columns that hold it and the metrics that use it.
 
 ```bash
 pbmb terms COMMAND
@@ -1810,7 +1810,7 @@ pbmb terms create [OPTIONS] NAME
 | `--definition` | str |   | What the term means. |
 | `--aliases` | str |   | Other names, comma-separated, or `none`. |
 | `--not-the-same-as` | str |   | What it is mistaken for, or `none`. |
-| `--values` | str |   | The values a dimension term takes, comma-separated, or `none`. |
+| `--values` | str |   | The values the term takes, comma-separated, or `none`. |
 | `--owner` | str |   | Who answers for the term. |
 | `--custom` | str |   | A custom field, key=value; repeat it. A value is read as JSON when it is JSON (true, 3, ["a"]), else as text; write "42" for the text 42. |
 
@@ -1841,7 +1841,9 @@ pbmb terms link NAME COLUMN_ID
 
 ### `pbmb terms list`
 
-List terms A to Z. A dimension term is backed by columns; a concept is not.
+List the words the business uses, A to Z.
+
+A term with columns has type dimension; one with none has type concept.
 
 ```bash
 pbmb terms list [OPTIONS]
@@ -1874,7 +1876,7 @@ pbmb terms relate NAME METRIC
 
 ### `pbmb terms show`
 
-Show a term: definition, values, the columns behind it and related metrics.
+Show what the business means by a word, its values, columns and metrics.
 
 ```bash
 pbmb terms show NAME
@@ -1930,7 +1932,7 @@ pbmb terms update [OPTIONS] NAME
 | `--definition` | str |   | What the term means. |
 | `--aliases` | str |   | Other names, comma-separated, or `none`. |
 | `--not-the-same-as` | str |   | What it is mistaken for, or `none`. |
-| `--values` | str |   | The values a dimension term takes, comma-separated, or `none`. |
+| `--values` | str |   | The values the term takes, comma-separated, or `none`. |
 | `--owner` | str |   | Who answers for the term. |
 | `--custom` | str |   | A custom field, key=value; repeat it. A value is read as JSON when it is JSON (true, 3, ["a"]), else as text; write "42" for the text 42. |
 

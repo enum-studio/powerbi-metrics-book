@@ -157,13 +157,17 @@ created date").
 
 ## Terms
 
-Terms are named in sentence case, singular: "Cancelled order", "Channel",
-"Cohort". A term is defined in one of two ways.
+A term is a word the business uses that a newcomer needs explained:
+"Returning customer", "Sign-up attribution", "Cohort", "Channel". It can
+point to the columns that hold it and the metrics that use it. Whether it
+has columns is a detail of the term, not what it is.
 
-### Dimension terms, on a column
+Terms are named in sentence case, singular. A term with columns has type
+`dimension`; one with none has type `concept`.
 
-Most business terms are an important dimension. "Cancelled order" is the
-boolean column `'Orders'[Is Cancelled]`, "Channel" is `'Sales'[Channel]`.
+### A term with columns
+
+"Cancelled order" is the boolean column `'Orders'[Is Cancelled]`, "Channel" is `'Sales'[Channel]`.
 Such a term is linked to the columns that back it, in every dataset that
 has one (`pbmb terms link <term> <column_id>`):
 
@@ -192,10 +196,9 @@ values:           paid_search (search ads), paid_social (social ads), email (new
 The definition then sits next to the columns it describes, and every metric
 whose variants filter or group by one of them links to it.
 
-### Concept terms, only when no column exists
+### A term with no column
 
-A concept with no column behind it (a cohort, a season, a business rule) is
-a concept term: the same shape, with no columns.
+A term with no column, such as "Cohort", has the same shape, with no columns.
 
 ```
 name:             Cohort
@@ -203,10 +206,10 @@ aliases:          Customer cohort
 definition:       The customers whose first order fell in the same calendar month.
 ```
 
-A concept term whose name or alias matches a column already backing a
-dimension term is refused: define it on the dimension instead. `term_fields`
-refuses a term without a definition, and a categorical dimension term
-without values.
+A term with no column must not have a name or alias that matches a column
+already backing another term. Link to the existing term instead.
+`term_fields` refuses a term without a definition, and a categorical term
+with columns without values.
 
 ## Categories, custom fields and variant axes
 

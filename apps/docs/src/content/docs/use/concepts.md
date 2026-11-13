@@ -63,10 +63,12 @@ Categories are a tree of any depth. A metric sits in one category, and its path 
 
 ## Terms
 
-A term is a business word the book defines. It comes in two kinds.
+A term is a word the business uses that a newcomer needs explained: "Returning customer", "Sign-up attribution", "Cohort", "Channel". It can point to the columns that hold it and the metrics that use it. Whether it has columns is a detail of the term, not what it is.
 
-- A **dimension term** is backed by one or more columns. "Channel" is `'Sales'[Channel]` in every dataset that has it. A categorical term lists its values and what each means.
-- A **concept term** has no column behind it: a cohort, a season, a business rule. A concept term whose name or alias matches a column that already backs a dimension term is refused. Define the word on the column.
+A term with columns has type `dimension`; one with none has type `concept`.
+
+- A term with columns, such as "Channel", points to `'Sales'[Channel]` in every dataset that has it. A categorical term lists its values and what each means.
+- A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Link to the existing term instead.
 
 Terms are named in sentence case, singular. A metric links to the terms whose columns its variants filter or group by, so an agent that reads the metric finds the column.
 
