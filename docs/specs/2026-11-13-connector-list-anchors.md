@@ -1,7 +1,6 @@
 # Short list answers in the connector
 
-Status: design approved by Martin in conversation, 2026-11-13. This file is
-for his review.
+Status: approved by Martin, 2026-11-13.
 
 The connector's lists cost an agent too much context. A metric row is about
 750 bytes, a variant row 650 and a search hit 800, most of it nulls, empty
