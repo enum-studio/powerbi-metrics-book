@@ -19,8 +19,8 @@ import { readIdentity } from "../auth/roles.js";
 
 export type Connection = typeof powerbiConnection.$inferSelect;
 export type OpenTokens = { access_token: string; refresh_token: string };
-export const OWN_ACCOUNT_REQUIRED =
-  "This deployment now requires your own Microsoft account. Connect Power BI again.";
+export const ownAccountRequired = (config: Config) =>
+  `This deployment now requires your own Microsoft account. Connect Power BI again at ${connectionsPage(config)}, then run this again.`;
 
 export async function enforceOwnAccount(
   deps: AppDeps,
@@ -33,7 +33,7 @@ export async function enforceOwnAccount(
   if (own?.microsoft_object_id === row.microsoft_object_id) return true;
   await endConnection(tx, row.user_id, {
     status: "needs_reconnect",
-    last_error: OWN_ACCOUNT_REQUIRED,
+    last_error: ownAccountRequired(deps.config),
   });
   return false;
 }

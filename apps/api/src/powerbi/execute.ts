@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { connectionsPage } from "../services/connection/store.js";
 import { NO_SUCH_DATASET, ServiceError } from "../errors.js";
 import {
   parseAnswer,
@@ -79,7 +80,7 @@ function tabulate(objects: Record<string, unknown>[]) {
  * https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries
  */
 export async function executeQuery(
-  deps: Pick<PowerBiDeps, "fetcher" | "settings">,
+  deps: Pick<PowerBiDeps, "fetcher" | "settings" | "config">,
   input: { token: string; dataset_id: string; dax: string; timeout_ms: number },
 ): Promise<QueryAnswer> {
   const path = `/v1.0/myorg/datasets/${encodeURIComponent(input.dataset_id)}/executeQueries`;
@@ -100,7 +101,7 @@ export async function executeQuery(
     },
   );
   const body = await readJson(response);
-  if (!response.ok) throw refusal(response, body);
+  if (!response.ok) throw refusal(deps, response, body);
 
   const [result] = parseAnswer(answerSchema, body, "Power BI").results;
   const first = result.tables?.[0];
@@ -110,7 +111,7 @@ export async function executeQuery(
     }
     throw new ServiceError(
       "invalid",
-      result.error.message ?? result.error.code,
+      plainMessage(result.error.message ?? result.error.code),
     );
   }
   const { columns, rows } = tabulate(first.rows);
@@ -118,21 +119,29 @@ export async function executeQuery(
   // them, on the table or on the result; either way the rows are cut off.
   const cutOff = first.error ?? result.error;
   if (cutOff === undefined) return { columns, rows, truncated: false };
-  const note = cutOff.message ?? cutOff.code;
+  const note = plainMessage(cutOff.message ?? cutOff.code);
   return { columns, rows, truncated: true, note };
 }
 
-function refusal(response: Response, body: unknown): ServiceError {
+function plainMessage(message: string): string {
+  return message.replace(/<\/?(?:oii|ccon|pii)>/g, "");
+}
+
+function refusal(
+  deps: Pick<PowerBiDeps, "config">,
+  response: Response,
+  body: unknown,
+): ServiceError {
   const error = readMicrosoftError(body);
   const detail = { status: response.status, ...error };
   if (response.status === 400) {
     const said = error?.message ?? "Power BI could not run the query.";
-    return new ServiceError("invalid", said, detail);
+    return new ServiceError("invalid", plainMessage(said), detail);
   }
   if (response.status === 401) {
     return new ServiceError(
       "needs_connection",
-      "Power BI no longer accepts your connection's token. Connect Power BI again.",
+      `Power BI no longer accepts your connection's token. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
       detail,
     );
   }
