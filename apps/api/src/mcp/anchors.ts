@@ -17,6 +17,7 @@ function keep(
   row: Row,
   fields: string,
   limits: Record<string, number> = {},
+  emptyLists: string[] = [],
 ): Row {
   const answer: Row = {};
   for (const field of fields.split(" ")) {
@@ -37,6 +38,14 @@ function keep(
     if (field === "column_type" && value === "data") continue;
     if (["upvote_count", "unread_replies"].includes(field) && value === 0)
       continue;
+    if (
+      Array.isArray(value) &&
+      value.length === 0 &&
+      emptyLists.includes(field)
+    ) {
+      answer[field] = value;
+      continue;
+    }
     if (
       value === undefined ||
       value === null ||
@@ -212,6 +221,8 @@ export const datasetDetail = (row: Row): Row =>
       relationships: rows(row.relationships).map(relationshipAnchor),
     },
     "id name workspace apps has_row_level_security description description_pbi schema_error synced_at pii_hidden open_questions accepted_answers relationships_note date_tables tables relationships",
+    {},
+    ["tables", "relationships"],
   );
 const baseVariant = (row: Row): Row =>
   keep(
@@ -231,6 +242,8 @@ export const metricDetail = (row: Row): Row =>
       ),
     },
     "id name label trust_state base_variants other_variants failing_checks definition aliases when_to_use not_the_same_as grain_and_filters unit category owner verified_by_name verified_at dismissed_at dismissed_reason custom terms open_questions accepted_answers",
+    {},
+    ["base_variants"],
   );
 export const variantDetail = (row: Row): Row =>
   keep(

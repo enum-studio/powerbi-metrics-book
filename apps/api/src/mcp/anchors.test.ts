@@ -204,6 +204,31 @@ describe("connector anchors", () => {
     });
     expect(anchors.columnAnchor({ name: long })).toEqual({ name: long });
   });
+  it.each(["tables", "relationships"])(
+    "keeps empty %s in dataset details",
+    (field) => {
+      const answer = anchors.datasetDetail({
+        id,
+        tables: [],
+        relationships: [],
+        apps: [],
+        date_tables: [],
+      });
+      expect(answer[field]).toEqual([]);
+      expect(Object.keys(answer)).toEqual(["id", "tables", "relationships"]);
+    },
+  );
+  it("keeps empty base_variants in metric details", () => {
+    const answer = anchors.metricDetail({
+      id,
+      base_variants: [],
+      other_variants: [],
+      failing_checks: [],
+      aliases: [],
+    });
+    expect(answer).toEqual({ id, base_variants: [] });
+    expect(Object.keys(answer)).toEqual(["id", "base_variants"]);
+  });
   it("shapes dataset details and keeps relationships last", () => {
     const answer = anchors.datasetDetail({
       ...row,
