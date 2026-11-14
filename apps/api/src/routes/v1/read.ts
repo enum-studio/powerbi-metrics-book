@@ -294,9 +294,21 @@ const DatasetDetail = z.object({
   relationships_read_at: stamp.nullable(),
   relationships_note: z.string().nullable(),
   relationships: z.array(RelationshipItem),
+  date_tables: z
+    .array(
+      z.object({
+        table: z.string(),
+        column: z.string(),
+        joined_by: z.number(),
+      }),
+    )
+    .optional(),
   tables: z.array(
     z.object({
-      kind: z.literal("table"),
+      kind: z
+        .enum(["measures", "date", "fact", "dimension", "standalone"])
+        .optional(),
+      column_names: z.array(z.string()).max(5).optional(),
       id: z.string(),
       name: z.string(),
       is_hidden: z.boolean(),

@@ -653,7 +653,7 @@ describe("read", () => {
       workspace: { kind: "workspace" },
       has_row_level_security: anyOf(Boolean),
       tables: containing.array([
-        containing.object({ kind: "table", name: "Sales" }),
+        containing.object({ kind: "fact", name: "Sales" }),
       ]),
       relationships: anyOf(Array),
     });
