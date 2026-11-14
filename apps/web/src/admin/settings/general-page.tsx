@@ -15,7 +15,10 @@ const FIELDS: FieldSpec[] = [
 export function GeneralPage() {
   const client = useQueryClient();
   return (
-    <PageFrame title="General" lede="Your company's name and logo.">
+    <PageFrame
+      title="General"
+      lede="Your company's name and logo, and whether people can ask questions."
+    >
       <Section
         title="Company"
         fields={FIELDS}

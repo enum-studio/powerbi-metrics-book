@@ -6,6 +6,7 @@ import { signInConfigQuery } from "../../access/api";
 import { configWith } from "../../shell/brand-test-support";
 import { mount } from "../../access/form-test-support";
 import { api } from "../../api/client";
+import { meQuery } from "../../api/me";
 import { secretsQuery, statusQuery, settingQuery } from "./api";
 import { GeneralPage } from "./general-page";
 
@@ -194,7 +195,7 @@ it("shows the Questions switch with its description and saves its boolean value"
   const put = vi
     .spyOn(api, "PUT")
     .mockResolvedValue({ data: {}, response: Response.json({}) });
-  vi.spyOn(client, "invalidateQueries").mockResolvedValue();
+  const invalidate = vi.spyOn(client, "invalidateQueries").mockResolvedValue();
   const page = await mount(
     createElement(QueryClientProvider, { client }, createElement(GeneralPage)),
   );
@@ -226,6 +227,7 @@ it("shows the Questions switch with its description and saves its boolean value"
           body: { value: true, save_failing: false },
         }),
       );
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: meQuery.queryKey });
     });
   } finally {
     page.close();

@@ -54,12 +54,12 @@ function mount(answers: AcceptedAnswer[], questions = true) {
   const labels = [...host.querySelectorAll("li")].map(
     (li) => li.querySelector(".text-ink-3")?.textContent,
   );
-  if (!questions) expect(host.innerHTML).toBe("");
+  const html = host.innerHTML;
   act(() => {
     root.unmount();
   });
   client.clear();
-  return labels;
+  return { labels, html };
 }
 
 it("says who accepted each answer, and when an agent did", () => {
@@ -78,7 +78,7 @@ it("says who accepted each answer, and when an agent did", () => {
         accepted_by_kind: null,
         accepted_by_via: null,
       }),
-    ]),
+    ]).labels,
   ).toEqual([
     "Accepted by the asker.",
     "The asker accepted their own reply.",
@@ -90,9 +90,9 @@ it("says who accepted each answer, and when an agent did", () => {
 });
 
 it("shows nothing when no question is answered", () => {
-  expect(mount([])).toEqual([]);
+  expect(mount([]).labels).toEqual([]);
 });
 
 it("shows nothing when questions are off, even with an accepted answer", () => {
-  expect(mount([answer("1")], false)).toEqual([]);
+  expect(mount([answer("1")], false).html).toBe("");
 });
