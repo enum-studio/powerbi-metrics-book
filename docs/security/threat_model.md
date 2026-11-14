@@ -1310,6 +1310,16 @@ Crossing: rows Power BI returned under one person's rights.
   against it, at most 4 at once, so parallel queries cannot pass it. The
   query log holds the DAX, never a row, and Power BI's error sentence
   reaches only the entry's own principal.
+- The catalog's own reads of a model (`readModelView`, logged with
+  `origin` `catalog`) count against neither the row budget nor the usage
+  report, so a person does not spend their budget on reads they never
+  asked for. They stay bounded without it: each is a fixed `INFO.VIEW`
+  query over the model's metadata with no preview, run as the person, only
+  when the model was never read or its schema changed, and at most once
+  per person and dataset in 5 minutes (`services/mirror/info-views.ts`).
+  They stay in the query log, so an admin still sees every query that
+  reached Power BI under a person's name. Only `readModelView` writes
+  `catalog`; a query an agent sends is always `request`.
 - A CSV cell that starts like a formula gets a leading `'`, so a
   spreadsheet does not run it (`docs/decisions/queries.md`).
 
