@@ -256,6 +256,25 @@ describe("the read routes", () => {
     }
   });
 
+  it("includes table summaries and date tables in dataset detail", async () => {
+    const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("the sample has no dataset");
+    const result = await get(viewer, `/datasets/${dataset.id}`);
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      date_tables: expect.any(Array) as unknown,
+      tables: expect.arrayContaining([
+        expect.objectContaining({
+          kind: expect.stringMatching(
+            /^(measures|date|fact|dimension|standalone)$/,
+          ) as unknown,
+          column_names: expect.any(Array) as unknown,
+        }),
+      ]) as unknown,
+    });
+  });
+
   it("answer one column's detail, and a missing column as not found", async () => {
     const viewer = await signedIn("viewer");
     const dataset = sample.tenant.datasets[0];

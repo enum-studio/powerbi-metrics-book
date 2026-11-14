@@ -466,78 +466,148 @@ export async function getDataset(context: ServiceContext, reference: string) {
   const countIn = (source: typeof powerbiColumn | typeof powerbiMeasure) =>
     // Drizzle leaves the table off a column in a single-table select, which here would read the inner table's own id.
     sql<number>`(select count(*) from ${source} s where s.table_id = ${powerbiTable}.id and s.removed_at is null)::int`;
-  const [tables, relationships, apps, questions, piiByTable, piiMeasures] =
-    await Promise.all([
-      db
-        .select({
-          ...getTableColumns(powerbiTable),
-          column_count: countIn(powerbiColumn),
-          measure_count: countIn(powerbiMeasure),
-          // A table rule marks the table; a person who may not read PII is shown no tag.
-          pii: piiTableNamed(sql`${powerbiTable}.name`),
-        })
-        .from(powerbiTable)
-        .where(
-          and(
-            eq(powerbiTable.dataset_id, dataset.id),
-            isNull(powerbiTable.removed_at),
-          ),
-        )
-        .orderBy(asc(powerbiTable.name)),
-      db
-        .select()
-        .from(powerbiRelationship)
-        .where(
-          and(
-            eq(powerbiRelationship.dataset_id, dataset.id),
-            isNull(powerbiRelationship.removed_at),
-            hides ? leavesOutPiiEnds() : undefined,
-          ),
-        )
-        .orderBy(
-          asc(powerbiRelationship.from_table),
-          asc(powerbiRelationship.from_column),
+  const [
+    tables,
+    relationships,
+    apps,
+    questions,
+    piiByTable,
+    piiMeasures,
+    columns,
+  ] = await Promise.all([
+    db
+      .select({
+        ...getTableColumns(powerbiTable),
+        column_count: countIn(powerbiColumn),
+        measure_count: countIn(powerbiMeasure),
+        // A table rule marks the table; a person who may not read PII is shown no tag.
+        pii: piiTableNamed(sql`${powerbiTable}.name`),
+      })
+      .from(powerbiTable)
+      .where(
+        and(
+          eq(powerbiTable.dataset_id, dataset.id),
+          isNull(powerbiTable.removed_at),
         ),
-      appsShowing(context, [dataset.id]),
-      openQuestionsFor(db, { kind: "dataset", id: dataset.id }),
-      // The live PII columns and measures of each table, to leave out of its counts.
-      hides
-        ? db
-            .select({ table_id: powerbiColumn.table_id, hidden: count() })
-            .from(powerbiColumn)
-            .innerJoin(
-              powerbiTable,
-              eq(powerbiTable.id, powerbiColumn.table_id),
-            )
-            .where(
-              and(
-                eq(powerbiColumn.dataset_id, dataset.id),
-                isNull(powerbiColumn.removed_at),
-                isNull(powerbiTable.removed_at),
-                piiColumn(powerbiColumn, powerbiTable),
-              ),
-            )
-            .groupBy(powerbiColumn.table_id)
-        : [],
-      hides
-        ? db
-            .select({ table_id: powerbiMeasure.table_id, hidden: count() })
-            .from(powerbiMeasure)
-            .innerJoin(
-              powerbiTable,
-              eq(powerbiTable.id, powerbiMeasure.table_id),
-            )
-            .where(
-              and(
-                eq(powerbiMeasure.dataset_id, dataset.id),
-                isNull(powerbiMeasure.removed_at),
-                isNull(powerbiTable.removed_at),
-                piiMeasure(powerbiMeasure),
-              ),
-            )
-            .groupBy(powerbiMeasure.table_id)
-        : [],
-    ]);
+      )
+      .orderBy(asc(powerbiTable.name)),
+    db
+      .select()
+      .from(powerbiRelationship)
+      .where(
+        and(
+          eq(powerbiRelationship.dataset_id, dataset.id),
+          isNull(powerbiRelationship.removed_at),
+          hides ? leavesOutPiiEnds() : undefined,
+        ),
+      )
+      .orderBy(
+        asc(powerbiRelationship.from_table),
+        asc(powerbiRelationship.from_column),
+      ),
+    appsShowing(context, [dataset.id]),
+    openQuestionsFor(db, { kind: "dataset", id: dataset.id }),
+    // The live PII columns and measures of each table, to leave out of its counts.
+    hides
+      ? db
+          .select({ table_id: powerbiColumn.table_id, hidden: count() })
+          .from(powerbiColumn)
+          .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
+          .where(
+            and(
+              eq(powerbiColumn.dataset_id, dataset.id),
+              isNull(powerbiColumn.removed_at),
+              isNull(powerbiTable.removed_at),
+              piiColumn(powerbiColumn, powerbiTable),
+            ),
+          )
+          .groupBy(powerbiColumn.table_id)
+      : [],
+    hides
+      ? db
+          .select({ table_id: powerbiMeasure.table_id, hidden: count() })
+          .from(powerbiMeasure)
+          .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiMeasure.table_id))
+          .where(
+            and(
+              eq(powerbiMeasure.dataset_id, dataset.id),
+              isNull(powerbiMeasure.removed_at),
+              isNull(powerbiTable.removed_at),
+              piiMeasure(powerbiMeasure),
+            ),
+          )
+          .groupBy(powerbiMeasure.table_id)
+      : [],
+    db
+      .select({
+        table_id: powerbiColumn.table_id,
+        table: powerbiTable.name,
+        name: powerbiColumn.name,
+        data_type: powerbiColumn.data_type,
+        is_hidden: powerbiColumn.is_hidden,
+      })
+      .from(powerbiColumn)
+      .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
+      .where(
+        and(
+          eq(powerbiColumn.dataset_id, dataset.id),
+          isNull(powerbiColumn.removed_at),
+          isNull(powerbiTable.removed_at),
+          hides ? not(piiColumn(powerbiColumn, powerbiTable)) : undefined,
+        ),
+      )
+      .orderBy(asc(powerbiColumn.name)),
+  ]);
+  const many = new Set<string>();
+  const one = new Set<string>();
+  const joined = new Map<
+    string,
+    { table: string; column: string; joined_by: number }
+  >();
+  const ends = new Set<string>();
+  const columnKey = (table: string, column: string) =>
+    JSON.stringify([table, column]);
+  const dateColumns = new Set(
+    columns
+      .filter((c) => c.data_type === "DateTime" || c.data_type === "Date")
+      .map((c) => columnKey(c.table, c.name)),
+  );
+  for (const r of relationships) {
+    for (const side of ["from", "to"] as const) {
+      const table = r[`${side}_table`];
+      const column = r[`${side}_column`];
+      const key = columnKey(table, column);
+      ends.add(key);
+      const isOne =
+        r.cardinality === "one_to_one" ||
+        r.cardinality === (side === "from" ? "one_to_many" : "many_to_one");
+      const isMany =
+        r.cardinality === "many_to_many" ||
+        r.cardinality === (side === "from" ? "many_to_one" : "one_to_many");
+      if (isMany) many.add(table);
+      if (!isOne) continue;
+      one.add(table);
+      if (!r.is_active || !dateColumns.has(key)) continue;
+      const entry = joined.get(key) ?? { table, column, joined_by: 0 };
+      entry.joined_by++;
+      joined.set(key, entry);
+    }
+  }
+  const dateTables = [...joined.values()].sort(
+    (a, b) =>
+      b.joined_by - a.joined_by ||
+      a.table.localeCompare(b.table) ||
+      a.column.localeCompare(b.column),
+  );
+  const tableKind = (table: (typeof tables)[number]) => {
+    if (table.column_count === 0 && table.measure_count > 0)
+      return "measures" as const;
+    if (dateTables.some((d) => d.table === table.name)) return "date" as const;
+    if (many.has(table.name)) return "fact" as const;
+    return one.has(table.name)
+      ? ("dimension" as const)
+      : ("standalone" as const);
+  };
   const hiddenIn = new Map(piiByTable.map((row) => [row.table_id, row.hidden]));
   const hiddenMeasuresIn = new Map(
     piiMeasures.map((row) => [row.table_id, row.hidden]),
@@ -557,8 +627,18 @@ export async function getDataset(context: ServiceContext, reference: string) {
       shownIn,
     ),
     tables: tables.map(({ pii, ...table }) => ({
-      kind: "table" as const,
       ...table,
+      kind: tableKind({ ...table, pii }),
+      column_names: columns
+        .filter((c) => c.table_id === table.id && !c.is_hidden)
+        .sort(
+          (a, b) =>
+            Number(ends.has(columnKey(b.table, b.name))) -
+              Number(ends.has(columnKey(a.table, a.name))) ||
+            a.name.localeCompare(b.name),
+        )
+        .slice(0, 5)
+        .map((c) => c.name),
       ...(!hides && pii && { pii: true as const }),
       column_count: table.column_count - (hiddenIn.get(table.id) ?? 0),
       measure_count:
@@ -566,6 +646,7 @@ export async function getDataset(context: ServiceContext, reference: string) {
     })),
     ...(piiHidden > 0 && { pii_hidden: piiHidden }),
     ...questions,
+    date_tables: dateTables,
     // Last: an answer over 16 KiB is cut at its end, so it loses these before it loses a table.
     relationships,
     relationships_note: withListed(
@@ -707,6 +788,85 @@ export async function listApps(context: ServiceContext) {
     workspace: ref("workspace", app.workspace_id, app.workspace_name),
     datasets: datasets.get(app.id) ?? [],
   }));
+}
+
+export type RelationshipItem = typeof powerbiRelationship.$inferSelect;
+
+export async function listRelationships(
+  context: ServiceContext,
+  input: {
+    dataset: string;
+    table?: string;
+    active_only?: boolean;
+    cursor?: string;
+    limit?: number;
+  },
+): Promise<Page<RelationshipItem> & { total?: number; pii_hidden?: number }> {
+  const { dataset } = await resolveDataset(context, input.dataset);
+  await ensureModelDetails(context, dataset.id);
+  const hides = !(await readsPii(context));
+  const r = powerbiRelationship;
+  let tableName = input.table;
+  if (tableName !== undefined && looksLikeId(tableName)) {
+    const [table] = await context.db
+      .select({ name: powerbiTable.name })
+      .from(powerbiTable)
+      .where(
+        and(
+          eq(powerbiTable.id, tableName),
+          eq(powerbiTable.dataset_id, dataset.id),
+          isNull(powerbiTable.removed_at),
+        ),
+      );
+    tableName = table?.name;
+    if (tableName === undefined)
+      return {
+        items: [],
+        next_cursor: null,
+        ...(input.cursor === undefined && { total: 0 }),
+      };
+  }
+  const scope = and(
+    eq(r.dataset_id, dataset.id),
+    isNull(r.removed_at),
+    tableName === undefined
+      ? undefined
+      : or(eq(r.from_table, tableName), eq(r.to_table, tableName)),
+  );
+  const visible = and(
+    scope,
+    input.active_only === true ? eq(r.is_active, true) : undefined,
+    hides ? leavesOutPiiEnds() : undefined,
+  );
+  const order = [r.from_table, r.from_column, r.to_table, r.to_column];
+  const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
+  const [rows, totals, hidden] = await Promise.all([
+    context.db
+      .select()
+      .from(r)
+      .where(and(visible, afterCursor({ name: order, id: r.id }, input.cursor)))
+      .orderBy(...order.map((c) => asc(c)), asc(r.id))
+      .limit(limit + 1),
+    input.cursor === undefined
+      ? context.db.select({ value: count() }).from(r).where(visible)
+      : [],
+    hides
+      ? context.db
+          .select({ value: count() })
+          .from(r)
+          .where(and(scope, sql`not (${leavesOutPiiEnds()})`))
+      : [],
+  ]);
+  return {
+    ...pageBy(rows, limit, (row) => [
+      row.from_table,
+      row.from_column,
+      row.to_table,
+      row.to_column,
+    ]),
+    ...(input.cursor === undefined && { total: totals[0]?.value ?? 0 }),
+    ...((hidden[0]?.value ?? 0) > 0 && { pii_hidden: hidden[0]?.value }),
+  };
 }
 
 /** A relationship either of whose ends is a PII column is not shown to a person who may not read PII. */

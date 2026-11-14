@@ -1,11 +1,9 @@
+import { connectionsPage } from "../../config.js";
 import { z } from "zod";
 import { summarizeBook } from "../../services/book/metrics.js";
 import { recordConnectorReached } from "../../services/audit/connector.js";
 import { onTheMock } from "../../services/auth/sign-in-config.js";
-import {
-  connectionsPage,
-  connectionState,
-} from "../../services/connection/store.js";
+import { connectionState } from "../../services/connection/store.js";
 import { defineTool, type Tool } from "../registry.js";
 
 export const whoamiTools: readonly Tool[] = [

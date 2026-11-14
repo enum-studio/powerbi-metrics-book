@@ -2,12 +2,16 @@ import { NO_SUCH_DATASET } from "../../errors.js";
 import { randomUUID } from "node:crypto";
 import { eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { TEST_RUNNER } from "../../../test/database.js";
+import { setRole } from "../../../test/sample-mirror.js";
 import { testPool } from "../../../test/deps.js";
 import { createDb } from "../../db/client.js";
 import {
   powerbiApp,
   powerbiColumn,
   powerbiMeasure,
+  powerbiRelationship,
+  powerbiTable,
 } from "../../db/schema/mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
 import {
@@ -41,6 +45,8 @@ import {
   listMeasures,
   listWorkspaces,
 } from "./read.js";
+
+import * as mirror from "./read.js";
 
 useMirror();
 
@@ -769,4 +775,219 @@ describe("what a person without pii_reader does not get", () => {
         ["Sales", false],
       ]);
     }));
+});
+
+describe("relationship pages and model summaries", () => {
+  it("filters either end by name or id, orders every key, and pages with a first-page total", () =>
+    rolledBack(async (tx) => {
+      const context = asPerson(appReader, { db: tx });
+      await tx.insert(powerbiRelationship).values([
+        {
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: "Order date",
+          to_table: "Date",
+          to_column: "Zulu",
+          is_active: false,
+        },
+        {
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: "Channel",
+          to_table: "Sales",
+          to_column: "Channel",
+        },
+        {
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: "Order date",
+          to_table: "Date",
+          to_column: "Date",
+        },
+      ]);
+      const all = await mirror.listRelationships(context, { dataset: "Sales" });
+      expect(all.total).toBe(4);
+      expect(all.items.map((r) => [r.from_column, r.to_column])).toEqual([
+        ["Channel", "Channel"],
+        ["Order date", "Date"],
+        ["Order date", "Date"],
+        ["Order date", "Zulu"],
+      ]);
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await mirror.listRelationships(context, {
+          dataset: id.sales,
+          limit: 1,
+          cursor,
+        });
+        expect(page.total).toBe(cursor === undefined ? 4 : undefined);
+        seen.push(...page.items.map((r) => r.id));
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor !== undefined);
+      expect(seen).toEqual(all.items.map((r) => r.id));
+      for (const table of ["Date", id.date_table]) {
+        expect(
+          (
+            await mirror.listRelationships(context, {
+              dataset: id.sales,
+              table,
+            })
+          ).total,
+        ).toBe(3);
+      }
+      expect(
+        (
+          await mirror.listRelationships(context, {
+            dataset: id.sales,
+            table: "absent",
+          })
+        ).total,
+      ).toBe(0);
+      expect(
+        (
+          await mirror.listRelationships(context, {
+            dataset: id.sales,
+            active_only: true,
+          })
+        ).total,
+      ).toBe(3);
+      await expect(
+        mirror.listRelationships(context, {
+          dataset: id.sales,
+          cursor: "broken",
+        }),
+      ).rejects.toMatchObject({ kind: "invalid" });
+    }));
+
+  it("defaults to 25 relationships, caps pages at 100, and excludes removed joins", () =>
+    rolledBack(async (tx) => {
+      await tx.insert(powerbiRelationship).values(
+        Array.from({ length: 101 }, (_, index) => ({
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: `Key ${String(index).padStart(3, "0")}`,
+          to_table: "Date",
+          to_column: "Date",
+          removed_at: index === 100 ? new Date() : null,
+        })),
+      );
+      const context = asPerson(appReader, { db: tx });
+      const page = await mirror.listRelationships(context, {
+        dataset: id.sales,
+      });
+      expect(page.items).toHaveLength(25);
+      expect(page.total).toBe(101);
+      expect(page.next_cursor).not.toBeNull();
+      expect(
+        (
+          await mirror.listRelationships(context, {
+            dataset: id.sales,
+            limit: 500,
+          })
+        ).items,
+      ).toHaveLength(100);
+    }));
+
+  it("derives kinds and date columns from cardinality, and prioritizes visible join columns", () =>
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        await setRole(tx, "worker_rw");
+        const tables = [
+          "Alpha",
+          "Beta",
+          "Gamma",
+          "Delta",
+          "Empty",
+          "Metrics",
+          "Bridge",
+          "Dimension",
+          "Standalone",
+        ];
+        const rows = await tx
+          .insert(powerbiTable)
+          .values(tables.map((name) => ({ dataset_id: id.sales, name })))
+          .returning();
+        for (const table of rows) {
+          if (["Empty", "Metrics"].includes(table.name)) continue;
+          await tx.insert(powerbiColumn).values(
+            ["A", "B", "C", "D", "E", "Z"].map((name) => ({
+              dataset_id: id.sales,
+              table_id: table.id,
+              name,
+              data_type:
+                table.name === "Dimension"
+                  ? "String"
+                  : table.name === "Beta"
+                    ? "DateTime"
+                    : "Date",
+              is_hidden: name === "B",
+            })),
+          );
+        }
+        await tx.insert(powerbiMeasure).values({
+          dataset_id: id.sales,
+          table_id: rows.find((t) => t.name === "Metrics")?.id ?? "",
+          name: "Amount",
+        });
+        const joins = [
+          ["Alpha", "Beta", "many_to_one"],
+          ["Gamma", "Beta", "many_to_one"],
+          ["Delta", "Alpha", "one_to_many"],
+          ["Gamma", "Delta", "one_to_one"],
+          ["Bridge", "Alpha", "many_to_many"],
+          ["Alpha", "Dimension", "many_to_one"],
+        ];
+        await tx.insert(powerbiRelationship).values(
+          joins.map(([from_table, to_table, cardinality]) => ({
+            dataset_id: id.sales,
+            from_table: from_table ?? "",
+            from_column: "Z",
+            to_table: to_table ?? "",
+            to_column: "Z",
+            cardinality,
+          })),
+        );
+        await tx.insert(powerbiRelationship).values({
+          dataset_id: id.sales,
+          from_table: "Empty",
+          from_column: "Key",
+          to_table: "Delta",
+          to_column: "Z",
+          cardinality: "many_to_one",
+          is_active: false,
+        });
+        await setRole(tx, "api_rw");
+        const detail = await getDataset(
+          asPerson(appReader, { db: tx }),
+          id.sales,
+        );
+        expect(detail.date_tables).toEqual([
+          { table: "Beta", column: "Z", joined_by: 2 },
+          { table: "Delta", column: "Z", joined_by: 2 },
+          { table: "Gamma", column: "Z", joined_by: 1 },
+        ]);
+        const kinds = Object.fromEntries(
+          detail.tables.map((t) => [t.name, t.kind]),
+        );
+        expect(kinds).toMatchObject({
+          Alpha: "fact",
+          Beta: "date",
+          Gamma: "date",
+          Delta: "date",
+          Empty: "fact",
+          Metrics: "measures",
+          Bridge: "fact",
+          Dimension: "dimension",
+          Standalone: "standalone",
+        });
+        expect(
+          detail.tables.find((t) => t.name === "Alpha")?.column_names,
+        ).toEqual(["Z", "A", "C", "D", "E"]);
+        expect(detail.tables.find((t) => t.name === "Date")?.kind).toBe(
+          "measures",
+        );
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
 });

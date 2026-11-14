@@ -1,3 +1,4 @@
+import { connectionsPage } from "../../config.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../../app.js";
@@ -15,7 +16,6 @@ import {
 } from "../../services/auth/principal.js";
 import {
   connectionDetails,
-  connectionsPage,
   connectionState,
 } from "../../services/connection/store.js";
 import { credential, documented } from "./adapter.js";

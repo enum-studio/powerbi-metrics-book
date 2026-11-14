@@ -1635,6 +1635,13 @@
             "type": "string",
             "const": "query"
           },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "request",
+              "catalog"
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -1781,6 +1788,7 @@
         },
         "required": [
           "kind",
+          "origin",
           "id",
           "at",
           "principal",
@@ -14605,6 +14613,29 @@
                         "additionalProperties": false
                       }
                     },
+                    "date_tables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "table": {
+                            "type": "string"
+                          },
+                          "column": {
+                            "type": "string"
+                          },
+                          "joined_by": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "table",
+                          "column",
+                          "joined_by"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "tables": {
                       "type": "array",
                       "items": {
@@ -14612,7 +14643,20 @@
                         "properties": {
                           "kind": {
                             "type": "string",
-                            "const": "table"
+                            "enum": [
+                              "measures",
+                              "date",
+                              "fact",
+                              "dimension",
+                              "standalone"
+                            ]
+                          },
+                          "column_names": {
+                            "maxItems": 5,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "id": {
                             "type": "string"
@@ -14654,7 +14698,6 @@
                           }
                         },
                         "required": [
-                          "kind",
                           "id",
                           "name",
                           "is_hidden",

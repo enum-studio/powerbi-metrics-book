@@ -2255,6 +2255,8 @@ export interface components {
     Entry: {
       /** @constant */
       kind: "query";
+      /** @enum {string} */
+      origin: "request" | "catalog";
       id: string;
       /** Format: date-time */
       at: string;
@@ -8286,9 +8288,15 @@ export interface operations {
               cross_filtering_behavior: string | null;
               is_active: boolean;
             }[];
+            date_tables?: {
+              table: string;
+              column: string;
+              joined_by: number;
+            }[];
             tables: {
-              /** @constant */
-              kind: "table";
+              /** @enum {string} */
+              kind?: "measures" | "date" | "fact" | "dimension" | "standalone";
+              column_names?: string[];
               id: string;
               name: string;
               is_hidden: boolean;

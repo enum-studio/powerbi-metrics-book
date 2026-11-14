@@ -44,6 +44,29 @@ async function me(cookie: string): Promise<Record<string, unknown>> {
 }
 
 describe("connecting Power BI", () => {
+  it.each([false, true])(
+    "names the connections page for an incomplete callback (state: %s)",
+    async (validState) => {
+      const { cookie } = await f.signIn(f.person("viewer"), MICROSOFT);
+      const started = await f.request("/api/v1/powerbi/connect", {
+        headers: { cookie },
+      });
+      const state = new URL(
+        String(started.headers.get("location")),
+      ).searchParams.get("state");
+      if (state === null) throw new Error("Connect returned no state");
+      const answer = await f.request(
+        `/api/v1/powerbi/callback?state=${validState ? state : "missing"}`,
+        { headers: { cookie } },
+      );
+      expect(answer.status).toBe(403);
+      const message: unknown = expect.stringContaining(
+        `Connect Power BI again at ${TEST_PUBLIC_BASE_URL}/settings/connections, then run this again.`,
+      );
+      expect(await answer.json()).toMatchObject({ message });
+    },
+  );
+
   it("refuses a matching directory email with a different UPN under strict rules", async () => {
     const member = {
       ...f.person("outsider"),

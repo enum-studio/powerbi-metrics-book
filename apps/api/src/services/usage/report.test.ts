@@ -318,6 +318,31 @@ describe("usageReport", () => {
     ).toEqual([id.days]);
   });
 
+  it("leaves catalog reads out of every total and list", async () => {
+    const before = await usageReport(curator, { since });
+    for (const status of [
+      "succeeded",
+      "truncated",
+      "failed",
+      "refused",
+    ] as const) {
+      await logQuery(alice, {
+        id: randomUUID(),
+        at: ago(1),
+        dataset: sales,
+        dax: "EVALUATE INFO.VIEW.MEASURES()",
+        purpose: null,
+        status,
+        error: null,
+        duration_ms: 1,
+        measure_names: ["Days in month", "Net sales", "Net sales LY"],
+        metric_ids: status === "succeeded" ? [netSales] : [],
+        origin: "catalog",
+      });
+    }
+    expect(await usageReport(curator, { since })).toEqual(before);
+  });
+
   it("refuses since after until", async () => {
     await expect(
       usageReport(curator, { since: now, until: since }),

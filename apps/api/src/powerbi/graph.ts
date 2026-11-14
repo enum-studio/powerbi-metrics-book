@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { connectAgain } from "../config.js";
 import { ServiceError } from "../errors.js";
 import {
   parseAnswer,
@@ -22,7 +23,7 @@ const page = z.object({
  * https://learn.microsoft.com/en-us/graph/api/user-list-transitivememberof
  */
 export async function myGroupIds(
-  deps: Pick<PowerBiDeps, "fetcher" | "settings">,
+  deps: Pick<PowerBiDeps, "fetcher" | "settings" | "config">,
   graphToken: string,
 ): Promise<string[]> {
   const first = new URL(
@@ -40,7 +41,7 @@ export async function myGroupIds(
     if (response.status === 401 || response.status === 403) {
       throw new ServiceError(
         "needs_connection",
-        "Microsoft Graph refused your Power BI connection's token. Connect Power BI again.",
+        `Microsoft Graph refused your Power BI connection's token. ${connectAgain(deps.config)}`,
         { status: response.status, ...error },
       );
     }
