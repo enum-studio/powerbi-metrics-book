@@ -23,7 +23,8 @@ them: no tools, no routes, no screens, no fields.
 - No change to who may ask, reply, accept or archive. Cerbos still decides that, as today.
 - No change to requests and the usage report. `record_request`, `pbmb requests` and a request's
   `question` text are a separate feature and stay on.
-- No migration. Stored threads are kept while questions are off. Production has none today.
+- No change to the thread tables. Stored threads are kept while questions are off. Production has
+  none today.
 - No thread screen in the web app. There is none today.
 
 ## Design
@@ -32,7 +33,9 @@ them: no tools, no routes, no screens, no fields.
 
 `questions.enabled`, a boolean, default `false`, in `SettingValues` (`apps/api/src/context.ts`),
 `SETTINGS` (`apps/api/src/services/settings/registry.ts`) and the test double's defaults
-(`apps/api/test/doubles.ts`). Description: "Let people and agents ask questions about metrics,
+(`apps/api/test/doubles.ts`). The `setting` table's `setting_key_known` check is built from the
+registry's keys, so one migration, made by `pnpm --filter @powerbi-metrics-book/api db:generate`,
+adds the key to it, as `0007` did for the usage settings. Description: "Let people and agents ask questions about metrics,
 datasets and terms, reply, and accept an answer." The admin section shows it on the General page as
 "Questions", a switch.
 
