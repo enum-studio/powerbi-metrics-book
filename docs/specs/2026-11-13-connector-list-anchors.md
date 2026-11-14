@@ -127,8 +127,12 @@ helper can tell a cut from a text of exactly `max`.
 ## 3. Rows, tool by tool
 
 The fields each anchor carries, in order. "Target" is the most bytes a row
-of that kind may take when every text field is at its limit, which
-`anchors.test.ts` asserts.
+of that kind may take, which `anchors.test.ts` asserts on a fixed row: each
+text field with a limit in section 2 at that limit in ASCII, ids as UUIDs,
+names, labels and parent names at 40 ASCII characters, and five aliases of
+16. A target guards against fields creeping back into a row. It is not a
+cut: names are never shortened, text in a wider script takes more bytes,
+and the 16 KiB bound of `result.ts` stays the limit on an answer.
 
 | Tool | Row | Target |
 |---|---|---|
