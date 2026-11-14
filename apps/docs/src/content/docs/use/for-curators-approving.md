@@ -19,12 +19,12 @@ The command prints the link to the metric's catalog page, `<your address>/catalo
 
 ## Review it
 
-Open the link in a browser, signed in as a curator or an admin. The page shows the metric's description, its variants with their DAX, the checks that fail, its history and its open questions. Read the definition as a business reader would. Then check the parts an agent cannot judge:
+Open the link in a browser, signed in as a curator or an admin. The page shows the metric's description, its variants with their DAX, the checks that fail, its history and, when questions are on, its open questions. Read the definition as a business reader would. Then check the parts an agent cannot judge:
 
 - Does the definition say what people mean by the name?
 - Is the base variant in each dataset the right measure? Compare the DAX.
 - Are the shifted variants really the same calculation shifted, or a different one?
-- Is any open question on the metric still waiting for an answer?
+- When questions are on, is any open question on the metric still waiting for an answer?
 
 If something is wrong, do not approve. Ask the agent to fix it, or answer the open question first. A change made through a browser session keeps the state. A change an agent makes with a token moves it (below).
 

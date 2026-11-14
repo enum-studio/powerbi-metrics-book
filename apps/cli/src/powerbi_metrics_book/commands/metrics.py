@@ -120,7 +120,11 @@ def _show_metric(console: Console, metric: dict[str, Json]) -> None:
             "terms": [
                 one_line(term.get("name")) for term in objects_in(metric, "terms")
             ],
-            "open_questions": metric.get("open_questions"),
+            **(
+                {"open_questions": metric["open_questions"]}
+                if "open_questions" in metric
+                else {}
+            ),
         },
     )
     line(console, "\nBase variants (use measure_reference in DAX against its dataset)")
@@ -129,7 +133,9 @@ def _show_metric(console: Console, metric: dict[str, Json]) -> None:
     if others:
         line(console, "\nOther variants, by shift (`pbmb variants list <metric>`)")
         print_table(console, others, SHIFT_COLUMNS)
-    for answer in objects_in(metric, "accepted_answers"):
+    for answer in (
+        objects_in(metric, "accepted_answers") if "accepted_answers" in metric else []
+    ):
         line(
             console,
             f"\nAnswered: {one_line(answer.get('question'))} "
@@ -279,7 +285,8 @@ def list_metrics(
 def show(context: typer.Context, name: Name, json_output: JsonOption = False) -> None:
     """Show a metric completely: failing checks first, then its fields, base
     variants per dataset (with the measure_reference to use in DAX), the count
-    of its other variants by shift, terms and accepted answers.
+    of its other variants by shift, terms and, when questions are on,
+    accepted answers.
 
     Use a variant's DAX instead of writing your own: `pbmb variants show <id>`.
     """

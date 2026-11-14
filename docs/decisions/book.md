@@ -461,3 +461,15 @@ and the record, `book.test.ts` the CHECKs, `icons_security_test.ts` the reach.
 Stops being right if an icon ever carries meaning (a status that readers act on): it would then be
 curation, and would need the trust rules. It also stops if the glyph list changes: the CHECK holds
 the names at migration time, so a name removed from `icon-glyphs.ts` needs a migration.
+
+## Questions are off by default
+
+**Questions are off by default, and the gate lives in the threads service.** Taken 2026-11-14.
+The `questions.enabled` setting lets an admin choose whether people and agents ask, reply and
+accept answers. Stored threads remain when it is off. A route-only gate would leave other callers
+open: the CLI, MCP and REST all use the same service. Catalog answers omit question fields while
+off. The CLI behavior is checked in `apps/cli/tests/commands/test_questions_setting.py`;
+the service gate is specified in `docs/specs/2026-11-14-questions-setting.md`, section 2.
+
+Stops being right if questions become required for every deployment, or a new caller can reach
+threads without the service. That caller must use the same gate before it reads or writes a thread.
