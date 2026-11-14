@@ -131,6 +131,7 @@
               "unauthenticated",
               "refused",
               "not_found",
+              "questions_off",
               "invalid",
               "conflict",
               "rate_limited",
@@ -214,6 +215,9 @@
           "powerbi_connect_url": {
             "type": "string"
           },
+          "questions": {
+            "type": "boolean"
+          },
           "sample_data": {
             "type": "boolean"
           },
@@ -263,6 +267,7 @@
           "via",
           "powerbi_connection",
           "powerbi_connect_url",
+          "questions",
           "sample_data",
           "usage",
           "may_admin",
@@ -863,8 +868,6 @@
           }
         },
         "required": [
-          "open_questions",
-          "accepted_answers",
           "kind",
           "id",
           "name",
@@ -1462,8 +1465,6 @@
           }
         },
         "required": [
-          "open_questions",
-          "accepted_answers",
           "kind",
           "id",
           "name",
@@ -11360,6 +11361,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -14699,8 +14710,6 @@
                     }
                   },
                   "required": [
-                    "open_questions",
-                    "accepted_answers",
                     "kind",
                     "id",
                     "name",

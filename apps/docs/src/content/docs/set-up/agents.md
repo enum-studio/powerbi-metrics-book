@@ -109,6 +109,8 @@ Source: [Claude Code, Install and manage plugins](https://code.claude.com/docs/e
 
 If your own agent is doing this setup, `deploy_powerbi_metrics_book` walks it through the steps only a person can do, and checks each with `pbmb admin status`. `curate_metrics_book` and `query_power_bi` come into use after [First sync](/docs/set-up/first-sync/).
 
+`whoami` also reports `questions`: off by default. An admin turns on **Questions** under **Settings, General**. The `answer_questions` skill applies only when questions are on. Requests and the usage report stay available either way.
+
 An agent that queries needs people to have Build permission in Power BI. See [Running DAX for people](/docs/set-up/who-gets-in/#running-dax-for-people).
 
 ## Check

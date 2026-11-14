@@ -211,6 +211,22 @@ describe("the connector's tools", () => {
   it("are all on the spec's list, each once", () => {
     const names = TOOLS.map(({ name }) => name);
     expect(SPEC_TOOLS).toHaveLength(32);
+    expect(TOOLS).toHaveLength(32);
+    expect(TOOLS.filter((tool) => tool.requires === undefined)).toHaveLength(
+      26,
+    );
+    expect(
+      TOOLS.filter((tool) => tool.requires === "questions.enabled")
+        .map((tool) => tool.name)
+        .sort(),
+    ).toEqual([
+      "accept_reply",
+      "get_thread",
+      "list_threads",
+      "post_thread",
+      "reply_in_thread",
+      "set_upvote",
+    ]);
     expect(names.filter((name) => !SPEC_TOOLS.includes(name))).toEqual([]);
     expect(new Set(names).size).toBe(names.length);
     expect([...names].sort()).toEqual([...SPEC_TOOLS].sort());

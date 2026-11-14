@@ -18,6 +18,7 @@ async function acceptedAnswer(tx: Db, body: string) {
   const context = asPerson(reaching({ powerbi_app_ids: [id.sales_app] }), {
     db: tx,
   });
+  await context.settings.set("questions.enabled", true, context.principal);
   const question = await postThread(context, {
     kind: "question",
     element,
@@ -26,7 +27,7 @@ async function acceptedAnswer(tx: Db, body: string) {
   });
   const answer = await reply(context, question.id, body);
   await acceptReply(context, question.id, answer.id);
-  return (await openQuestionsFor(tx, element)).accepted_answers[0];
+  return (await openQuestionsFor(context, element))?.accepted_answers[0];
 }
 
 describe("accepted answer excerpts", () => {

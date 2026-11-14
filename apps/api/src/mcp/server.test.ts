@@ -32,6 +32,7 @@ const f = startOAuth();
 let token = "";
 
 beforeAll(async () => {
+  await f.deps.settings.set("questions.enabled", true, principals.admin);
   const { cookie } = await f.person();
   token = (await f.connect(cookie, f.client())).access_token;
 });
@@ -123,8 +124,8 @@ describe("the JSON-RPC envelope", () => {
 
   it("opens with the sample paragraph on the sample tenant and not otherwise", () => {
     const guide = "Name metrics the way the business speaks.\n\nThe rest.";
-    const sample = instructionsFor(guide, true).split("\n\n");
-    const real = instructionsFor(guide, false).split("\n\n");
+    const sample = instructionsFor(guide, true, true).split("\n\n");
+    const real = instructionsFor(guide, false, true).split("\n\n");
     expect(sample[0]).toBe(SAMPLE_PARAGRAPH);
     expect(sample.slice(1)).toEqual(real);
     expect(real).toEqual([
@@ -317,6 +318,7 @@ describe("the first tools", () => {
       powerbi_connection: "not_connected",
       powerbi_connect_url: `${TEST_PUBLIC_BASE_URL}/settings/connections`,
       sample_data: false,
+      questions: false,
       usage: { capture: true, retention_days: 180 },
       book_metrics: { draft: 0, agent_verified: 0, human_verified: 0 },
     });
@@ -328,8 +330,10 @@ describe("the first tools", () => {
     const own = (await g.connect(cookie, g.client())).access_token;
     await g.deps.settings.set("usage.capture", false, principals.admin);
     await g.deps.settings.set("usage.retention_days", 30, principals.admin);
+    await g.deps.settings.set("questions.enabled", true, principals.admin);
     expect(await toolAnswer(await g.whoami(own))).toMatchObject({
       usage: { capture: false, retention_days: 30 },
+      questions: true,
     });
   });
 
@@ -343,7 +347,7 @@ describe("the first tools", () => {
   });
 
   it("says in the instructions what draft and the verified states mean, and what the thread tools do", () => {
-    const [first = ""] = instructionsFor("Guide.", false).split("\n\n");
+    const [first = ""] = instructionsFor("Guide.", false, true).split("\n\n");
     expect(first).toContain("The sync and curators draft metrics");
     expect(first).toContain("only human_verified was approved by a person");
     expect(first).toContain(
@@ -351,7 +355,7 @@ describe("the first tools", () => {
     );
     expect(first).not.toContain("which curators answer");
     expect(first).not.toContain("curated");
-    expect(instructionsFor("Guide.", false)).toContain(
+    expect(instructionsFor("Guide.", false, true)).toContain(
       "your searches and the requests you record are kept",
     );
   });

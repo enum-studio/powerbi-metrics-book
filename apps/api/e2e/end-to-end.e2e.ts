@@ -724,6 +724,17 @@ describe("Power BI Metrics Book end to end, on the mock", () => {
   });
 
   it("answers a question asked through MCP from the CLI, unread in the asker's questions", async () => {
+    const off = await state.viewer.send("/api/v1/threads");
+    expect(off.status).toBe(404);
+    expect(await off.json()).toMatchObject({ error: "questions_off" });
+    await json(
+      await state.admin.send("/api/v1/admin/settings/questions.enabled", {
+        method: "PUT",
+        json: { value: true },
+      }),
+      200,
+      "Enable questions",
+    );
     const thread = await viewerMcp.call<{ id: string }>("post_thread", {
       kind: "question",
       element: { kind: "metric", id: netSales.id },

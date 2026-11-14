@@ -218,6 +218,7 @@ describe("get_metric", () => {
       const orders = await metricIn(tx, "orders");
       await fileUnder(tx, orders, id.net_sales);
       const person = asPerson(everyWorkspace, { db: tx });
+      await person.settings.set("questions.enabled", true, person.principal);
       for (let index = 0; index < 10; index += 1) {
         const question = await postThread(person, {
           kind: "question",

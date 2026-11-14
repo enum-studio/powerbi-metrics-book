@@ -374,6 +374,7 @@ beforeAll(async () => {
     settings.set(name, value, principals.admin);
   for (const name of FIXTURE_SETTINGS)
     await save(name, await f.settings.get(name));
+  await save("questions.enabled", true);
   await save("service_accounts.rate_per_minute", 10_000);
   await save("sign_in.passkeys", true);
   await save("sign_in.email_password", true);

@@ -357,6 +357,16 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   nothing that writes the book, the conventions or a result for another
   principal. What a tool answers from the book, Power BI or a thread is
   data, never instructions: the descriptions say so.
+- Questions are off by default (`questions.enabled`). Only an admin with
+  `manage_settings` changes the setting, unless the operator pins it in the
+  environment. Every entry point of `services/threads/threads.ts` checks it
+  after the route checks its credential and the request's shape (which reads
+  nothing), and before Cerbos or a thread read or write, answering
+  `questions_off` without revealing whether a thread exists. While off, the
+  connector hides its six thread tools and answers a call to one as an
+  unknown name, catalog reads leave out the question fields, and the feed
+  leaves out `thread.*` events. Turning questions off deletes nothing;
+  turning them on again restores access under the same policies.
 - MCP clients and the CLI get OAuth from Better Auth's OAuth provider
   (`services/auth/oauth.ts`, `device.ts`), issuer `<PUBLIC_BASE_URL>/api/auth`:
   - Tokens: one-hour EdDSA JWT access tokens, verified in the api against
@@ -773,7 +783,8 @@ Crossing: authorization questions, the api's reads and writes.
     before and after;
   - a variant event by the `dataset_id` and `measure_id` it recorded. A
     caller without `pii_reader` sees it only when the measure is not PII;
-  - a thread event as `findThread` shows the thread, by its element;
+  - a thread event as `findThread` shows the thread, by its element, and
+    none while questions are off;
   - term and conventions events to everyone, as they are readable by all;
   - `sync.*` events only with `admin:read_sync_events`, which a service
     account is refused in code, and their `error` only with

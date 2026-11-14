@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { ApiError, api, read } from "./client";
 import type { components } from "./schema";
 
@@ -16,3 +16,8 @@ export const meQuery = queryOptions({
     }
   },
 });
+
+/** Whether questions are enabled for this deployment. */
+export function useQuestions(): boolean {
+  return useQuery(meQuery).data?.questions === true;
+}

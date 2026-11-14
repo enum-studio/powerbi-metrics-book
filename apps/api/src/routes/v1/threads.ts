@@ -79,7 +79,7 @@ export function threadsRoutes(deps: AppDeps): Hono<AppEnv> {
   const list = documented(
     "Threads the caller may see",
     z.object({ items: z.array(Summary), next_cursor: z.string().nullable() }),
-    { errors: [400] },
+    { errors: [400, 404] },
   );
   routes.get(
     "/threads",

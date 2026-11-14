@@ -461,3 +461,19 @@ and the record, `book.test.ts` the CHECKs, `icons_security_test.ts` the reach.
 Stops being right if an icon ever carries meaning (a status that readers act on): it would then be
 curation, and would need the trust rules. It also stops if the glyph list changes: the CHECK holds
 the names at migration time, so a name removed from `icon-glyphs.ts` needs a migration.
+
+## Questions are off by default
+
+**Questions are off until an admin turns on `questions.enabled`, and the gate lives in the threads
+service.** Taken 2026-11-14. A question only helps when someone answers it, and a new deployment has
+no curators watching for them yet. Left on, agents would post into a queue nobody reads, so a
+company turns questions on when its curators are ready to answer.
+
+Every entry point of `services/threads/threads.ts` checks the setting first, so the REST routes, the
+MCP tools, the change feed and the get answers of metrics, datasets and terms are all gated in one
+place. A gate on the routes alone would leave the other doors open. Stored threads are kept while
+questions are off. `apps/api/src/services/threads/questions_setting_security_test.ts` holds the gate
+on every door; `apps/cli/tests/commands/test_questions_setting.py` holds what the CLI shows.
+
+Stops being right if questions become part of every deployment, or if a new door reaches the thread
+tables without going through the threads service.

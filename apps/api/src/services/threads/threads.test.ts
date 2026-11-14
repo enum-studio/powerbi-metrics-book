@@ -1,3 +1,4 @@
+import { MemorySettings } from "../../../test/doubles.js";
 import { NO_SUCH_DATASET } from "../../errors.js";
 import { randomUUID } from "node:crypto";
 import { asc, eq, sql } from "drizzle-orm";
@@ -53,9 +54,11 @@ function session(tx: Db) {
     at += 1000;
     return new Date(at);
   };
+  const settings = new MemorySettings({ "questions.enabled": true });
   return (principal: Principal) => ({
     ...asPerson(principal, { db: tx }),
     clock,
+    settings,
   });
 }
 type As = ReturnType<typeof session>;

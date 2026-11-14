@@ -6,6 +6,7 @@ export const ERROR_STATUS: Record<ErrorKind, ContentfulStatusCode> = {
   unauthenticated: 401,
   refused: 403,
   not_found: 404,
+  questions_off: 404,
   invalid: 400,
   conflict: 409,
   rate_limited: 429,

@@ -23,6 +23,7 @@ import type { Principal } from "../../principal.js";
 import { mayAdmin } from "../admin/guard.js";
 import { visibleMetric } from "../mirror/read.js";
 import { piiMeasure, readsPii } from "../pii/rules.js";
+import { questionsOn } from "../threads/open-questions.js";
 import { elementSeen } from "../threads/threads.js";
 
 /** A page of the feed is never longer than this, whatever a reader asks for. */
@@ -221,7 +222,13 @@ export async function readVisibleEvents(
     mayReadSync && (await mayAdmin(context, "manage_settings"));
   const rows = await readEvents(db, {
     ...query,
-    where: and(seen, mayReadSync ? undefined : notLike(event.kind, "sync.%")),
+    where: and(
+      seen,
+      mayReadSync ? undefined : notLike(event.kind, "sync.%"),
+      (await questionsOn(context))
+        ? undefined
+        : notLike(event.kind, "thread.%"),
+    ),
   });
   const shown = await describableMeasureIds(db, rows, measureShown);
   const reachable = await describableDatasetIds(db, rows, allowed);

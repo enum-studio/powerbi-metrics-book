@@ -1255,7 +1255,8 @@ pbmb metrics request-review NAME
 
 Show a metric completely: failing checks first, then its fields, base
 variants per dataset (with the measure_reference to use in DAX), the count
-of its other variants by shift, terms and accepted answers.
+of its other variants by shift, terms and, when questions are on,
+accepted answers.
 
 Use a variant's DAX instead of writing your own: `pbmb variants show <id>`.
 
@@ -1353,7 +1354,7 @@ pbmb queries show ID
 
 ## `pbmb questions`
 
-Ask questions and leave comments on anything in the book.
+Ask questions and leave comments on anything in the book. An admin must turn questions on under Settings, General.
 
 ```bash
 pbmb questions COMMAND
@@ -2039,9 +2040,9 @@ Show who the deployment sees you as.
 
 Asks GET /api/v1/me: the person or service account, its roles and the state
 of the Power BI connection, and on the sample tenant a line saying so. It
-also shows whether searches and requests are captured and their retention
-in days. It proves the address, your credentials and the api in one call,
-so it is the first thing to run after `pbmb login`.
+also shows whether questions are on, whether searches and requests are
+captured and their retention in days. It proves the address, your credentials
+and the api in one call, so it is the first thing to run after `pbmb login`.
 
 ```bash
 pbmb whoami

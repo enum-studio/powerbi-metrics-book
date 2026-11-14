@@ -86,6 +86,12 @@ const signInProviders = z
   });
 
 export const SETTINGS: { readonly [K in SettingKey]: SettingEntry<K> } = {
+  "questions.enabled": {
+    schema: z.boolean(),
+    default: false,
+    description:
+      "Let people and agents ask questions about metrics, datasets and terms, reply, and accept an answer.",
+  },
   "usage.capture": {
     schema: z.boolean(),
     default: true,

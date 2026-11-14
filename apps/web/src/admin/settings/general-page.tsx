@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { sent, signInConfigQuery } from "../../access/api";
+import { meQuery } from "../../api/me";
 import { api, ApiError } from "../../api/client";
 import { Button, INPUT, PageFrame, SectionBox } from "../layout/ui";
 import type { FieldSpec } from "./fields";
@@ -14,7 +15,10 @@ const FIELDS: FieldSpec[] = [
 export function GeneralPage() {
   const client = useQueryClient();
   return (
-    <PageFrame title="General" lede="Your company's name and logo.">
+    <PageFrame
+      title="General"
+      lede="Your company's name and logo, and whether people can ask questions."
+    >
       <Section
         title="Company"
         fields={FIELDS}
@@ -23,6 +27,13 @@ export function GeneralPage() {
         }
       />
       <LogoPicker />
+      <Section
+        title="Questions"
+        fields={[
+          { key: "questions.enabled", label: "Questions", kind: "bool" },
+        ]}
+        onSaved={() => client.invalidateQueries({ queryKey: meQuery.queryKey })}
+      />
     </PageFrame>
   );
 }

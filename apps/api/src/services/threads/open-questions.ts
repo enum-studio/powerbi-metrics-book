@@ -1,6 +1,7 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { excerpt } from "../text.js";
-import type { Db } from "../../context.js";
+import { ServiceError } from "../../errors.js";
+import type { ServiceContext } from "../../context.js";
 import {
   thread,
   threadReply,
@@ -44,8 +45,25 @@ export function acceptedByOf(row: {
   };
 }
 
-/** The open questions on one element and its accepted answers. Archived threads count for nothing. */
-export async function openQuestionsFor(db: Db, element: ThreadElement) {
+export function questionsOn(context: ServiceContext): Promise<boolean> {
+  return context.settings.get("questions.enabled");
+}
+
+export async function requireQuestions(context: ServiceContext): Promise<void> {
+  if (!(await questionsOn(context)))
+    throw new ServiceError(
+      "questions_off",
+      "Questions are off. An admin turns them on under Settings, General.",
+    );
+}
+
+/** The open questions on one element and its accepted answers, or null while questions are off. */
+export async function openQuestionsFor(
+  context: ServiceContext,
+  element: ThreadElement,
+) {
+  if (!(await questionsOn(context))) return null;
+  const { db } = context;
   const here = and(
     eq(thread.element_kind, element.kind),
     eq(thread.element_id, element.id),

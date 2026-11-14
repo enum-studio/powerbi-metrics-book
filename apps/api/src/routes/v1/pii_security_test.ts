@@ -147,6 +147,7 @@ beforeAll(async () => {
       cardinality: "many_to_one",
     },
   ]);
+  await f.settings.set("questions.enabled", true);
   oauth = startOAuth({
     settings: f.settings,
     vault: f.deps.vault,

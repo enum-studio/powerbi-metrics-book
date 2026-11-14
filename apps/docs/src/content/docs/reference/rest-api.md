@@ -1434,8 +1434,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "dataset" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -1760,6 +1760,7 @@ Fields of the first answer:
 | `via` | one of "browser", "mcp", "api", "cli" | yes |   |
 | `powerbi_connection` | one of "connected", "needs_reconnect", "disconnected", "not_connected" or null | yes |   |
 | `powerbi_connect_url` | text | yes |   |
+| `questions` | true or false | yes |   |
 | `sample_data` | true or false | yes |   |
 | `usage` | an object with capture, retention_days | yes |   |
 | `may_admin` | true or false | yes | Whether the admin section opens for the caller: the admin status page's own guard (admin:read_status). |
@@ -1891,8 +1892,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -1944,8 +1945,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -1999,8 +2000,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -2074,8 +2075,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -2127,8 +2128,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -2186,8 +2187,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -2277,8 +2278,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "metric" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3275,8 +3276,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3323,8 +3324,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3372,8 +3373,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3426,8 +3427,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3464,8 +3465,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3502,8 +3503,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3540,8 +3541,8 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `open_questions` | a number | yes |   |
-| `accepted_answers` | a list of an object | yes |   |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
 | `kind` | "term" | yes |   |
 | `id` | text | yes |   |
 | `name` | text | yes |   |
@@ -3621,7 +3622,7 @@ Fields of the first answer:
 | `items` | a list of an object | yes |   |
 | `next_cursor` | text or null | yes |   |
 
-Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
 ### POST `/api/v1/threads`
 
