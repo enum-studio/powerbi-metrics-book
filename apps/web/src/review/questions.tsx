@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useQuestions } from "../api/me";
 import { CodePanel } from "./code-panel";
 import { formatTime } from "../shell/time";
 import { useDemo } from "../shell/demo";
@@ -6,7 +7,9 @@ import { questionsQuery } from "./queries";
 
 /** The questions section of a metric page. The demo serves no threads, so it draws nothing there and sends no request. */
 export function QuestionsSection({ metricId }: { metricId: string }) {
-  if (useDemo()) return null;
+  const demo = useDemo();
+  const questions = useQuestions();
+  if (demo || !questions) return null;
   return (
     <section
       aria-labelledby="questions-heading"
