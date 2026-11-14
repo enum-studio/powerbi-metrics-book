@@ -47,9 +47,40 @@ useMirror();
 const names = (items: { name: string }[]) => items.map((item) => item.name);
 
 describe("listDatasets", () => {
+  it("filters dataset, column and measure names in SQL and counts the first page", () =>
+    rolledBack(async (tx) => {
+      const context = asPerson(appReader, { db: tx });
+      expect(
+        await listDatasets(context, { name_contains: "ALES", limit: 1 }),
+      ).toMatchObject({ total: 1, items: [{ name: "Sales" }] });
+      for (const list of [listColumns, listMeasures]) {
+        const first = await list(context, { dataset: id.sales, limit: 1 });
+        expect(first).toHaveProperty("total");
+        const name = first.items[0]?.name;
+        if (name === undefined) throw new Error("Sample list is empty");
+        const filtered = await list(context, {
+          dataset: id.sales,
+          name_contains: name.toUpperCase().replaceAll(" ", "_"),
+          limit: 1,
+        });
+        expect(filtered.items[0]?.name).toBe(name);
+        expect(filtered).toHaveProperty("total");
+        expect(
+          await list(context, { dataset: id.sales, name_contains: "%" }),
+        ).toMatchObject({ total: 0, items: [] });
+        if (first.next_cursor !== null)
+          expect(
+            await list(context, {
+              dataset: id.sales,
+              cursor: first.next_cursor,
+            }),
+          ).not.toHaveProperty("total");
+      }
+    }));
+
   it("shows the outsider no dataset under powerbi", async () => {
     const page = await listDatasets(asPerson(outsider), {});
-    expect(page).toEqual({ items: [], next_cursor: null });
+    expect(page).toEqual({ total: 0, items: [], next_cursor: null });
   });
 
   it("shows the app-only viewer the Sales dataset, reached through the app alone", async () => {
@@ -132,6 +163,7 @@ describe("listDatasets", () => {
     expect(names((await listDatasets(context)).items)).toEqual(["Sales"]);
     for (const app of ["Sales app", id.sales_app, "Nothing", randomUUID()])
       expect(await listDatasets(context, { app })).toEqual({
+        total: 0,
         items: [],
         next_cursor: null,
       });

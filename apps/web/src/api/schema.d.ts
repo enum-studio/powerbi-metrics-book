@@ -3739,6 +3739,8 @@ export interface operations {
   getApiV1Metrics: {
     parameters: {
       query?: {
+        name_prefix?: string;
+        name_contains?: string;
         workspace?: string;
         app?: string;
         dataset?: string;
@@ -7608,6 +7610,8 @@ export interface operations {
       query?: {
         query?: string;
         kinds?: string;
+        name_prefix?: string;
+        name_contains?: string;
         workspace?: string;
         app?: string;
         dataset?: string;
@@ -7659,6 +7663,7 @@ export interface operations {
               score: number;
               /** @enum {string} */
               match: "exact" | "words" | "meaning";
+              aliases?: string[];
               path: {
                 /** @enum {string} */
                 kind: "workspace" | "dataset" | "table" | "folder" | "category";
@@ -7821,6 +7826,7 @@ export interface operations {
               };
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -7923,6 +7929,8 @@ export interface operations {
   getApiV1Terms: {
     parameters: {
       query?: {
+        name_prefix?: string;
+        name_contains?: string;
         workspace?: string;
         app?: string;
         dataset?: string;
@@ -7966,6 +7974,7 @@ export interface operations {
               };
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -8106,6 +8115,7 @@ export interface operations {
         workspace?: string;
         app?: string;
         name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: number;
       };
@@ -8145,6 +8155,7 @@ export interface operations {
               removed: boolean;
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -8338,6 +8349,7 @@ export interface operations {
       query?: {
         table?: string;
         name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: number;
       };
@@ -8390,6 +8402,7 @@ export interface operations {
             }[];
             next_cursor: string | null;
             pii_hidden?: number;
+            total?: number;
           };
         };
       };
@@ -8559,6 +8572,8 @@ export interface operations {
     parameters: {
       query?: {
         table?: string;
+        name_prefix?: string;
+        name_contains?: string;
         unfiled?: "true" | "false";
         cursor?: string;
         limit?: number;
@@ -8618,6 +8633,7 @@ export interface operations {
             }[];
             next_cursor: string | null;
             pii_hidden?: number;
+            total?: number;
           };
         };
       };

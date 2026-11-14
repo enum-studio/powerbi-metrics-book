@@ -36,6 +36,7 @@ import { currentConventions } from "../conventions/store.js";
 import { type NewEvent, withEvents } from "../events/feed.js";
 import {
   afterCursor,
+  containsName,
   byIdOrName,
   appsSeen,
   inApp,
@@ -97,7 +98,10 @@ export async function resolveTerm(db: Db, reference: string): Promise<TermRow> {
     .limit(6);
   const [found, ...others] = rows;
   if (found === undefined) {
-    throw new ServiceError("not_found", `No term goes by "${reference}".`);
+    throw new ServiceError(
+      "not_found",
+      `No term goes by "${reference}". search finds a term by a word, and list_terms lists the terms A to Z.`,
+    );
   }
   if (others.length > 0) {
     const names = rows.map((row) => `${row.name} (${row.id})`).join(", ");
@@ -637,6 +641,7 @@ export type TermFilters = {
   /** Custom fields to match, as text: { owner_team: "finance" }. */
   custom?: Record<string, string>;
   name_prefix?: string;
+  name_contains?: string;
   /** `cursor` is the `next_cursor` of the page before. */
   cursor?: string;
   limit?: number;
@@ -685,6 +690,30 @@ export async function listTerms(
   const hides = !(await readsPii(context));
   const limit = sizeOf(filters.limit);
   const prefix = filters.name_prefix?.toLowerCase();
+  const matching = and(
+    or(
+      containsName(term.name, filters.name_contains),
+      filters.name_contains === undefined
+        ? undefined
+        : sql`exists (select 1 from unnest(${term.aliases}) alias where ${containsName(sql`alias`, filters.name_contains)})`,
+    ),
+    backedWhere(
+      context.db,
+      allowed,
+      await appsSeen(context, allowed),
+      filters,
+      hides,
+    ),
+    filters.trust_states === undefined
+      ? undefined
+      : inArray(term.trust_state, filters.trust_states),
+    ...Object.entries(filters.custom ?? {}).map(
+      ([key, value]) => sql`${term.custom} ->> ${key} = ${value}`,
+    ),
+    prefix === undefined
+      ? undefined
+      : sql`starts_with(lower(${term.name}), ${prefix})`,
+  );
   const rows = await context.db
     .select({
       id: term.id,
@@ -708,31 +737,19 @@ export async function listTerms(
         .as("column_count"),
     })
     .from(term)
-    .where(
-      and(
-        backedWhere(
-          context.db,
-          allowed,
-          await appsSeen(context, allowed),
-          filters,
-          hides,
-        ),
-        filters.trust_states === undefined
-          ? undefined
-          : inArray(term.trust_state, filters.trust_states),
-        ...Object.entries(filters.custom ?? {}).map(
-          ([key, value]) => sql`${term.custom} ->> ${key} = ${value}`,
-        ),
-        prefix === undefined
-          ? undefined
-          : sql`starts_with(lower(${term.name}), ${prefix})`,
-        afterCursor(term, filters.cursor),
-      ),
-    )
+    .where(and(matching, afterCursor(term, filters.cursor)))
     .orderBy(asc(term.name), asc(term.id))
     .limit(limit + 1);
   const page = pageOf(rows, limit);
-  return { items: page.items.map(anchorOf), next_cursor: page.next_cursor };
+  const [counted] =
+    filters.cursor === undefined
+      ? await context.db.select({ total: count() }).from(term).where(matching)
+      : [];
+  return {
+    ...counted,
+    items: page.items.map(anchorOf),
+    next_cursor: page.next_cursor,
+  };
 }
 
 function anchorOf(row: {

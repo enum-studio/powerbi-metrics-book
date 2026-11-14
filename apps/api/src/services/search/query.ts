@@ -111,6 +111,7 @@ export type PathStep = {
 };
 
 export type SearchHit = {
+  aliases?: string[];
   kind: SearchKind;
   id: string;
   name: string;
@@ -194,7 +195,8 @@ type Place = Record<"workspace" | "dataset", Named> & {
 };
 
 /** A hit as the query answers it, before its path is put together. */
-type Row = Omit<SearchHit, "path"> & {
+type Row = Omit<SearchHit, "path" | "aliases"> & {
+  aliases: string[] | null;
   more: {
     place: Place | null;
     categories: PathStep[] | null;
@@ -567,6 +569,7 @@ export async function search(
           where ${powerbiDataset.id} = any(${d.dataset_ids}) and ${reachable}
           having count(*) = 1) as dataset,
         ${icon} as icon, ${ofMetric} as metric,
+        case when ${d.kind} = 'metric' then (select m.aliases from metric m where m.id = ${d.element_id}) end as aliases,
         json_build_object('place', ${place}, 'categories', ${filed},
           'counts', (select json_object_agg(kind, n) from counted)) as more
       from hit join ${d} on ${d.id} = hit.doc
@@ -585,10 +588,13 @@ export async function search(
   });
 
   const answer: Omit<SearchAnswer, "search_id"> = {
-    items: rows.map(({ more, ...hit }) => {
+    items: rows.map(({ more, aliases, ...hit }) => {
       const summary = excerpt(hit.summary, SUMMARY_MAX);
       return {
         ...hit,
+        ...(hit.kind === "metric" &&
+          aliases !== null &&
+          aliases.length > 0 && { aliases }),
         summary: summary.text,
         ...(summary.truncated && { summary_truncated: true as const }),
         path: pathOf(hit.kind, more.place, more.categories),

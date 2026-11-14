@@ -116,6 +116,28 @@ describe("GET /metrics/{name}", () => {
 });
 
 describe("the read routes", () => {
+  it("accepts name_contains and preserves first-page totals on list routes", async () => {
+    const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("Sample has no dataset");
+    for (const path of [
+      "/metrics",
+      "/terms",
+      "/datasets",
+      `/datasets/${dataset.id}/columns`,
+      `/datasets/${dataset.id}/measures`,
+    ]) {
+      const answer = await get(
+        viewer,
+        `${path}?name_contains=absent%25sample&limit=1`,
+      );
+      expect(answer).toMatchObject({
+        status: 200,
+        body: { total: 0, items: [] },
+      });
+    }
+  });
+
   it("keeps a related metric's truncated summary flag over REST", async () => {
     const viewer = await signedIn("viewer");
     const original = await getMetric(admin, "sessions");

@@ -339,6 +339,28 @@ describe("summarizeBook", () => {
 });
 
 describe("listMetrics", () => {
+  it("matches normalized key, label and aliases before paging, with literal LIKE characters", () =>
+    drafted(async (tx) => {
+      const context = asPerson(curator, { db: tx });
+      const created = await createMetric(context, {
+        name: "sample_filter_key",
+        label: "Sample filter label",
+        definition: "Sample.",
+        aliases: ["Odd%_\\word"],
+      });
+      for (const name_contains of [
+        "FILTER KEY",
+        "filter_label",
+        "odd% \\word",
+      ]) {
+        const page = await listMetrics(context, { name_contains, limit: 1 });
+        expect(page).toMatchObject({ total: 1, items: [{ id: created.id }] });
+      }
+      expect(
+        (await listMetrics(context, { name_contains: "odd%X" })).items,
+      ).toEqual([]);
+    }));
+
   it("counts only datasets the caller may describe", () =>
     drafted(async (tx, sample) => {
       const name = await draftOf(tx, sample, SALES, "Orders");

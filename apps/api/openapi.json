@@ -5571,6 +5571,22 @@
         "description": "Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20.",
         "parameters": [
           {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "workspace",
             "in": "query",
             "required": false,
@@ -12859,6 +12875,12 @@
                               "meaning"
                             ]
                           },
+                          "aliases": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "path": {
                             "type": "array",
                             "items": {
@@ -13049,6 +13071,22 @@
           },
           {
             "name": "kinds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
             "in": "query",
             "required": false,
             "schema": {
@@ -13334,6 +13372,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -13644,6 +13685,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -13688,6 +13732,22 @@
         },
         "description": "Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20.",
         "parameters": [
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "workspace",
             "in": "query",
@@ -14058,6 +14118,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -14122,6 +14185,15 @@
           {
             "in": "query",
             "name": "name_prefix",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -14832,6 +14904,9 @@
                     },
                     "pii_hidden": {
                       "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -14907,6 +14982,15 @@
           {
             "in": "query",
             "name": "name_prefix",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -15498,6 +15582,9 @@
                     },
                     "pii_hidden": {
                       "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -15564,6 +15651,24 @@
           {
             "in": "query",
             "name": "table",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_prefix",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,
