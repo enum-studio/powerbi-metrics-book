@@ -10,8 +10,8 @@ import {
 
 /** A tool as the server lists and calls it, whatever its input. */
 export type Tool = {
-  readonly requires?: "questions.enabled";
   readonly name: string;
+  readonly requires?: "questions.enabled";
   readonly description: string;
   /** The input as JSON Schema, which tools/list announces. */
   readonly inputSchema: z.core.JSONSchema.BaseSchema;
@@ -21,8 +21,9 @@ export type Tool = {
 
 export type ToolDefinition<Input extends z.ZodObject> = {
   /** snake_case, and on the spec's list (connector_surface_security_test.ts). */
-  requires?: "questions.enabled";
   name: string;
+  /** The setting that must be on for the tool to be listed and called. */
+  requires?: "questions.enabled";
   cutSentence?: string;
   /** Says when to use the tool, which is how a model chooses it. */
   description: string;

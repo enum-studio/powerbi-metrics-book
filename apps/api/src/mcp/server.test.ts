@@ -124,8 +124,8 @@ describe("the JSON-RPC envelope", () => {
 
   it("opens with the sample paragraph on the sample tenant and not otherwise", () => {
     const guide = "Name metrics the way the business speaks.\n\nThe rest.";
-    const sample = instructionsFor(guide, true).split("\n\n");
-    const real = instructionsFor(guide, false).split("\n\n");
+    const sample = instructionsFor(guide, true, true).split("\n\n");
+    const real = instructionsFor(guide, false, true).split("\n\n");
     expect(sample[0]).toBe(SAMPLE_PARAGRAPH);
     expect(sample.slice(1)).toEqual(real);
     expect(real).toEqual([
@@ -347,7 +347,7 @@ describe("the first tools", () => {
   });
 
   it("says in the instructions what draft and the verified states mean, and what the thread tools do", () => {
-    const [first = ""] = instructionsFor("Guide.", false).split("\n\n");
+    const [first = ""] = instructionsFor("Guide.", false, true).split("\n\n");
     expect(first).toContain("The sync and curators draft metrics");
     expect(first).toContain("only human_verified was approved by a person");
     expect(first).toContain(
@@ -355,7 +355,7 @@ describe("the first tools", () => {
     );
     expect(first).not.toContain("which curators answer");
     expect(first).not.toContain("curated");
-    expect(instructionsFor("Guide.", false)).toContain(
+    expect(instructionsFor("Guide.", false, true)).toContain(
       "your searches and the requests you record are kept",
     );
   });

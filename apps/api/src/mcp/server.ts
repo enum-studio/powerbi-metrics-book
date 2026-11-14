@@ -67,15 +67,16 @@ async function instructions(
 }
 
 /**
- * The instructions for a guide and for whether the stack runs on the sample
- * tenant, which is all they depend on besides this text. The docs' dump of
- * the connector (scripts/dump-mcp-tools.ts) passes the default preset's guide
- * with questions enabled so the docs include the optional thread tools.
+ * The instructions for a guide, for whether the stack runs on the sample
+ * tenant and for whether questions are on, which is all they depend on
+ * besides this text. The docs' dump of the connector
+ * (scripts/dump-mcp-tools.ts) passes the default preset's guide, false and
+ * true, so a new input fails to compile there.
  */
 export function instructionsFor(
   guide: string,
   sample: boolean,
-  questions = true,
+  questions: boolean,
 ): string {
   return [
     ...(sample

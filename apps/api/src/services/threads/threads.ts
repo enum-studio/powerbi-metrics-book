@@ -1,4 +1,3 @@
-import { requireQuestions } from "./open-questions.js";
 import { randomUUID } from "node:crypto";
 import {
   and,
@@ -53,7 +52,7 @@ import {
   visibleMetric,
 } from "../mirror/read.js";
 import { piiColumn, piiMeasure, readsPii } from "../pii/rules.js";
-import { acceptedByOf } from "./open-questions.js";
+import { acceptedByOf, requireQuestions } from "./open-questions.js";
 
 /*
  * Questions and comments on any element. A thread is seen by the callers who
