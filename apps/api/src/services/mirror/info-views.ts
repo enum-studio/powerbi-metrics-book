@@ -1,3 +1,4 @@
+import { connectionsPage } from "../../config.js";
 import { setTimeout as sleep } from "node:timers/promises";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -13,7 +14,7 @@ import {
 import { NO_SUCH_DATASET, ServiceError } from "../../errors.js";
 import { parseAnswer } from "../../powerbi/errors.js";
 import { mirrorSpelling } from "../../powerbi/scanner.js";
-import { connectionsPage, connectionState } from "../connection/store.js";
+import { connectionState } from "../connection/store.js";
 import { readModelView } from "../queries/execute.js";
 import { createResultStore } from "../queries/store.js";
 import { countRequest } from "../rate-limit.js";

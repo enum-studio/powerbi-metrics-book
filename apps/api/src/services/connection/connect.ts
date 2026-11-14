@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, lt, ne, or } from "drizzle-orm";
-import type { Config } from "../../config.js";
+import { connectAgain, type Config } from "../../config.js";
 import type { AppDeps, ServiceContext } from "../../context.js";
 import {
   powerbiConnection,
@@ -18,7 +18,6 @@ import { writeAudit } from "../audit/write.js";
 import { readGroups } from "./groups.js";
 import {
   accountTaken,
-  connectionsPage,
   endConnection,
   hidingValues,
   ownAccountRequired,
@@ -180,12 +179,12 @@ async function connectAccount(
   )
     throw new ServiceError(
       "refused",
-      `This Power BI connection link has expired or was used already. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
+      `This Power BI connection link has expired or was used already. ${connectAgain(deps.config)}`,
     );
   if (query.code === undefined)
     throw new ServiceError(
       "refused",
-      `Microsoft did not connect Power BI. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
+      `Microsoft did not connect Power BI. ${connectAgain(deps.config)}`,
     );
   const redeemed = await redeemCode(deps, {
     code: query.code,

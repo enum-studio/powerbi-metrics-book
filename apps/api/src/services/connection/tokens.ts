@@ -1,9 +1,9 @@
+import { connectionsPage } from "../../config.js";
 import { eq } from "drizzle-orm";
 import type { ServiceContext } from "../../context.js";
 import { powerbiConnection } from "../../db/schema/connection.js";
 import { ServiceError } from "../../errors.js";
 import {
-  connectionsPage,
   enforceOwnAccount,
   lockConnection,
   ownAccountRequired,

@@ -11,6 +11,10 @@ import {
 import { myGroupIds } from "./graph.js";
 import { refresh, scannerToken } from "./identity.js";
 
+const reconnectMessage: unknown = expect.stringContaining(
+  "Connect Power BI again at https://metrics.example.com/settings/connections, then run this again.",
+);
+
 const tenant = sampleTenant();
 const person = (mailbox: string) => samplePerson(tenant, mailbox);
 const groupId = (name: string) =>
@@ -94,6 +98,19 @@ describe("a person's connection", () => {
     ]);
   });
 
+  it.each([401, 403])(
+    "names the connections page when Graph refuses %s",
+    async (status) => {
+      power.mock.failNext("/graph/v1.0/me/transitiveMemberOf", status);
+      await expect(
+        myGroupIds(power.deps, "refused-token"),
+      ).rejects.toMatchObject({
+        kind: "needs_connection",
+        message: reconnectMessage,
+      });
+    },
+  );
+
   it("turns a refresh token spent twice into needs_connection", async () => {
     const { refresh_token } = await connect(power, person("analyst"));
     await refresh(power.deps, refresh_token, "powerbi");
@@ -102,6 +119,7 @@ describe("a person's connection", () => {
       refresh(power.deps, refresh_token, "powerbi"),
     ).rejects.toMatchObject({
       kind: "needs_connection",
+      message: reconnectMessage,
       detail: { code: "invalid_grant" },
     });
   });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { connectionsPage } from "../services/connection/store.js";
+import { connectAgain } from "../config.js";
 import { ServiceError } from "../errors.js";
 import {
   parseAnswer,
@@ -41,7 +41,7 @@ export async function myGroupIds(
     if (response.status === 401 || response.status === 403) {
       throw new ServiceError(
         "needs_connection",
-        `Microsoft Graph refused your Power BI connection's token. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
+        `Microsoft Graph refused your Power BI connection's token. ${connectAgain(deps.config)}`,
         { status: response.status, ...error },
       );
     }

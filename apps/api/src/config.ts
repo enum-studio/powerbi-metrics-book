@@ -53,6 +53,15 @@ export type ApiConfig = SharedConfig & {
 export type WorkerConfig = SharedConfig & { container: "worker" };
 export type Config = ApiConfig | WorkerConfig;
 
+/** The page where a person connects Power BI, as the sentences name it. */
+export function connectionsPage(config: Config): string {
+  return `${config.public_base_url.href.replace(/\/$/, "")}/settings/connections`;
+}
+
+export function connectAgain(config: Config): string {
+  return `Connect Power BI again at ${connectionsPage(config)}, then run this again.`;
+}
+
 type Env = Record<string, string | undefined>;
 
 /**

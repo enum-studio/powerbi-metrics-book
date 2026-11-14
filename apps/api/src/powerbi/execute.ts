@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { connectionsPage } from "../services/connection/store.js";
+import { connectAgain } from "../config.js";
 import { NO_SUCH_DATASET, ServiceError } from "../errors.js";
 import {
   parseAnswer,
@@ -141,7 +141,7 @@ function refusal(
   if (response.status === 401) {
     return new ServiceError(
       "needs_connection",
-      `Power BI no longer accepts your connection's token. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
+      `Power BI no longer accepts your connection's token. ${connectAgain(deps.config)}`,
       detail,
     );
   }

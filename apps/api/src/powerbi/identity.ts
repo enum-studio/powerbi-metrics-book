@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { AppDeps, SecretName } from "../context.js";
 import { ServiceError } from "../errors.js";
-import { connectionsPage } from "../services/connection/store.js";
+import { connectAgain } from "../config.js";
 import { microsoftClaims } from "../services/auth/sign-in.js";
 import {
   parseAnswer,
@@ -138,7 +138,7 @@ async function requestToken<S extends z.ZodType>(
   if (error?.code === "invalid_grant" && form.grant_type !== CLIENT_GRANT) {
     throw new ServiceError(
       "needs_connection",
-      `Your Power BI connection has ended: Microsoft no longer accepts it. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
+      `Your Power BI connection has ended: Microsoft no longer accepts it. ${connectAgain(deps.config)}`,
       detail,
     );
   }
@@ -285,7 +285,7 @@ export async function redeemCode(
     throw new ServiceError(
       "refused",
       who.tid === expected.tenant_id
-        ? `Microsoft's ID token was not issued for this app. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`
+        ? `Microsoft's ID token was not issued for this app. ${connectAgain(deps.config)}`
         : "This Microsoft account is not in the company's Power BI tenant.",
     );
   if (
@@ -294,7 +294,7 @@ export async function redeemCode(
   )
     throw new ServiceError(
       "refused",
-      `Microsoft's ID token has expired. Connect Power BI again at ${connectionsPage(deps.config)}, then run this again.`,
+      `Microsoft's ID token has expired. ${connectAgain(deps.config)}`,
     );
   return { access_token, expires_at, refresh_token, scopes, ...who };
 }

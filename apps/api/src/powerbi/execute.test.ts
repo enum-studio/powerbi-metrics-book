@@ -80,10 +80,10 @@ function answering(body: unknown): GuardedFetcher {
 }
 
 describe("executeQuery", () => {
-  it.each(["oii", "ccon", "pii"])(
+  it.each(["oii", "ccon", "pii", "oii><ccon", "pii><oii"])(
     "strips %s tags from Power BI errors",
     async (tag) => {
-      const message = `The value for '<${tag}>Number Of Ordrs</${tag}>' cannot be determined`;
+      const message = `The value for '<${tag}>Number Of Ordrs</${tag.split("><").reverse().join("></")}>' cannot be determined`;
       const error = { code: "DatasetExecuteQueriesError", message };
       const input = {
         token: "token",
