@@ -83,6 +83,7 @@ export const Questions = {
       thread_id: z.string(),
       question: z.string().nullable(),
       answer: z.string(),
+      excerpt_truncated: z.literal(true).optional(),
       answered_by: z.object({
         kind: z.enum(["person", "service_account"]),
         id: z.string(),
@@ -218,6 +219,7 @@ export const Term = z
       anchor("metric").extend({
         label: z.string(),
         summary: z.string(),
+        summary_truncated: z.literal(true).optional(),
         trust_state: z.enum(TRUST_STATES),
       }),
     ),

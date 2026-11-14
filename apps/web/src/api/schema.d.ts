@@ -2005,6 +2005,8 @@ export interface components {
         thread_id: string;
         question: string | null;
         answer: string;
+        /** @constant */
+        excerpt_truncated?: true;
         answered_by: {
           /** @enum {string} */
           kind: "person" | "service_account";
@@ -2163,6 +2165,8 @@ export interface components {
         thread_id: string;
         question: string | null;
         answer: string;
+        /** @constant */
+        excerpt_truncated?: true;
         answered_by: {
           /** @enum {string} */
           kind: "person" | "service_account";
@@ -2211,6 +2215,8 @@ export interface components {
         name: string;
         label: string;
         summary: string;
+        /** @constant */
+        summary_truncated?: true;
         /** @enum {string} */
         trust_state: "draft" | "agent_verified" | "human_verified";
       }[];
@@ -8194,6 +8200,8 @@ export interface operations {
               thread_id: string;
               question: string | null;
               answer: string;
+              /** @constant */
+              excerpt_truncated?: true;
               answered_by: {
                 /** @enum {string} */
                 kind: "person" | "service_account";

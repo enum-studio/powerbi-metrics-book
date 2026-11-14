@@ -460,6 +460,10 @@
                 "answer": {
                   "type": "string"
                 },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "answered_by": {
                   "type": "object",
                   "properties": {
@@ -1214,6 +1218,10 @@
                 "answer": {
                   "type": "string"
                 },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "answered_by": {
                   "type": "object",
                   "properties": {
@@ -1427,6 +1435,10 @@
                 },
                 "summary": {
                   "type": "string"
+                },
+                "summary_truncated": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "trust_state": {
                   "type": "string",
@@ -14168,6 +14180,10 @@
                           },
                           "answer": {
                             "type": "string"
+                          },
+                          "excerpt_truncated": {
+                            "type": "boolean",
+                            "const": true
                           },
                           "answered_by": {
                             "type": "object",

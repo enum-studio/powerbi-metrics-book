@@ -4,13 +4,10 @@ export function excerpt(
 ): { text: string; truncated: boolean } {
   const characters = Array.from(text);
   if (characters.length <= max) return { text, truncated: false };
-  let end = max - 1;
-  for (let i = end; i >= 0; i--) {
-    if (/\s/u.test(characters[i] ?? "")) {
-      end = i;
-      break;
-    }
-  }
+  const whitespace = characters
+    .slice(0, max)
+    .findLastIndex((character) => /\s/u.test(character));
+  const end = whitespace === -1 ? max - 1 : whitespace;
   return {
     text: characters.slice(0, end).join("").trimEnd() + "…",
     truncated: true,

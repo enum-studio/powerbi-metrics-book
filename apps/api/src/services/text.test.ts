@@ -14,6 +14,7 @@ describe("excerpt", () => {
     ["😀😀😀😀", 3, "😀😀…", true],
     ["😀 one two", 6, "😀 one…", true],
     ["long", 1, "…", true],
+    ["one\u2003two three", 8, "one\u2003two…", true],
   ])("cuts %j within %i code points", (text, max, expected, truncated) => {
     expect(excerpt(text, max)).toEqual({ text: expected, truncated });
     expect(Array.from(excerpt(text, max).text).length).toBeLessThanOrEqual(max);
