@@ -426,6 +426,7 @@ export const TOOL_MATRIX = {
   list_apps: CONNECTED,
   list_datasets: CONNECTED,
   get_dataset: TOOL_SEES_SALES,
+  list_relationships: TOOL_SEES_SALES,
   list_columns: TOOL_SEES_SALES,
   list_measures: TOOL_SEES_SALES,
   execute_dax: TOOL_SEES_SALES,
