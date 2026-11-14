@@ -74,9 +74,10 @@ test("a brand name and logo set under General show on the signed-out sign-in and
   try {
     const page = await admin.newPage();
     await page.goto("/admin/general");
-    await page.getByLabel("Brand name", { exact: true }).fill(brand);
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByText("Saved.")).toBeVisible();
+    const company = page.getByRole("region", { name: "Company", exact: true });
+    await company.getByLabel("Brand name", { exact: true }).fill(brand);
+    await company.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(company.getByText("Saved.")).toBeVisible();
     await page.getByLabel("Logo file").setInputFiles({
       name: "logo.png",
       mimeType: "image/png",
