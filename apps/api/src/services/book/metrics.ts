@@ -32,6 +32,7 @@ import {
   powerbiWorkspace,
 } from "../../db/schema/mirror.js";
 import { ServiceError } from "../../errors.js";
+import { excerpt } from "../text.js";
 import type { Conventions } from "../conventions/schema.js";
 import { currentConventions } from "../conventions/store.js";
 import { namesOf, REMOVED_PERSON, whoKey } from "../auth/people.js";
@@ -1412,14 +1413,18 @@ export async function listMetrics(
   return {
     ...(counted !== undefined && { total: counted.total }),
     items: page.items.map(
-      ({ definition, category_id, dismissed_at, ...row }) => ({
-        kind: "metric" as const,
-        ...row,
-        aliases: row.aliases ?? [],
-        summary: definition.slice(0, 240),
-        category: categoryOf(tree, category_id),
-        dismissed: dismissed_at !== null,
-      }),
+      ({ definition, category_id, dismissed_at, ...row }) => {
+        const summary = excerpt(definition, 240);
+        return {
+          kind: "metric" as const,
+          ...row,
+          aliases: row.aliases ?? [],
+          summary: summary.text,
+          ...(summary.truncated && { summary_truncated: true as const }),
+          category: categoryOf(tree, category_id),
+          dismissed: dismissed_at !== null,
+        };
+      },
     ),
     next_cursor: page.next_cursor,
   };

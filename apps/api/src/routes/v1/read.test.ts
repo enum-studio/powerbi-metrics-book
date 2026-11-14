@@ -30,8 +30,15 @@ import {
   createKey,
   createServiceAccount,
 } from "../../services/auth/service-accounts.js";
+import { getMetric, updateMetric } from "../../services/book/metrics.js";
+import { createTerm, relateMetric } from "../../services/book/terms.js";
 import { draftDatasets } from "../../services/book/drafter.js";
 import { removeRule, setRule } from "../../services/pii/rules.js";
+import {
+  acceptReply,
+  postThread,
+  reply,
+} from "../../services/threads/threads.js";
 import { buildDocuments } from "../../services/search/documents.js";
 
 /*
@@ -109,6 +116,62 @@ describe("GET /metrics/{name}", () => {
 });
 
 describe("the read routes", () => {
+  it("keeps a related metric's truncated summary flag over REST", async () => {
+    const viewer = await signedIn("viewer");
+    const original = await getMetric(admin, "sessions");
+    const term = await createTerm(admin, {
+      name: `summary_${randomUUID().slice(0, 8)}`,
+      definition: "A sample concept.",
+    });
+    try {
+      await updateMetric(admin, "sessions", {
+        definition: "Sample summary ".repeat(30),
+      });
+      await relateMetric(admin, term.id, "sessions");
+      const found = await get(viewer, `/terms/${term.id}`);
+      expect(found.status).toBe(200);
+      expect(found.body).toMatchObject({
+        metrics: [
+          {
+            summary: expect.stringMatching(/summary…$/u) as unknown,
+            summary_truncated: true,
+          },
+        ],
+      });
+    } finally {
+      await updateMetric(admin, "sessions", {
+        definition: original.definition,
+      });
+    }
+  });
+
+  it("keeps accepted answer truncation flags over REST only when cut", async () => {
+    const viewer = await signedIn("viewer");
+    const term = await createTerm(admin, {
+      name: `answer_${randomUUID().slice(0, 8)}`,
+      definition: "A sample concept.",
+    });
+    const question = await postThread(admin, {
+      kind: "question",
+      element: { kind: "term", id: term.id },
+      title: "Which period?",
+      body: "A sample question.",
+    });
+    const long = await reply(admin, question.id, "Sample answer ".repeat(200));
+    await acceptReply(admin, question.id, long.id);
+    expect((await get(viewer, `/terms/${term.id}`)).body).toMatchObject({
+      accepted_answers: [{ excerpt_truncated: true }],
+    });
+    const exact = await reply(admin, question.id, "😀".repeat(2000));
+    await acceptReply(admin, question.id, exact.id);
+    const found = await get(viewer, `/terms/${term.id}`);
+    const body = found.body as { accepted_answers: unknown[] };
+    expect(body.accepted_answers[0]).toMatchObject({
+      answer: "😀".repeat(2000),
+    });
+    expect(body.accepted_answers[0]).not.toHaveProperty("excerpt_truncated");
+  });
+
   it("answer a person, and refuse a request with no credential", async () => {
     const viewer = await signedIn("viewer");
     const curator = await signedIn("curator");

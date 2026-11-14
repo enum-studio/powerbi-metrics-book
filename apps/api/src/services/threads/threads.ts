@@ -36,6 +36,7 @@ import {
   type THREAD_STATUSES,
 } from "../../db/schema/threads.js";
 import { NO_SUCH_DATASET, ServiceError } from "../../errors.js";
+import { excerpt } from "../text.js";
 import type { Principal } from "../../principal.js";
 import { namesOf, REMOVED_PERSON, whoKey } from "../auth/people.js";
 import { loadTree } from "../book/categories.js";
@@ -581,7 +582,7 @@ export async function listThreads(
   const rows = await db
     .select({
       ...anchorColumns(principal),
-      excerpt: sql<string>`left(${thread.body}, ${EXCERPT})`,
+      excerpt: sql<string>`left(${thread.body}, ${EXCERPT + 1})`,
     })
     .from(thread)
     .where(
@@ -636,14 +637,20 @@ export async function listThreads(
           "name",
         );
   return {
-    items: page.items.map((row) => ({
-      ...shape(row),
-      author_name:
-        sees === undefined
-          ? null
-          : (names.get(whoKey({ kind: row.author_kind, id: row.author_id })) ??
-            REMOVED_PERSON),
-    })),
+    items: page.items.map((row) => {
+      const cut = excerpt(row.excerpt, EXCERPT);
+      return {
+        ...shape(row),
+        excerpt: cut.text,
+        ...(cut.truncated && { excerpt_truncated: true as const }),
+        author_name:
+          sees === undefined
+            ? null
+            : (names.get(
+                whoKey({ kind: row.author_kind, id: row.author_id }),
+              ) ?? REMOVED_PERSON),
+      };
+    }),
     next_cursor: page.next_cursor,
   };
 }

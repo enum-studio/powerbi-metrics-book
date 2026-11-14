@@ -1,4 +1,5 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
+import { excerpt } from "../text.js";
 import type { Db } from "../../context.js";
 import {
   thread,
@@ -61,7 +62,7 @@ export async function openQuestionsFor(db: Db, element: ThreadElement) {
       accepted_by_kind: thread.accepted_by_kind,
       accepted_by_via: thread.accepted_by_via,
       question: thread.title,
-      answer: sql<string>`left(${threadReply.body}, ${ANSWER_EXCERPT})`,
+      answer: sql<string>`left(${threadReply.body}, ${ANSWER_EXCERPT + 1})`,
       author_kind: threadReply.author_kind,
       author_id: threadReply.author_id,
     })
@@ -78,12 +79,16 @@ export async function openQuestionsFor(db: Db, element: ThreadElement) {
     .limit(ANSWERS_PER_ELEMENT);
   return {
     open_questions: open?.n ?? 0,
-    accepted_answers: answers.map((row) => ({
-      thread_id: row.thread_id,
-      question: row.question,
-      answer: row.answer,
-      answered_by: { kind: row.author_kind, id: row.author_id },
-      ...acceptedByOf(row),
-    })),
+    accepted_answers: answers.map((row) => {
+      const answer = excerpt(row.answer, ANSWER_EXCERPT);
+      return {
+        thread_id: row.thread_id,
+        question: row.question,
+        answer: answer.text,
+        ...(answer.truncated && { excerpt_truncated: true as const }),
+        answered_by: { kind: row.author_kind, id: row.author_id },
+        ...acceptedByOf(row),
+      };
+    }),
   };
 }

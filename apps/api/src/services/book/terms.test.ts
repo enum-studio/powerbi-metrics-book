@@ -455,7 +455,7 @@ describe("listTerms", () => {
       const context = as(tx, bothCurator);
       await createTerm(context, {
         name: "Aaa season",
-        definition: "x".repeat(300),
+        definition: "Sample season ".repeat(30),
         custom: {},
       });
       await createTerm(context, { name: "Bbb channel", owner: "Trading" });
@@ -479,10 +479,14 @@ describe("listTerms", () => {
           item.summary.length,
         ]),
       ).toEqual([
-        ["Aaa season", "concept", 240],
+        ["Aaa season", "concept", 238],
         ["Bbb channel", "dimension", 0],
         ["Ccc margin", "dimension", 0],
       ]);
+      expect(everything.items[0]?.summary.length).toBeLessThanOrEqual(240);
+      expect(everything.items[0]?.summary).toMatch(/season…$/u);
+      expect(everything.items[0]?.summary_truncated).toBe(true);
+      expect(everything.items[1]).not.toHaveProperty("summary_truncated");
       expect(everything.items[1]).toMatchObject({
         kind: "term",
         owner: "Trading",

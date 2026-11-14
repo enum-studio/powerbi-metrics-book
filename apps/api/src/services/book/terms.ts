@@ -30,6 +30,7 @@ import {
   powerbiWorkspace,
 } from "../../db/schema/mirror.js";
 import { ServiceError } from "../../errors.js";
+import { excerpt } from "../text.js";
 import type { Principal } from "../../principal.js";
 import { currentConventions } from "../conventions/store.js";
 import { type NewEvent, withEvents } from "../events/feed.js";
@@ -613,12 +614,16 @@ export async function getTerm(context: ServiceContext, reference: string) {
       dataset: ref("dataset", column.dataset_id, column.dataset_name),
       workspace: ref("workspace", column.workspace_id, column.workspace_name),
     })),
-    metrics: metrics.map((related) => ({
-      ...ref("metric", related.id, related.name),
-      label: related.label,
-      summary: related.definition.slice(0, 240),
-      trust_state: related.trust_state,
-    })),
+    metrics: metrics.map((related) => {
+      const summary = excerpt(related.definition, 240);
+      return {
+        ...ref("metric", related.id, related.name),
+        label: related.label,
+        summary: summary.text,
+        ...(summary.truncated && { summary_truncated: true as const }),
+        trust_state: related.trust_state,
+      };
+    }),
     ...questions,
   };
 }
@@ -741,13 +746,15 @@ function anchorOf(row: {
   custom: Record<string, unknown>;
   column_count: number;
 }) {
+  const summary = excerpt(row.definition, 240);
   return {
     kind: "term" as const,
     id: row.id,
     name: row.name,
     icon: row.icon,
     type: row.column_count > 0 ? ("dimension" as const) : ("concept" as const),
-    summary: row.definition.slice(0, 240),
+    summary: summary.text,
+    ...(summary.truncated && { summary_truncated: true as const }),
     aliases: row.aliases,
     owner: row.owner,
     trust_state: row.trust_state,

@@ -460,6 +460,10 @@
                 "answer": {
                   "type": "string"
                 },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "answered_by": {
                   "type": "object",
                   "properties": {
@@ -1214,6 +1218,10 @@
                 "answer": {
                   "type": "string"
                 },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "answered_by": {
                   "type": "object",
                   "properties": {
@@ -1427,6 +1435,10 @@
                 },
                 "summary": {
                   "type": "string"
+                },
+                "summary_truncated": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "trust_state": {
                   "type": "string",
@@ -5431,6 +5443,10 @@
                           },
                           "summary": {
                             "type": "string"
+                          },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
                           },
                           "aliases": {
                             "type": "array",
@@ -11240,6 +11256,10 @@
                           "excerpt": {
                             "type": "string"
                           },
+                          "excerpt_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "author_name": {
                             "description": "The asker's display name, null for a caller who can see no dataset. Never an email.",
                             "type": [
@@ -12776,6 +12796,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "dataset": {
                             "anyOf": [
                               {
@@ -13557,6 +13581,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "column_count": {
                             "type": "number"
                           },
@@ -14152,6 +14180,10 @@
                           },
                           "answer": {
                             "type": "string"
+                          },
+                          "excerpt_truncated": {
+                            "type": "boolean",
+                            "const": true
                           },
                           "answered_by": {
                             "type": "object",

@@ -9,6 +9,7 @@ import {
   searchDocument,
 } from "../../db/schema/search.js";
 import { ServiceError } from "../../errors.js";
+import { excerpt } from "../text.js";
 import { loadTree } from "../book/categories.js";
 import { clientAddressKey } from "../auth/client-address-key.js";
 import { readsPii } from "../pii/rules.js";
@@ -117,6 +118,7 @@ export type SearchHit = {
   key: string | null;
   label: string;
   summary: string;
+  summary_truncated?: true;
   /** The one dataset the caller may describe that holds it; null for none, or for several (a metric). */
   dataset: Ref | null;
   trust_state: TrustState | null;
@@ -558,7 +560,7 @@ export async function search(
       select ${d.kind} as kind, ${d.element_id} as id, ${d.name} as name,
         case when ${d.kind} = 'category' then (select c.key from category c where c.id = ${d.element_id}) end as key,
         ${d.label} as label,
-        left(${d.summary}, ${SUMMARY_MAX}) as summary, ${d.trust_state} as trust_state,
+        left(${d.summary}, ${SUMMARY_MAX + 1}) as summary, ${d.trust_state} as trust_state,
         (hit.score + ${lifted})::float8 as score, hit.match,
         (select json_build_object('kind', 'dataset', 'id', min(${powerbiDataset.id}::text), 'name', min(${powerbiDataset.name}))
           from ${powerbiDataset}
@@ -583,10 +585,15 @@ export async function search(
   });
 
   const answer: Omit<SearchAnswer, "search_id"> = {
-    items: rows.map(({ more, ...hit }) => ({
-      ...hit,
-      path: pathOf(hit.kind, more.place, more.categories),
-    })),
+    items: rows.map(({ more, ...hit }) => {
+      const summary = excerpt(hit.summary, SUMMARY_MAX);
+      return {
+        ...hit,
+        summary: summary.text,
+        ...(summary.truncated && { summary_truncated: true as const }),
+        path: pathOf(hit.kind, more.place, more.categories),
+      };
+    }),
     counts: rows[0]?.more.counts ?? {},
     search_mode: vector === null ? "words_only" : "hybrid",
     note,

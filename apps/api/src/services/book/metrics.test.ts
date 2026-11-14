@@ -426,6 +426,7 @@ describe("listMetrics", () => {
       await createMetric(context, {
         name: "total_child_metrics_test",
         label: "Total child",
+        definition: "Sample definition ".repeat(30),
         unit: "money",
         category: "metrics_test/orders",
         custom: { owner_team: "finance" },
@@ -448,6 +449,9 @@ describe("listMetrics", () => {
         await names({ ...prefix, trust_states: ["agent_verified"] }),
       ).toEqual([]);
       const [item] = (await listMetrics(context, prefix)).items;
+      expect(item?.summary.length).toBeLessThanOrEqual(240);
+      expect(item?.summary).toMatch(/definition…$/u);
+      expect(item?.summary_truncated).toBe(true);
       expect(item).toMatchObject({
         kind: "metric",
         category: { kind: "category", path: "metrics_test/orders" },

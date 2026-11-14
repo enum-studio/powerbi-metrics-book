@@ -49,6 +49,7 @@ const Opened = Thread.extend({
 });
 const Summary = Thread.omit({ body: true }).extend({
   excerpt: z.string(),
+  excerpt_truncated: z.literal(true).optional(),
   author_name: z
     .string()
     .nullable()
