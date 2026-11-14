@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { expect, it } from "vitest";
+import { TransactionRollbackError } from "drizzle-orm";
+import { TEST_RUNNER } from "../../../test/database.js";
+import { testPool } from "../../../test/deps.js";
+import { setRole } from "../../../test/sample-mirror.js";
+import { createDb } from "../../db/client.js";
+import { powerbiColumn, powerbiRelationship } from "../../db/schema/mirror.js";
 import {
   appReader,
   asPerson,
@@ -47,6 +53,134 @@ it("hides PII relationship ends and column names, and counts the omitted joins",
       )?.column_names,
     ).toContain("Order date");
   }));
+
+it("keeps hidden relationship counts independent of active_only within each table", () =>
+  expect(
+    createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+      await setRole(tx, "worker_rw");
+      await tx.insert(powerbiRelationship).values({
+        dataset_id: id.sales,
+        from_table: "Sales",
+        from_column: "Order date",
+        to_table: "Date",
+        to_column: "Other date",
+        is_active: false,
+      });
+      await setRole(tx, "api_rw");
+      await tx.insert(piiRule).values({
+        kind: "column",
+        table_name: "Sales",
+        name: "Order date",
+        pii: true,
+        set_by_kind: "person",
+        set_by_id: "x",
+        set_via: "api",
+      });
+      const context = asPerson(appReader, { db: tx });
+      for (const table of [undefined, "Sales", id.date_table]) {
+        const all = await mirror.listRelationships(context, {
+          dataset: id.sales,
+          table,
+        });
+        const active = await mirror.listRelationships(context, {
+          dataset: id.sales,
+          table,
+          active_only: true,
+        });
+        expect(all.pii_hidden).toBe(2);
+        expect(active.pii_hidden).toBe(all.pii_hidden);
+      }
+      expect(
+        await mirror.listRelationships(context, {
+          dataset: id.sales,
+          table: "Absent",
+          active_only: true,
+        }),
+      ).not.toHaveProperty("pii_hidden");
+      tx.rollback();
+    }),
+  ).rejects.toThrow(TransactionRollbackError));
+
+it("hides date columns at either one end and excludes date-named string columns", () =>
+  expect(
+    createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+      await setRole(tx, "worker_rw");
+      await tx.insert(powerbiColumn).values([
+        {
+          dataset_id: id.sales,
+          table_id: id.date_table,
+          name: "Date",
+          data_type: "Date",
+        },
+        {
+          dataset_id: id.sales,
+          table_id: id.sales_table,
+          name: "Date label",
+          data_type: "String",
+        },
+      ]);
+      await tx.insert(powerbiRelationship).values([
+        {
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: "Channel",
+          to_table: "Date",
+          to_column: "Date",
+          cardinality: "many_to_one",
+        },
+        {
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: "Order date",
+          to_table: "Date",
+          to_column: "Date",
+          cardinality: "one_to_many",
+        },
+        {
+          dataset_id: id.sales,
+          from_table: "Sales",
+          from_column: "Date label",
+          to_table: "Sales",
+          to_column: "Channel",
+          cardinality: "one_to_many",
+        },
+      ]);
+      await setRole(tx, "api_rw");
+      await tx.insert(piiRule).values([
+        {
+          kind: "column",
+          table_name: "Sales",
+          name: "Order date",
+          pii: true,
+          set_by_kind: "person",
+          set_by_id: "x",
+          set_via: "api",
+        },
+        {
+          kind: "column",
+          table_name: "Date",
+          name: "Date",
+          pii: true,
+          set_by_kind: "person",
+          set_by_id: "x",
+          set_via: "api",
+        },
+      ]);
+      expect(
+        (await mirror.getDataset(asPerson(appReader, { db: tx }), id.sales))
+          .date_tables,
+      ).toEqual([]);
+      const reader = asPerson(
+        { ...appReader, roles: ["pii_reader"] },
+        { db: tx },
+      );
+      expect((await mirror.getDataset(reader, id.sales)).date_tables).toEqual([
+        { table: "Date", column: "Date", joined_by: 1 },
+        { table: "Sales", column: "Order date", joined_by: 1 },
+      ]);
+      tx.rollback();
+    }),
+  ).rejects.toThrow(TransactionRollbackError));
 
 it("answers a refused dataset exactly like a missing one and getDataset", async () => {
   for (const dataset of [id.sales, "Sales", randomUUID()]) {

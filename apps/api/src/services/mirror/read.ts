@@ -519,7 +519,13 @@ export async function getDataset(context: ServiceContext, reference: string) {
           .groupBy(powerbiMeasure.table_id)
       : [],
     db
-      .select({ ...getTableColumns(powerbiColumn), table: powerbiTable.name })
+      .select({
+        table_id: powerbiColumn.table_id,
+        table: powerbiTable.name,
+        name: powerbiColumn.name,
+        data_type: powerbiColumn.data_type,
+        is_hidden: powerbiColumn.is_hidden,
+      })
       .from(powerbiColumn)
       .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
       .where(
@@ -541,6 +547,11 @@ export async function getDataset(context: ServiceContext, reference: string) {
   const ends = new Set<string>();
   const columnKey = (table: string, column: string) =>
     JSON.stringify([table, column]);
+  const dateColumns = new Set(
+    columns
+      .filter((c) => c.data_type === "DateTime" || c.data_type === "Date")
+      .map((c) => columnKey(c.table, c.name)),
+  );
   for (const r of relationships) {
     for (const side of ["from", "to"] as const) {
       const table = r[`${side}_table`];
@@ -556,16 +567,7 @@ export async function getDataset(context: ServiceContext, reference: string) {
       if (isMany) many.add(table);
       if (!isOne) continue;
       one.add(table);
-      if (
-        !r.is_active ||
-        !columns.some(
-          (c) =>
-            c.table === table &&
-            c.name === column &&
-            (c.data_type === "DateTime" || c.data_type === "Date"),
-        )
-      )
-        continue;
+      if (!r.is_active || !dateColumns.has(key)) continue;
       const entry = joined.get(key) ?? { table, column, joined_by: 0 };
       entry.joined_by++;
       joined.set(key, entry);
@@ -810,9 +812,12 @@ export async function listRelationships(
     tableName === undefined
       ? undefined
       : or(eq(r.from_table, tableName), eq(r.to_table, tableName)),
-    input.active_only === true ? eq(r.is_active, true) : undefined,
   );
-  const visible = and(scope, hides ? leavesOutPiiEnds() : undefined);
+  const visible = and(
+    scope,
+    input.active_only === true ? eq(r.is_active, true) : undefined,
+    hides ? leavesOutPiiEnds() : undefined,
+  );
   const order = [r.from_table, r.from_column, r.to_table, r.to_column];
   const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
   const [rows, totals, hidden] = await Promise.all([
