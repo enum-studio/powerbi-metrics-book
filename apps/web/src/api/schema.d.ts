@@ -2249,6 +2249,8 @@ export interface components {
     Entry: {
       /** @constant */
       kind: "query";
+      /** @enum {string} */
+      origin: "request" | "catalog";
       id: string;
       /** Format: date-time */
       at: string;

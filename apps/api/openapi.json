@@ -1623,6 +1623,13 @@
             "type": "string",
             "const": "query"
           },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "request",
+              "catalog"
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -1769,6 +1776,7 @@
         },
         "required": [
           "kind",
+          "origin",
           "id",
           "at",
           "principal",
