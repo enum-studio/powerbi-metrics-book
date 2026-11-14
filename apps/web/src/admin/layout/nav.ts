@@ -114,7 +114,7 @@ export const ADMIN_NAV: NavItem[] = [
     to: "/admin/general",
     section: "System",
     icon: Settings,
-    owns: ["branding"],
+    owns: ["branding", "questions.enabled"],
   },
   {
     label: "Search",

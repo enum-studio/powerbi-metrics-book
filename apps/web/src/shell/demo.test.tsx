@@ -37,6 +37,7 @@ const ME = {
   email: "viewer@sample.example",
   may_admin: true,
   sample_data: true,
+  questions: true,
   usage: { capture: true, retention_days: 180 },
   kind: "person" as const,
   client_address: null,

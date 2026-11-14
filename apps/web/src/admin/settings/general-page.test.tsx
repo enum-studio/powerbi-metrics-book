@@ -18,13 +18,14 @@ function seededClient() {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity } },
   });
-  for (const key of ["branding.name", "branding.company"])
+  for (const key of ["branding.name", "branding.company", "questions.enabled"])
     client.setQueryData(settingQuery(key).queryKey, {
       key,
-      value: null,
+      value: key === "questions.enabled" ? false : null,
       source: "default",
       environment_variable: "",
-      description: "",
+      description:
+        key === "questions.enabled" ? "Allow questions about the book." : "",
       environment_only: false,
       problem: null,
       check: null,
@@ -181,6 +182,50 @@ it("refetches the sign-in config after saving the brand name", async () => {
     });
     await vi.waitFor(() => {
       expect(get).toHaveBeenCalledWith("/api/auth/config");
+    });
+  } finally {
+    page.close();
+    client.clear();
+  }
+});
+
+it("shows the Questions switch with its description and saves its boolean value", async () => {
+  const client = seededClient();
+  const put = vi
+    .spyOn(api, "PUT")
+    .mockResolvedValue({ data: {}, response: Response.json({}) });
+  vi.spyOn(client, "invalidateQueries").mockResolvedValue();
+  const page = await mount(
+    createElement(QueryClientProvider, { client }, createElement(GeneralPage)),
+  );
+  try {
+    const input = page.host.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
+    if (!input) throw new Error("Missing Questions switch");
+    expect(
+      page.host.querySelector(`label[for="${input.id}"]`)?.textContent,
+    ).toContain("Questions");
+    expect(page.host.textContent).toContain("Allow questions about the book.");
+    expect(input.checked).toBe(false);
+    act(() => {
+      input.click();
+    });
+    act(() => {
+      input
+        .closest("form")
+        ?.dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true }),
+        );
+    });
+    await vi.waitFor(() => {
+      expect(put).toHaveBeenCalledWith(
+        "/api/v1/admin/settings/{key}",
+        expect.objectContaining({
+          params: { path: { key: "questions.enabled" } },
+          body: { value: true, save_failing: false },
+        }),
+      );
     });
   } finally {
     page.close();

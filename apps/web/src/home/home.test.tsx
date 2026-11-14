@@ -44,6 +44,7 @@ const VIEWER: Me = {
   powerbi_connection: "connected",
   powerbi_connect_url: "/api/v1/powerbi/connect",
   sample_data: true,
+  questions: true,
   usage: { capture: true, retention_days: 180 },
   may_admin: false,
   warnings: [],

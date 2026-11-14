@@ -1,3 +1,5 @@
+import { useQuestions } from "../api/me";
+
 export type AcceptedAnswer = {
   thread_id: string;
   question: string | null;
@@ -26,8 +28,13 @@ export function acceptedBy(answer: AcceptedAnswer): string {
 }
 
 /** The questions answered on an element, each with its accepted answer and who accepted it. Nothing when there are none. */
-export function AcceptedAnswers({ answers }: { answers: AcceptedAnswer[] }) {
-  if (answers.length === 0) return null;
+export function AcceptedAnswers({
+  answers,
+}: {
+  answers: AcceptedAnswer[] | undefined;
+}) {
+  const questions = useQuestions();
+  if (!questions || answers === undefined || answers.length === 0) return null;
   return (
     <section
       aria-labelledby="accepted-answers-heading"

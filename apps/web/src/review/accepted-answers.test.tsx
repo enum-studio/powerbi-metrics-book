@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { meQuery, type Me } from "../api/me";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
@@ -19,14 +21,45 @@ const answer = (
   ...rest,
 });
 
-function mount(answers: AcceptedAnswer[]) {
-  const host = document.createElement("div");
-  act(() => {
-    createRoot(host).render(<AcceptedAnswers answers={answers} />);
+function mount(answers: AcceptedAnswer[], questions = true) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { staleTime: Infinity } },
   });
-  return [...host.querySelectorAll("li")].map(
+  client.setQueryData<Me>(meQuery.queryKey, {
+    questions,
+    id: "sample",
+    kind: "person",
+    email: null,
+    name: "Sample",
+    roles: [],
+    sign_in_method: null,
+    via: "browser",
+    powerbi_connection: null,
+    powerbi_connect_url: "",
+    sample_data: true,
+    usage: { capture: true, retention_days: 180 },
+    may_admin: false,
+    warnings: [],
+    client_address: null,
+  });
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  act(() => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <AcceptedAnswers answers={answers} />
+      </QueryClientProvider>,
+    );
+  });
+  const labels = [...host.querySelectorAll("li")].map(
     (li) => li.querySelector(".text-ink-3")?.textContent,
   );
+  if (!questions) expect(host.innerHTML).toBe("");
+  act(() => {
+    root.unmount();
+  });
+  client.clear();
+  return labels;
 }
 
 it("says who accepted each answer, and when an agent did", () => {
@@ -58,4 +91,8 @@ it("says who accepted each answer, and when an agent did", () => {
 
 it("shows nothing when no question is answered", () => {
   expect(mount([])).toEqual([]);
+});
+
+it("shows nothing when questions are off, even with an accepted answer", () => {
+  expect(mount([answer("1")], false)).toEqual([]);
 });
