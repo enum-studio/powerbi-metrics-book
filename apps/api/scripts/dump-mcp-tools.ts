@@ -26,6 +26,7 @@ process.stdout.write(
       instructions: instructionsFor(
         resolve({ preset: "metrics_book" }).guide,
         false,
+        true,
       ),
       tools,
     },

@@ -32,6 +32,7 @@ const f = startOAuth();
 let token = "";
 
 beforeAll(async () => {
+  await f.deps.settings.set("questions.enabled", true, principals.admin);
   const { cookie } = await f.person();
   token = (await f.connect(cookie, f.client())).access_token;
 });

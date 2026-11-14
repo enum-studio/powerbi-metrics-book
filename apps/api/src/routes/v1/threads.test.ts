@@ -17,7 +17,7 @@ import { assignRole } from "../../services/auth/roles.js";
 
 afterAll(closeTestPools);
 
-const settings = new MemorySettings();
+const settings = new MemorySettings({ "questions.enabled": true });
 const oauth = startOAuth({ settings, access: cerbosAccess(settings) });
 
 async function person(role: "viewer" | "curator") {

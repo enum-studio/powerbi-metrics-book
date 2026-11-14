@@ -25,6 +25,7 @@ import { SETTING_KEYS, SETTINGS } from "../src/services/settings/registry.js";
 
 /** The defaults in the spec's settings table. */
 export const DEFAULT_SETTINGS: SettingValues = {
+  "questions.enabled": false,
   "usage.capture": true,
   "usage.retention_days": 180,
   "powerbi.tenant_id": null,

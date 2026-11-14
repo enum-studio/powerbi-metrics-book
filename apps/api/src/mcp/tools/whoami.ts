@@ -31,6 +31,7 @@ export const whoamiTools: readonly Tool[] = [
           capture: await settings.get("usage.capture"),
           retention_days: await settings.get("usage.retention_days"),
         },
+        questions: await settings.get("questions.enabled"),
         sample_data: onTheMock(await settings.get("powerbi.authority")),
         book_metrics: (await summarizeBook(context)).metrics,
       };

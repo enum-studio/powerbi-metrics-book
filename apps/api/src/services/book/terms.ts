@@ -598,7 +598,10 @@ export async function getTerm(context: ServiceContext, reference: string) {
       and(eq(termMetric.term_id, row.id), visibleMetric(db, allowed, hides)),
     )
     .orderBy(asc(metric.name));
-  const questions = await openQuestionsFor(db, { kind: "term", id: row.id });
+  const questions = await openQuestionsFor(context, {
+    kind: "term",
+    id: row.id,
+  });
   return {
     kind: "term" as const,
     id: row.id,

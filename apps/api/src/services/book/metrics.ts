@@ -1209,7 +1209,10 @@ export async function getMetric(context: ServiceContext, reference: string) {
     context.principal.via !== "mcp" &&
       (await context.access.check(context.principal, BOOK, "curate")),
   );
-  const questions = await openQuestionsFor(db, { kind: "metric", id: row.id });
+  const questions = await openQuestionsFor(context, {
+    kind: "metric",
+    id: row.id,
+  });
   return {
     kind: "metric" as const,
     ...row,

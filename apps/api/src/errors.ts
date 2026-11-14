@@ -2,6 +2,7 @@ export const ERROR_KINDS = [
   "unauthenticated",
   "refused",
   "not_found",
+  "questions_off",
   "invalid",
   "conflict",
   "rate_limited",

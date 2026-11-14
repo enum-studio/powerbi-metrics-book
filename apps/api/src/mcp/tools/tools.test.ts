@@ -80,6 +80,7 @@ let analyst: Caller;
 
 beforeAll(async () => {
   f = await startSignIn();
+  await f.settings.set("questions.enabled", true);
   // These sign-ins reach their people through the default role.
   await f.settings.set("access.default_role", "viewer");
   // Both mocks name people and groups by the fixture's own ids.

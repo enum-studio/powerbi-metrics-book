@@ -4,6 +4,15 @@ import { OKTA_PROVIDER } from "../../../test/settings-fixture.js";
 import { isSettingKey, SETTING_KEYS, SETTINGS } from "./registry.js";
 
 describe("the registry", () => {
+  it("keeps questions off until an admin enables them", () => {
+    expect(SETTINGS["questions.enabled"].default).toBe(false);
+    expect(SETTINGS["questions.enabled"].schema.safeParse(true).success).toBe(
+      true,
+    );
+    expect(SETTINGS["questions.enabled"].schema.safeParse("true").success).toBe(
+      false,
+    );
+  });
   // DEFAULT_SETTINGS is typed SettingValues, so it has a value for every key
   // the type declares, and the registry must match it key for key.
   it("has an entry for every key of SettingValues, and no other", () => {

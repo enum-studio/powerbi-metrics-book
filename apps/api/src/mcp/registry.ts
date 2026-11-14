@@ -10,6 +10,7 @@ import {
 
 /** A tool as the server lists and calls it, whatever its input. */
 export type Tool = {
+  readonly requires?: "questions.enabled";
   readonly name: string;
   readonly description: string;
   /** The input as JSON Schema, which tools/list announces. */
@@ -20,6 +21,7 @@ export type Tool = {
 
 export type ToolDefinition<Input extends z.ZodObject> = {
   /** snake_case, and on the spec's list (connector_surface_security_test.ts). */
+  requires?: "questions.enabled";
   name: string;
   cutSentence?: string;
   /** Says when to use the tool, which is how a model chooses it. */
@@ -48,6 +50,9 @@ export function defineTool<Input extends z.ZodObject>(
   const lists = "cursor" in input.shape && "limit" in input.shape;
   return {
     name,
+    ...(definition.requires === undefined
+      ? {}
+      : { requires: definition.requires }),
     description,
     inputSchema: z.toJSONSchema(input, { io: "input" }),
     async call(context, received) {

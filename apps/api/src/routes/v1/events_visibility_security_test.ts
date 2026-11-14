@@ -50,6 +50,7 @@ import { getDataset } from "../../services/mirror/read.js";
 useMirror();
 
 const settings = new MemorySettings({
+  "questions.enabled": true,
   "access.metadata_visibility": "everyone",
 });
 const oauth = startOAuth({ settings, access: cerbosAccess(settings) });

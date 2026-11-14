@@ -59,23 +59,34 @@ async function instructions(
 ): Promise<string> {
   const { guide } = await getConventionsForAgents(context);
   const sample = onTheMock(await context.settings.get("powerbi.authority"));
-  return instructionsFor(guide, sample);
+  return instructionsFor(
+    guide,
+    sample,
+    await context.settings.get("questions.enabled"),
+  );
 }
 
 /**
  * The instructions for a guide and for whether the stack runs on the sample
  * tenant, which is all they depend on besides this text. The docs' dump of
  * the connector (scripts/dump-mcp-tools.ts) passes the default preset's guide
- * and false, so a new input fails to compile there.
+ * with questions enabled so the docs include the optional thread tools.
  */
-export function instructionsFor(guide: string, sample: boolean): string {
+export function instructionsFor(
+  guide: string,
+  sample: boolean,
+  questions = true,
+): string {
   return [
     ...(sample
       ? [
           "This deployment runs on the invented sample tenant. Every name and number is sample data, not the company's; say so when you report one.",
         ]
       : []),
-    "This connector is the company's metrics book over its Power BI: the workspaces, datasets and measures you may see, and the metrics, terms and categories filed on top of them. The sync and curators draft metrics, so a book may be mostly drafts. trust_state draft means not verified, and an edit through a token returns a metric to draft. agent_verified was set through a token, by an agent or a person; only human_verified was approved by a person in a browser. whoami counts the metrics in each state. The connector reads, searches and queries, and never changes a definition. Its thread tools post, reply, upvote and accept on your own question, and none changes a metric, term or category.",
+    "This connector is the company's metrics book over its Power BI: the workspaces, datasets and measures you may see, and the metrics, terms and categories filed on top of them. The sync and curators draft metrics, so a book may be mostly drafts. trust_state draft means not verified, and an edit through a token returns a metric to draft. agent_verified was set through a token, by an agent or a person; only human_verified was approved by a person in a browser. whoami counts the metrics in each state. The connector reads, searches and queries, and never changes a definition." +
+      (questions
+        ? " Its thread tools post, reply, upvote and accept on your own question, and none changes a metric, term or category."
+        : ""),
     "Search the book before you write DAX: a metric's variant usually holds the measure to use. Queries run with your own Power BI rights, and a result stays on the server: read its preview, then page with read_query_result or take a CSV link, rather than pulling every row into your context. When usage.capture is on, your searches and the requests you record are kept for the number of days in usage.retention_days, and you and the company's curators can read them; whoami gives the current values.",
     `${openingOf(guide)} Call get_conventions for the rest.`,
   ].join("\n\n");
@@ -109,6 +120,11 @@ type Call = {
   request_id: string;
 };
 
+async function availableTools(call: Call): Promise<readonly Tool[]> {
+  const questions = await call.context.settings.get("questions.enabled");
+  return call.tools.filter((tool) => tool.requires === undefined || questions);
+}
+
 async function dispatch(
   call: Call,
   message: rpc.JsonRpcMessage,
@@ -133,14 +149,16 @@ async function dispatch(
     }
     case "ping":
       return rpc.replyWith(id, {});
-    case "tools/list":
+    case "tools/list": {
+      const tools = await availableTools(call);
       return rpc.replyWith(id, {
-        tools: call.tools.map(({ name, description, inputSchema }) => ({
+        tools: tools.map(({ name, description, inputSchema }) => ({
           name,
           description,
           inputSchema,
         })),
       });
+    }
     case "tools/call": {
       const asked = TOOL_CALL.safeParse(message.params);
       if (!asked.success)
@@ -149,7 +167,8 @@ async function dispatch(
           rpc.INVALID_PARAMS,
           "Name the tool to call, and give its arguments.",
         );
-      const tool = call.tools.find(({ name }) => name === asked.data.name);
+      const tools = await availableTools(call);
+      const tool = tools.find(({ name }) => name === asked.data.name);
       if (tool === undefined)
         return rpc.replyError(
           id,

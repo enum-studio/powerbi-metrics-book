@@ -1,3 +1,4 @@
+import { requireQuestions } from "./open-questions.js";
 import { randomUUID } from "node:crypto";
 import {
   and,
@@ -375,6 +376,7 @@ export type NewThread = {
 };
 
 export async function postThread(context: ServiceContext, input: NewThread) {
+  await requireQuestions(context);
   const { principal, db } = context;
   const title = input.title?.trim() || null;
   if (input.kind === "question" && title === null)
@@ -485,6 +487,7 @@ export async function reply(
   threadId: string,
   body: string,
 ) {
+  await requireQuestions(context);
   checkedText("reply", body, THREAD_BODY_MAX);
   const { principal } = context;
   const now = context.clock();
@@ -517,6 +520,7 @@ export async function reply(
 
 /** The thread with its replies, the accepted one marked. Reading it marks it viewed. */
 export async function getThread(context: ServiceContext, id: string) {
+  await requireQuestions(context);
   const { principal, db } = context;
   const now = context.clock();
   const allowed = await context.access.describableDatasets(principal);
@@ -569,6 +573,7 @@ export async function listThreads(
   context: ServiceContext,
   filters: ThreadFilters = {},
 ) {
+  await requireQuestions(context);
   const { principal, db } = context;
   const element =
     filters.element === undefined
@@ -661,6 +666,7 @@ export async function acceptReply(
   threadId: string,
   replyId: string,
 ) {
+  await requireQuestions(context);
   const { principal } = context;
   const now = context.clock();
   return amend(context, threadId, "accept", async (tx, row, emit) => {
@@ -725,6 +731,7 @@ export async function acceptReply(
 
 /** A curator archives a thread: it leaves the default lists and search, and is kept. */
 export async function archiveThread(context: ServiceContext, id: string) {
+  await requireQuestions(context);
   const { principal } = context;
   const now = context.clock();
   return amend(context, id, "archive", async (tx, row, emit) => {
@@ -748,6 +755,7 @@ export async function setUpvote(
   threadId: string,
   upvoted: boolean,
 ) {
+  await requireQuestions(context);
   const { principal } = context;
   return amend(context, threadId, "upvote", async (tx, row) => {
     if (row.kind !== "question")

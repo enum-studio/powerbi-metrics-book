@@ -50,6 +50,7 @@ import { buildDocuments } from "../../services/search/documents.js";
 afterAll(closeTestPools);
 
 const settings = new MemorySettings({
+  "questions.enabled": true,
   "access.metadata_visibility": "everyone",
 });
 const oauth = startOAuth({ settings, access: cerbosAccess(settings) });

@@ -33,6 +33,7 @@ const Me = z
       .enum([...CONNECTION_STATUSES, "not_connected"])
       .nullable(),
     powerbi_connect_url: z.string(),
+    questions: z.boolean(),
     sample_data: z.boolean(),
     usage: z.object({
       capture: z.boolean(),
@@ -103,6 +104,7 @@ export function meRoutes(deps: AppDeps): Hono<AppEnv> {
         capture: await deps.settings.get("usage.capture"),
         retention_days: await deps.settings.get("usage.retention_days"),
       },
+      questions: await deps.settings.get("questions.enabled"),
       sample_data: onTheMock(await deps.settings.get("powerbi.authority")),
       may_admin: await mayAdmin({ ...deps, principal }, "read_status"),
       warnings: (await mayAdmin({ ...deps, principal }, "manage_secrets"))

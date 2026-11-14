@@ -514,7 +514,7 @@ export async function getDataset(context: ServiceContext, reference: string) {
         asc(powerbiRelationship.from_column),
       ),
     appsShowing(context, [dataset.id]),
-    openQuestionsFor(db, { kind: "dataset", id: dataset.id }),
+    openQuestionsFor(context, { kind: "dataset", id: dataset.id }),
     // The live PII columns and measures of each table, to leave out of its counts.
     hides
       ? db

@@ -1928,6 +1928,7 @@ export interface components {
         | "unauthenticated"
         | "refused"
         | "not_found"
+        | "questions_off"
         | "invalid"
         | "conflict"
         | "rate_limited"
@@ -1950,6 +1951,7 @@ export interface components {
         | ("connected" | "needs_reconnect" | "disconnected" | "not_connected")
         | null;
       powerbi_connect_url: string;
+      questions: boolean;
       sample_data: boolean;
       usage: {
         capture: boolean;
@@ -2000,8 +2002,8 @@ export interface components {
       name: string;
     };
     Metric: {
-      open_questions: number;
-      accepted_answers: {
+      open_questions?: number;
+      accepted_answers?: {
         thread_id: string;
         question: string | null;
         answer: string;
@@ -2160,8 +2162,8 @@ export interface components {
       name: string;
     };
     Term: {
-      open_questions: number;
-      accepted_answers: {
+      open_questions?: number;
+      accepted_answers?: {
         thread_id: string;
         question: string | null;
         answer: string;
@@ -6718,6 +6720,15 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
     };
   };
   postApiV1Threads: {
@@ -8206,8 +8217,8 @@ export interface operations {
         };
         content: {
           "application/json": {
-            open_questions: number;
-            accepted_answers: {
+            open_questions?: number;
+            accepted_answers?: {
               thread_id: string;
               question: string | null;
               answer: string;

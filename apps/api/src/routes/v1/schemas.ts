@@ -81,20 +81,22 @@ const AcceptedBy = {
     ),
 };
 export const Questions = {
-  open_questions: z.number(),
-  accepted_answers: z.array(
-    z.object({
-      thread_id: z.string(),
-      question: z.string().nullable(),
-      answer: z.string(),
-      excerpt_truncated: z.literal(true).optional(),
-      answered_by: z.object({
-        kind: z.enum(["person", "service_account"]),
-        id: z.string(),
+  open_questions: z.number().optional(),
+  accepted_answers: z
+    .array(
+      z.object({
+        thread_id: z.string(),
+        question: z.string().nullable(),
+        answer: z.string(),
+        excerpt_truncated: z.literal(true).optional(),
+        answered_by: z.object({
+          kind: z.enum(["person", "service_account"]),
+          id: z.string(),
+        }),
+        ...AcceptedBy,
       }),
-      ...AcceptedBy,
-    }),
-  ),
+    )
+    .optional(),
 };
 export const Metric = z
   .object({

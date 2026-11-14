@@ -774,6 +774,13 @@ Crossing: authorization questions, the api's reads and writes.
   - a variant event by the `dataset_id` and `measure_id` it recorded. A
     caller without `pii_reader` sees it only when the measure is not PII;
   - a thread event as `findThread` shows the thread, by its element;
+    Questions are off by default (`questions.enabled`). Every thread service
+    entry point checks the setting after the route checks its credential and
+    before Cerbos or a thread read or write, answering `questions_off` without
+    revealing whether a thread exists. While off, the connector hides its six
+    thread tools and treats calls to them as unknown names, catalog reads omit
+    question fields, and the feed excludes `thread.*` events. Turning questions
+    off deletes nothing; enabling them restores access under the same policies.
   - term and conventions events to everyone, as they are readable by all;
   - `sync.*` events only with `admin:read_sync_events`, which a service
     account is refused in code, and their `error` only with
