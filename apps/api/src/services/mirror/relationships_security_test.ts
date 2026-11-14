@@ -54,6 +54,37 @@ it("hides PII relationship ends and column names, and counts the omitted joins",
     ).toContain("Order date");
   }));
 
+it("gives a table its kind from the columns and measures a person is shown", () =>
+  rolledBack(async (tx) => {
+    await tx.insert(piiRule).values(
+      ["Channel", "Order date"].map((name) => ({
+        kind: "column" as const,
+        table_name: "Sales",
+        name,
+        pii: true,
+        set_by_kind: "person" as const,
+        set_by_id: "x",
+        set_via: "api" as const,
+      })),
+    );
+    const sales = async (roles: string[]) =>
+      (
+        await mirror.getDataset(
+          asPerson({ ...appReader, roles }, { db: tx }),
+          id.sales,
+        )
+      ).tables.find((t) => t.name === "Sales");
+    expect(await sales(appReader.roles)).toMatchObject({
+      kind: "measures",
+      column_count: 0,
+      measure_count: 2,
+    });
+    expect(await sales([...appReader.roles, "pii_reader"])).toMatchObject({
+      kind: "standalone",
+      column_count: 2,
+    });
+  }));
+
 it("keeps hidden relationship counts independent of active_only within each table", () =>
   expect(
     createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
@@ -77,7 +108,7 @@ it("keeps hidden relationship counts independent of active_only within each tabl
         set_via: "api",
       });
       const context = asPerson(appReader, { db: tx });
-      for (const table of [undefined, "Sales", id.date_table]) {
+      for (const table of [undefined, "Sales", id.date_table, "Absent"]) {
         const all = await mirror.listRelationships(context, {
           dataset: id.sales,
           table,
@@ -90,13 +121,6 @@ it("keeps hidden relationship counts independent of active_only within each tabl
         expect(all.pii_hidden).toBe(2);
         expect(active.pii_hidden).toBe(all.pii_hidden);
       }
-      expect(
-        await mirror.listRelationships(context, {
-          dataset: id.sales,
-          table: "Absent",
-          active_only: true,
-        }),
-      ).not.toHaveProperty("pii_hidden");
       tx.rollback();
     }),
   ).rejects.toThrow(TransactionRollbackError));

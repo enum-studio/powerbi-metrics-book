@@ -308,9 +308,12 @@ describe("executeDax", () => {
       });
       await expect(getQuery(caller, catalog.query_id)).resolves.toMatchObject({
         origin: "catalog",
+        result_id: null,
+        row_count: null,
       });
       await expect(getQuery(caller, request.query_id)).resolves.toMatchObject({
         origin: "request",
+        result_id: request.result_id,
       });
       await expect(
         executeDax(caller, {

@@ -621,6 +621,8 @@ describe("read", () => {
       ]),
       relationships: anyOf(Array),
     });
+    // The service carries who configured it, a person's email address; the connector never does.
+    expect(byId).not.toHaveProperty("configured_by");
   });
 });
 

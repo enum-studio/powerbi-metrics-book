@@ -238,13 +238,16 @@ async function execute(
   await logged({
     status: anchor.truncated ? "truncated" : "succeeded",
     error: anchor.truncation_note,
-    result: {
-      id: anchor.result_id,
-      row_count: anchor.row_count,
-      column_count: anchor.columns.length,
-      bytes: anchor.bytes,
-      expires_at: new Date(anchor.expires_at),
-    },
+    // A catalog read's rows name the model's columns, personal data included, so the log never points to them.
+    ...(origin === "request" && {
+      result: {
+        id: anchor.result_id,
+        row_count: anchor.row_count,
+        column_count: anchor.columns.length,
+        bytes: anchor.bytes,
+        expires_at: new Date(anchor.expires_at),
+      },
+    }),
   });
   return anchor;
 }

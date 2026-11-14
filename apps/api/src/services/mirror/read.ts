@@ -607,7 +607,11 @@ export async function getDataset(context: ServiceContext, reference: string) {
       a.table.localeCompare(b.table) ||
       a.column.localeCompare(b.column),
   );
-  const tableKind = (table: (typeof tables)[number]) => {
+  const tableKind = (table: {
+    name: string;
+    column_count: number;
+    measure_count: number;
+  }) => {
     if (table.column_count === 0 && table.measure_count > 0)
       return "measures" as const;
     if (dateTables.some((d) => d.table === table.name)) return "date" as const;
@@ -634,24 +638,30 @@ export async function getDataset(context: ServiceContext, reference: string) {
       workspaceRef,
       shownIn,
     ),
-    tables: tables.map(({ pii, ...table }) => ({
-      ...table,
-      kind: tableKind({ ...table, pii }),
-      column_names: columns
-        .filter((c) => c.table_id === table.id && !c.is_hidden)
-        .sort(
-          (a, b) =>
-            Number(ends.has(columnKey(b.table, b.name))) -
-              Number(ends.has(columnKey(a.table, a.name))) ||
-            a.name.localeCompare(b.name),
-        )
-        .slice(0, 5)
-        .map((c) => c.name),
-      ...(!hides && pii && { pii: true as const }),
-      column_count: table.column_count - (hiddenIn.get(table.id) ?? 0),
-      measure_count:
-        table.measure_count - (hiddenMeasuresIn.get(table.id) ?? 0),
-    })),
+    tables: tables.map(({ pii, ...table }) => {
+      // Counted after personal data is left out, so the kind agrees with the counts shown.
+      const shown = {
+        column_count: table.column_count - (hiddenIn.get(table.id) ?? 0),
+        measure_count:
+          table.measure_count - (hiddenMeasuresIn.get(table.id) ?? 0),
+      };
+      return {
+        ...table,
+        kind: tableKind({ name: table.name, ...shown }),
+        column_names: columns
+          .filter((c) => c.table_id === table.id && !c.is_hidden)
+          .sort(
+            (a, b) =>
+              Number(ends.has(columnKey(b.table, b.name))) -
+                Number(ends.has(columnKey(a.table, a.name))) ||
+              a.name.localeCompare(b.name),
+          )
+          .slice(0, 5)
+          .map((c) => c.name),
+        ...(!hides && pii && { pii: true as const }),
+        ...shown,
+      };
+    }),
     ...(piiHidden > 0 && { pii_hidden: piiHidden }),
     ...questions,
     date_tables: dateTables,
@@ -834,9 +844,9 @@ export async function listRelationships(
         ...(input.cursor === undefined && { total: 0 }),
       };
   }
+  const ofDataset = and(eq(r.dataset_id, dataset.id), isNull(r.removed_at));
   const scope = and(
-    eq(r.dataset_id, dataset.id),
-    isNull(r.removed_at),
+    ofDataset,
     tableName === undefined
       ? undefined
       : or(eq(r.from_table, tableName), eq(r.to_table, tableName)),
@@ -862,7 +872,8 @@ export async function listRelationships(
       ? context.db
           .select({ value: count() })
           .from(r)
-          .where(and(scope, sql`not (${leavesOutPiiEnds()})`))
+          // Over the whole dataset, so a table filter cannot tell which tables a hidden relationship joins.
+          .where(and(ofDataset, sql`not (${leavesOutPiiEnds()})`))
       : [],
   ]);
   return {
