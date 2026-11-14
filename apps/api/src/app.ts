@@ -177,12 +177,15 @@ export function createApp(
   const shell = spaShell(webDist);
   app.route("/", spaRoutes(webDist, shell));
 
-  // Hono's wildcard middleware cannot match a path holding a line break, so
-  // such a path that also matches no route reaches no middleware at all and
-  // would get Hono's bare 404. Every unmatched path is answered here instead,
-  // with the headers put on by hand. A page load gets the SPA's shell, which
-  // draws its own "No page here" and holds no data. A signed-out page load
-  // of a path off the public list never gets here: the gate sends it to sign in.
+  // Every unmatched path is answered here, with the headers put on by hand. A
+  // path holding a line break is refused by the middleware after the headers,
+  // but Hono before 4.13.16 ran no wildcard middleware for such a path
+  // (GHSA-h7mg-cq63-vhpq), which left this handler as its only refusal. The
+  // check and the headers stay here, so a router that skips middleware again
+  // still refuses that path with the headers. A page load gets the SPA's
+  // shell, which draws its own "No page here" and holds no data. A signed-out
+  // page load of a path off the public list never gets here: the gate sends
+  // it to sign in.
   app.notFound(async (c) => {
     await putOnHeaders(c, () => {
       c.header("Vary", "Accept");
