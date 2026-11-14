@@ -484,8 +484,15 @@ it("fits 30 tables and 60 relationships, then pages 400 whole relationships", as
     } while (cursor !== null);
     expect(seen).toHaveLength(400);
     expect(new Set(seen.map((row) => JSON.stringify(row))).size).toBe(400);
-    const cut = toolAnswer({ description: "x".repeat(20000) }, "Dataset cut.");
-    expect(cut.content.at(-1)?.text).toContain("Dataset cut.");
+    const cut = await tool("get_dataset").call(ctx, { id: dataset });
+    expect(cut.isError).toBeUndefined();
+    expect(cut.content).toHaveLength(2);
+    const note = z
+      .object({ truncated: z.literal(true), message: z.string() })
+      .parse(JSON.parse(cut.content.at(-1)?.text ?? ""));
+    expect(note.message).toBe(
+      "This dataset is longer than 16 KiB and stops here. list_relationships lists its relationships, and list_columns and list_measures what each table holds.",
+    );
   } finally {
     await db.delete(powerbiDataset).where(eq(powerbiDataset.id, dataset));
   }

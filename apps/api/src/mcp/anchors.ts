@@ -162,10 +162,12 @@ export function searchAnchor(row: Row): Row {
     {
       ...parents(row),
       kind: row.kind,
-      category:
-        row.kind === "category"
-          ? row.key
-          : path.filter((step) => step.kind === "category").at(-1)?.key,
+      category: [
+        ...path
+          .filter((step) => step.kind === "category")
+          .map((step) => step.key),
+        ...(row.kind === "category" ? [row.key] : []),
+      ].join("/"),
       table: path.find((step) => step.kind === "table")?.name,
       display_folder: path
         .filter((step) => step.kind === "folder")
@@ -220,7 +222,7 @@ export const datasetDetail = (row: Row): Row =>
       ),
       relationships: rows(row.relationships).map(relationshipAnchor),
     },
-    "id name workspace apps has_row_level_security description description_pbi schema_error synced_at pii_hidden open_questions accepted_answers relationships_note date_tables tables relationships",
+    "id name workspace apps has_row_level_security description description_pbi schema_error synced_at pii_hidden open_questions accepted_answers custom relationships_note date_tables tables relationships",
     {},
     ["tables", "relationships"],
   );
@@ -248,8 +250,7 @@ export const metricDetail = (row: Row): Row =>
 export const variantDetail = (row: Row): Row =>
   keep(
     parents(row),
-    "id dataset workspace measure measure_reference reads_selection selection_columns metric table expression format_string display_folder is_hidden description description_pbi period comparison comparison_period currency custom_axes shift_note shift pii",
-    { shift_note: 160 },
+    "id dataset workspace measure measure_reference reads_selection selection_columns metric table expression format_string display_folder description description_pbi shift",
   );
 export const termDetail = (row: Row): Row =>
   keep(

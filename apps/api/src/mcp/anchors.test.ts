@@ -74,19 +74,19 @@ const row = {
 // prettier-ignore
 const cases = [
   ["metricAnchor", "id name label summary summary_truncated unit category trust_state dataset_count aliases aliases_truncated", 650],
-  ["variantAnchor", "id dataset measure measure_reference", 300],
-  ["columnAnchor", "id name table data_type display_folder description description_truncated description_pbi description_pbi_truncated terms", 650],
-  ["measureAnchor", "id name table display_folder description description_truncated description_pbi description_pbi_truncated metric", 650],
-  ["datasetAnchor", "id name workspace reached_through description description_truncated", 400],
+  ["variantAnchor", "id dataset measure measure_reference", 700],
+  ["columnAnchor", "id name table data_type display_folder description description_truncated description_pbi description_pbi_truncated terms", 700],
+  ["measureAnchor", "id name table display_folder description description_truncated description_pbi description_pbi_truncated metric", 1000],
+  ["datasetAnchor", "id name workspace reached_through description description_truncated", 450],
   ["workspaceAnchor", "id name dataset_count description description_truncated", 300],
   ["appAnchor", "id name workspace description description_truncated datasets", 450],
-  ["termAnchor", "id name type summary summary_truncated trust_state column_count aliases aliases_truncated", 600],
+  ["termAnchor", "id name type summary summary_truncated trust_state column_count aliases aliases_truncated", 550],
   ["categoryAnchor", "path name metric_count description description_truncated", 400],
   ["searchAnchor", "kind id name label summary summary_truncated dataset trust_state match category aliases aliases_truncated", 750],
-  ["threadAnchor", "id kind title status excerpt excerpt_truncated element author_name created_at reply_count", 700],
-  ["requestAnchor", "id at principal via question question_truncated outcome gaps missing missing_truncated elements", 1200],
-  ["queryAnchor", "id at principal via dataset status purpose purpose_truncated dax dax_truncated error error_truncated row_count duration_ms result_id metric_ids", 1500],
-  ["relationshipAnchor", "from_table from_column to_table to_column cardinality", 400],
+  ["threadAnchor", "id kind title status excerpt excerpt_truncated element author_name created_at reply_count", 650],
+  ["requestAnchor", "id at principal via question question_truncated outcome gaps missing missing_truncated elements", 800],
+  ["queryAnchor", "id at principal via dataset status purpose purpose_truncated dax dax_truncated error error_truncated row_count duration_ms result_id metric_ids", 1350],
+  ["relationshipAnchor", "from_table from_column to_table to_column cardinality", 350],
 ] as const;
 
 describe("connector anchors", () => {
@@ -115,10 +115,28 @@ describe("connector anchors", () => {
     ).toEqual({});
   });
   it.each(cases)(
-    "%s stays within its fixed ASCII row size",
+    "%s matches its fixed ASCII row size rounded up to 50 bytes",
     (key, _fields, target) => {
       const fixed = {
         ...row,
+        ...filled(
+          "is_hidden removed pii reads_selection has_row_level_security upvoted",
+          true,
+        ),
+        is_active: false,
+        column_type: "calculated",
+        cross_filtering_behavior: "both_directions",
+        selection_columns: [name],
+        upvote_count: 1,
+        unread_replies: 1,
+        shift: {
+          period: "previous_year",
+          comparison: "ratio",
+          comparison_period: "previous_year",
+          currency: "EUR",
+          custom_axes: { channel: "online" },
+          shift_note: "s".repeat(160),
+        },
         summary: "s".repeat(240),
         description: "d".repeat(key === "categoryAnchor" ? 240 : 160),
         description_pbi: "d".repeat(160),
@@ -134,11 +152,46 @@ describe("connector anchors", () => {
             ? [{ kind: "category", key: name, name }]
             : name,
       };
-      expect(
-        Buffer.byteLength(JSON.stringify(anchors[key](fixed)), "utf8"),
-      ).toBeLessThanOrEqual(target);
+      const bytes = Buffer.byteLength(
+        JSON.stringify(anchors[key](fixed)),
+        "utf8",
+      );
+      expect(Math.ceil(bytes / 50) * 50).toBe(target);
     },
   );
+  it("keeps the full category path on nested metric and category hits", () => {
+    const sales = { kind: "category", key: "sales", name: "Sales" };
+    const orders = { kind: "category", key: "orders", name: "Orders" };
+    expect(
+      anchors.searchAnchor({ kind: "metric", path: [sales, orders] }),
+    ).toEqual({ kind: "metric", category: "sales/orders" });
+    expect(
+      anchors.searchAnchor({ kind: "category", key: "orders", path: [sales] }),
+    ).toEqual({ kind: "category", category: "sales/orders" });
+  });
+  it("keeps nonempty dataset custom fields", () => {
+    expect(
+      anchors.datasetDetail({ custom: { owner_team: "finance" } }),
+    ).toEqual({
+      custom: { owner_team: "finance" },
+      tables: [],
+      relationships: [],
+    });
+  });
+  it("leaves out variant fields the service never returns", () => {
+    expect(
+      anchors.variantDetail({
+        is_hidden: true,
+        period: "previous_year",
+        comparison: "ratio",
+        comparison_period: "previous_year",
+        currency: "EUR",
+        custom_axes: { channel: "online" },
+        shift_note: long,
+        pii: true,
+      }),
+    ).toEqual({});
+  });
   it("keeps service truncation and each nondefault flag", () => {
     expect(
       anchors.metricAnchor({ summary: "short", summary_truncated: true }),
