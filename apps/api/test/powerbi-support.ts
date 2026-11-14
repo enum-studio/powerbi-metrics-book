@@ -15,6 +15,7 @@ import {
   type PowerBiDeps,
   type RedeemedCode,
 } from "../src/powerbi/identity.js";
+import { testConfig } from "./deps.js";
 import { MemorySecrets, MemorySettings } from "./doubles.js";
 
 /*
@@ -46,6 +47,7 @@ export async function startPowerBi(
   const scanner = find(principals, (sp) => sp.may_call_admin_apis);
   const app = find(principals, (sp) => !sp.may_call_admin_apis);
   const deps: PowerBiDeps = {
+    config: testConfig("api"),
     fetcher: createGuardedFetcher({
       allowedOrigins: () => Promise.resolve([mock.url]),
       nodeEnv: "test",

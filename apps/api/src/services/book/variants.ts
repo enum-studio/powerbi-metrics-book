@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, isNull, sql } from "drizzle-orm";
 import type { SelectedFields } from "drizzle-orm/pg-core";
 import type { Db, ServiceContext } from "../../context.js";
 import {
@@ -166,24 +166,27 @@ export async function listVariants(
   const found = await resolveMetric(db, allowed, hides, reference);
   const limit = sizeOf(filters.limit);
   const { dataset, workspace, period, comparison, currency } = filters;
+  const matching = and(
+    eq(metricVariant.metric_id, found.id),
+    allowed,
+    liveMeasure,
+    unlessPii(hides),
+    dataset === undefined ? undefined : byIdOrName(powerbiDataset, dataset),
+    workspace === undefined ? undefined : inWorkspace(db, workspace),
+    period === undefined ? undefined : eq(metricVariant.period, period),
+    comparison === undefined
+      ? undefined
+      : eq(metricVariant.comparison, comparison),
+    currency === undefined
+      ? undefined
+      : currency === null
+        ? isNull(metricVariant.currency)
+        : eq(metricVariant.currency, currency),
+  );
   const rows = await selectVariants(db, { name: powerbiMeasure.name })
     .where(
       and(
-        eq(metricVariant.metric_id, found.id),
-        allowed,
-        liveMeasure,
-        unlessPii(hides),
-        dataset === undefined ? undefined : byIdOrName(powerbiDataset, dataset),
-        workspace === undefined ? undefined : inWorkspace(db, workspace),
-        period === undefined ? undefined : eq(metricVariant.period, period),
-        comparison === undefined
-          ? undefined
-          : eq(metricVariant.comparison, comparison),
-        currency === undefined
-          ? undefined
-          : currency === null
-            ? isNull(metricVariant.currency)
-            : eq(metricVariant.currency, currency),
+        matching,
         afterCursor(
           {
             name: [
@@ -209,8 +212,15 @@ export async function listVariants(
     row.workspace.name,
     row.dataset.name,
   ]);
+  const [counted] =
+    filters.cursor === undefined
+      ? await db
+          .select({ total: count() })
+          .from(selectVariants(db, {}).where(matching).as("matching"))
+      : [];
   const items = await withoutPiiSelection(context, page.items);
   return {
+    ...counted,
     items: items.map((row) => ({
       ...variantAnchor(row),
       shift: row.shift,

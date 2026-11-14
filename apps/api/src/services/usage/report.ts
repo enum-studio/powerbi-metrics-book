@@ -253,6 +253,7 @@ export async function usageReport(
       ]),
   );
   const queriesRead = all(
+    eq(queryLog.origin, "request"),
     sql`${queryLog.at} >= ${since} and ${queryLog.at} < ${until}`,
     readableQueries,
     ids && inArray(queryLog.dataset_id, ids),
@@ -269,7 +270,7 @@ export async function usageReport(
       sql`exists (select 1 from jsonb_array_elements(${request.elements}) as named
           where ${elementIn(context, ids, sql`named->>'kind'`, elementId(sql`named`))})
         or exists (select 1 from ${queryLog} where ${queryLog.id} = any(${request.query_ids})
-          and ${readableQueries} and ${inArray(queryLog.dataset_id, ids)})`,
+          and ${queryLog.origin} = 'request' and ${readableQueries} and ${inArray(queryLog.dataset_id, ids)})`,
   );
   const elements = sql`${request} cross join lateral (
     select named->>'kind' as kind, ${elementId(sql`named`)} as id

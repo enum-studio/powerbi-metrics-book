@@ -28,7 +28,7 @@ Watch `not_the_same_as` and `when_to_use`: they say when a similar metric is the
 
 For a variant other than the base (last year, another currency), `pbmb variants list <metric> --period previous_year` finds it and `pbmb variants show <id>` (MCP: `list_variants`, `get_variant`) gives its DAX. Take that DAX and shift only what the question asks. Do not write a measure from memory.
 
-If no metric covers the question, say so. `pbmb queries search <words>` (MCP: `search_query_log`, `get_query`) shows DAX others ran for the same thing. `pbmb columns list <dataset> --table <table>` (MCP: `list_columns`) finds a column to filter or group by, and `pbmb search <words> --kind term` finds a business word's column.
+If no metric covers the question, say so. `pbmb queries search <words>` (MCP: `search_query_log`, `get_query`) shows DAX others ran for the same thing. `pbmb columns list <dataset> --table <table>` (MCP: `list_columns`) finds a column to filter or group by. `pbmb datasets show <dataset> --json` (MCP: `get_dataset`, then `list_relationships`) gives the date tables and how the tables join. `pbmb search <words> --kind term` finds a word the business uses, what it means here, and the columns and metrics it points to.
 
 ## 3. Run it
 

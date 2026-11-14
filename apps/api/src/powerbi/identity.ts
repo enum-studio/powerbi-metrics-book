@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { AppDeps, SecretName } from "../context.js";
 import { ServiceError } from "../errors.js";
+import { connectAgain } from "../config.js";
 import { microsoftClaims } from "../services/auth/sign-in.js";
 import {
   parseAnswer,
@@ -20,7 +21,7 @@ import {
 
 export type PowerBiDeps = Pick<
   AppDeps,
-  "fetcher" | "settings" | "secrets" | "clock"
+  "fetcher" | "settings" | "secrets" | "clock" | "config"
 >;
 
 const POWER_BI = "https://analysis.windows.net/powerbi/api";
@@ -41,8 +42,6 @@ const REGISTRATIONS = {
 const RENEW_BEFORE_MS = 5 * 60_000;
 const CLIENT_REFUSED = ["invalid_client", "unauthorized_client"];
 const CLIENT_GRANT = "client_credentials";
-const CONNECTION_ENDED =
-  "Your Power BI connection has ended: Microsoft no longer accepts it. Connect Power BI again.";
 
 export async function endpoint(
   deps: Pick<PowerBiDeps, "settings">,
@@ -137,7 +136,11 @@ async function requestToken<S extends z.ZodType>(
     );
   }
   if (error?.code === "invalid_grant" && form.grant_type !== CLIENT_GRANT) {
-    throw new ServiceError("needs_connection", CONNECTION_ENDED, detail);
+    throw new ServiceError(
+      "needs_connection",
+      `Your Power BI connection has ended: Microsoft no longer accepts it. ${connectAgain(deps.config)}`,
+      detail,
+    );
   }
   // The token request's own failure, whatever its status: not the admin API's.
   throw upstreamFailure("Microsoft identity", response.status, error, {
@@ -282,7 +285,7 @@ export async function redeemCode(
     throw new ServiceError(
       "refused",
       who.tid === expected.tenant_id
-        ? "Microsoft's ID token was not issued for this app. Connect Power BI again."
+        ? `Microsoft's ID token was not issued for this app. ${connectAgain(deps.config)}`
         : "This Microsoft account is not in the company's Power BI tenant.",
     );
   if (
@@ -291,7 +294,7 @@ export async function redeemCode(
   )
     throw new ServiceError(
       "refused",
-      "Microsoft's ID token has expired. Connect Power BI again.",
+      `Microsoft's ID token has expired. ${connectAgain(deps.config)}`,
     );
   return { access_token, expires_at, refresh_token, scopes, ...who };
 }

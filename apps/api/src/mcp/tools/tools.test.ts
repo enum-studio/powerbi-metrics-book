@@ -365,7 +365,6 @@ describe("find", () => {
     expect(metrics.items).toHaveLength(3);
     expect(metrics.next_cursor).not.toBeNull();
     expect(metrics.items[0]).toMatchObject({
-      kind: "metric",
       trust_state: "draft",
     });
     const inSales = await ask(
@@ -382,9 +381,7 @@ describe("find", () => {
       anchors,
     );
     expect(variants.items[0]).toMatchObject({
-      kind: "variant",
       measure_reference: "[Net sales]",
-      metric: { kind: "metric", id: metric },
     });
     expect(JSON.stringify(variants)).not.toContain("SUM(");
     await createCategory(contextOf(), "revenue", { name: "Revenue" });
@@ -397,11 +394,9 @@ describe("find", () => {
     );
     expect(tree).toContainEqual(
       containing.object({
-        kind: "category",
         path: "revenue",
         name: "Revenue",
         metric_count: 1,
-        children: [],
       }),
     );
   });
@@ -412,7 +407,7 @@ describe("find", () => {
       definition: "Where an order was placed.",
     });
     const terms = await ask(admin, "list_terms", {}, anchors);
-    expect(terms.items[0]).toMatchObject({ kind: "term", type: "concept" });
+    expect(terms.items[0]).toMatchObject({ type: "concept" });
     const workspaces = await ask(
       admin,
       "list_workspaces",
@@ -423,23 +418,19 @@ describe("find", () => {
     const apps = await ask(admin, "list_apps", {}, z.array(z.unknown()));
     expect(apps).toContainEqual(
       containing.object({
-        kind: "app",
         name: "Sales app",
-        workspace: containing.object({ kind: "workspace", name: SALES }),
-        datasets: containing.array([
-          containing.object({ kind: "dataset", name: SALES }),
-        ]),
+        workspace: SALES,
+        datasets: containing.array([containing.object({ name: SALES })]),
       }),
     );
     const datasets = await ask(
       admin,
       "list_datasets",
-      { name_prefix: "Sa" },
+      { name_contains: "Sa" },
       anchors,
     );
     expect(datasets.items).toEqual([
       containing.object({
-        kind: "dataset",
         name: SALES,
         reached_through: anyOf(Array),
       }),
@@ -447,13 +438,12 @@ describe("find", () => {
     const columns = await ask(
       admin,
       "list_columns",
-      { dataset: SALES, name_prefix: "Net" },
+      { dataset: SALES, name_contains: "Net" },
       anchors,
     );
     expect(columns.items[0]).toMatchObject({
-      kind: "column",
       name: "Net amount",
-      table: { kind: "table" },
+      table: anyOf(String),
       data_type: anyOf(String),
     });
     const measures = await ask(
@@ -556,21 +546,11 @@ describe("read", () => {
         .object({ name: z.string(), base_variants: z.array(z.unknown()) })
         .loose(),
     );
-    expect(Object.keys(found)).toEqual(
-      containing.array([
-        ...["label", "definition", "aliases", "when_to_use", "not_the_same_as"],
-        ...["grain_and_filters", "unit", "category", "owner", "trust_state"],
-        ...["verified_by", "verified_at", "failing_checks", "other_variants"],
-        ...["terms", "open_questions", "accepted_answers"],
-      ]),
-    );
     expect(found).toMatchObject({
-      kind: "metric",
       id: metric,
       trust_state: "draft",
       base_variants: containing.array([
         containing.object({
-          kind: "variant",
           id: variant,
           dataset: containing.object({ name: SALES }),
           measure_reference: "[Net sales]",
@@ -587,19 +567,12 @@ describe("read", () => {
       z.unknown(),
     );
     expect(byMeasure).toEqual(byId);
-    expect(Object.keys(byId as object)).toEqual(
-      containing.array([
-        ...["expression", "normalized_expression", "format_string"],
-        ...["display_folder", "description", "description_pbi", "metric"],
-        ...["shift", "reads_selection", "selection_columns"],
-      ]),
-    );
     expect(byId).toMatchObject({
       expression: containing.string("SUM"),
-      normalized_expression: anyOf(String),
-      metric: { kind: "metric", id: metric },
-      reads_selection: anyOf(Boolean),
+      metric: anyOf(String),
     });
+    expect(byId).not.toHaveProperty("normalized_expression");
+    expect(byId).not.toHaveProperty("assigned_by");
     const both = await call(admin, "get_variant", {
       id: variant,
       dataset: SALES,
@@ -624,7 +597,6 @@ describe("read", () => {
     await expect(
       ask(analyst, "get_term", { name: `${name} alias` }, z.unknown()),
     ).resolves.toMatchObject({
-      kind: "term",
       name,
       definition: "Where an order was placed.",
     });
@@ -641,22 +613,16 @@ describe("read", () => {
       z.unknown(),
     );
     expect(byName).toEqual(byId);
-    expect(Object.keys(byId as object)).toEqual(
-      containing.array([
-        ...["description", "description_pbi", "workspace", "apps", "synced_at"],
-        ...["schema_error", "custom", "tables", "relationships"],
-      ]),
-    );
     expect(byId).toMatchObject({
-      kind: "dataset",
       name: SALES,
-      workspace: { kind: "workspace" },
-      has_row_level_security: anyOf(Boolean),
+      workspace: SALES,
       tables: containing.array([
-        containing.object({ kind: "table", name: "Sales" }),
+        containing.object({ kind: "fact", name: "Sales" }),
       ]),
       relationships: anyOf(Array),
     });
+    // The service carries who configured it, a person's email address; the connector never does.
+    expect(byId).not.toHaveProperty("configured_by");
   });
 });
 
@@ -902,7 +868,10 @@ describe("talk", () => {
         { kind: "category", id: "no/such/path" },
         "No such category: no/such/path.",
       ],
-      [{ kind: "term", id: "No such term" }, 'No term goes by "No such term".'],
+      [
+        { kind: "term", id: "No such term" },
+        'No term goes by "No such term". search finds a term by a word, and list_terms lists the terms A to Z.',
+      ],
     ] as const)
       expect(
         await call(analyst, "post_thread", {
@@ -1091,6 +1060,7 @@ describe("a refusal", () => {
   /** [tool, the call on what is hidden, the call on what does not exist, whether it fails]. */
   const cases = (): [string, object, object, boolean][] => [
     ["get_dataset", { name: SALES }, { name: missing }, true],
+    ["list_relationships", { dataset: SALES }, { dataset: missing }, true],
     ["list_columns", { dataset: SALES }, { dataset: missing }, true],
     ["list_measures", { dataset: SALES }, { dataset: missing }, true],
     [

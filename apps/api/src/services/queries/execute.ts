@@ -17,7 +17,7 @@ import {
   powerbiTable,
   powerbiWorkspace,
 } from "../../db/schema/mirror.js";
-import type { QueryStatus } from "../../db/schema/queries.js";
+import type { QueryOrigin, QueryStatus } from "../../db/schema/queries.js";
 import { NO_SUCH_DATASET, ServiceError } from "../../errors.js";
 import { executeQuery, type QueryAnswer } from "../../powerbi/execute.js";
 import { appServicePrincipalToken } from "../../powerbi/identity.js";
@@ -79,7 +79,7 @@ export async function executeDax(
   context: ServiceContext,
   input: ExecuteInput,
 ): Promise<ResultAnchor> {
-  return execute(context, input, true);
+  return execute(context, input, "request");
 }
 
 const MODEL_VIEW_PURPOSE = {
@@ -107,14 +107,14 @@ export async function readModelView(
       purpose: MODEL_VIEW_PURPOSE[view],
       preview_rows: 0,
     },
-    false,
+    "catalog",
   );
 }
 
 async function execute(
   context: ServiceContext,
   input: ExecuteInput,
-  checkPii: boolean,
+  origin: QueryOrigin,
 ): Promise<ResultAnchor> {
   const started = performance.now();
   const at = context.clock();
@@ -128,7 +128,7 @@ async function execute(
   let grant: Awaited<ReturnType<typeof tokenFor>> | null = null;
 
   async function run(): Promise<ResultAnchor> {
-    if (checkPii) await countQuery(context, at);
+    if (origin === "request") await countQuery(context, at);
     checkInput(input);
     const found = await describedDataset(context, input.dataset);
     dataset = {
@@ -149,7 +149,7 @@ async function execute(
     checkDax(input.dax);
     // A service account never reads PII, so it is always checked.
     let names =
-      (await readsPii(context)) || !checkPii
+      (await readsPii(context)) || origin === "catalog"
         ? null
         : await piiNamesOf(context.db, found.id);
     if (names !== null && !hidesNothing(names)) {
@@ -173,7 +173,7 @@ async function execute(
     }
     measures = await measuresIn(context, found.id, input.dax);
     const preview_rows = await previewRows(context, input.preview_rows);
-    if (checkPii) reservation = await reserveRows(context, at);
+    if (origin === "request") reservation = await reserveRows(context, at);
     grant = await tokenFor(context, false);
     failure = "failed";
     const ran = await runQuery(context, grant, found.id, input.dax);
@@ -209,6 +209,7 @@ async function execute(
     try {
       await logQuery(context, {
         id: query_id,
+        origin,
         at,
         powerbi_account: grant?.account ?? null,
         dataset,
@@ -237,13 +238,16 @@ async function execute(
   await logged({
     status: anchor.truncated ? "truncated" : "succeeded",
     error: anchor.truncation_note,
-    result: {
-      id: anchor.result_id,
-      row_count: anchor.row_count,
-      column_count: anchor.columns.length,
-      bytes: anchor.bytes,
-      expires_at: new Date(anchor.expires_at),
-    },
+    // A catalog read's rows name the model's columns, personal data included, so the log never points to them.
+    ...(origin === "request" && {
+      result: {
+        id: anchor.result_id,
+        row_count: anchor.row_count,
+        column_count: anchor.columns.length,
+        bytes: anchor.bytes,
+        expires_at: new Date(anchor.expires_at),
+      },
+    }),
   });
   return anchor;
 }

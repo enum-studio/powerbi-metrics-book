@@ -57,6 +57,13 @@
       "when": 1794417049659,
       "tag": "0007_tiny_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794632947896,
+      "tag": "0008_wandering_bishop",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,9 @@ export const QUERY_STATUSES = [
   "refused",
 ] as const;
 export type QueryStatus = (typeof QUERY_STATUSES)[number];
+/** A request is a query someone sent; a catalog read is the catalog's own read of a model. */
+export const QUERY_ORIGINS = ["request", "catalog"] as const;
+export type QueryOrigin = (typeof QUERY_ORIGINS)[number];
 export const PRINCIPAL_KINDS = ["person", "service_account"] as const;
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
@@ -98,6 +101,9 @@ export const queryLog = pgTable(
     dax: text("dax").notNull(),
     dax_hash: text("dax_hash").notNull(),
     purpose: text("purpose"),
+    origin: text("origin", { enum: QUERY_ORIGINS })
+      .notNull()
+      .default("request"),
     status: text("status", { enum: QUERY_STATUSES }).notNull(),
     error: text("error"),
     row_count: integer("row_count"),
@@ -117,6 +123,7 @@ export const queryLog = pgTable(
     index("query_log_result_id_idx").on(t.result_id),
     index("query_log_search_tsv_idx").using("gin", t.search_tsv),
     index("query_log_metric_ids_idx").using("gin", t.metric_ids),
+    check("query_log_origin_check", sql`${t.origin} in ('request', 'catalog')`),
     check(
       "query_log_status_check",
       sql`${t.status} in ('succeeded', 'truncated', 'failed', 'refused')`,

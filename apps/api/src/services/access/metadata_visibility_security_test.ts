@@ -333,6 +333,7 @@ describe("metadata Power BI does not show a person", () => {
 
       const outsider = await as("outsider");
       expect(await listDatasets(outsider)).toEqual({
+        total: 0,
         items: [],
         next_cursor: null,
       });

@@ -33,13 +33,12 @@ import {
   powerbiRelationship,
 } from "../../db/schema/mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
-import { queryLog } from "../../db/schema/queries.js";
+import { queryLog, queryResult } from "../../db/schema/queries.js";
 import { requestRate } from "../../db/schema/rate-limit.js";
 import type { Principal } from "../../principal.js";
 import { MICROSOFT } from "../auth/roles.js";
 import { searchQueryLog } from "../queries/log.js";
 import { countRequest } from "../rate-limit.js";
-import { readResult } from "../queries/store.js";
 import { getDataset, listColumns, listMeasures } from "./read.js";
 
 /*
@@ -236,7 +235,7 @@ describe("ensureModelDetails, through getDataset and listMeasures", () => {
       expect((await storedRelationships(SALES)).size).toBeGreaterThan(0);
       expect(answer.relationships).toEqual([]);
       const logs = await reader
-        .select({ result_id: queryLog.result_id })
+        .select({ origin: queryLog.origin, result_id: queryLog.result_id })
         .from(queryLog)
         .where(
           and(
@@ -244,10 +243,13 @@ describe("ensureModelDetails, through getDataset and listMeasures", () => {
             gte(queryLog.at, since),
           ),
         );
-      const ours = logs.flatMap((entry) =>
-        entry.result_id === null ? [] : [entry.result_id],
+      // The log never points to a catalog read's rows, which name personal-data columns.
+      expect(logs).toEqual(
+        Array.from({ length: 3 }, () => ({
+          origin: "catalog",
+          result_id: null,
+        })),
       );
-      expect(ours).toHaveLength(3);
       expect(
         await reader
           .select()
@@ -259,10 +261,17 @@ describe("ensureModelDetails, through getDataset and listMeasures", () => {
             ),
           ),
       ).toEqual([]);
-      for (const resultId of ours)
-        await expect(
-          readResult(analyst, resultId, { limit: 1 }),
-        ).rejects.toMatchObject({ kind: "not_found" });
+      expect(
+        await reader
+          .select({ id: queryResult.id })
+          .from(queryResult)
+          .where(
+            and(
+              eq(queryResult.owner_id, analyst.principal.id),
+              gte(queryResult.created_at, since),
+            ),
+          ),
+      ).toEqual([]);
     } finally {
       await reader.delete(piiRule).where(eq(piiRule.id, ruleId));
     }

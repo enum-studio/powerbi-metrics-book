@@ -11,7 +11,10 @@ guide: |
 
   ## Terms
 
-  A term is a business word with a definition. A dimension term is backed by one or more Power BI columns ("Channel" is `'Sales'[Channel]`); a concept term has none (a cohort, a season, a business rule). Define a word on its column when one exists.
+  A term is a word the business uses that a newcomer needs explained: "Returning customer", "Sign-up attribution", "Cohort", "Channel". It can point to the columns that hold it and the metrics that use it. Whether it has columns is a detail of the term, not what it is.
+
+  A term with columns has type `dimension`; one with none has type `concept`. A term with columns, such as "Channel", can point to `'Sales'[Channel]`. A term with no column, such as "Cohort", has the same shape, with no columns. Its name or alias must not match a column already backing another term. Add the word to that term as an alias instead.
+
 naming:
   case: none
   kinds: []

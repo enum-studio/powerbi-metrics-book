@@ -32,12 +32,15 @@ import {
   powerbiWorkspace,
 } from "../../db/schema/mirror.js";
 import { ServiceError } from "../../errors.js";
+import { excerpt } from "../text.js";
 import type { Conventions } from "../conventions/schema.js";
 import { currentConventions } from "../conventions/store.js";
 import { namesOf, REMOVED_PERSON, whoKey } from "../auth/people.js";
 import { type NewEvent, withEvents } from "../events/feed.js";
 import {
   afterCursor,
+  containsName,
+  aliasContainsName,
   byIdOrName,
   appsSeen,
   inApp,
@@ -1255,6 +1258,7 @@ type MetricFilters = {
   workspace?: string;
   app?: string;
   name_prefix?: string;
+  name_contains?: string;
   /** Custom fields to match, as text: { owner_team: "finance" }. */
   custom?: Record<string, string>;
   /** Dismissed metrics are left out unless this is true. */
@@ -1373,6 +1377,11 @@ export async function listMetrics(
       ([key, value]) => sql`${metric.custom} ->> ${key} = ${value}`,
     ),
     startsWith(metric.name, filters.name_prefix),
+    or(
+      containsName(metric.name, filters.name_contains),
+      containsName(metric.label, filters.name_contains),
+      aliasContainsName(metric.aliases, filters.name_contains),
+    ),
   ];
   const rows = await db
     .select({
@@ -1412,14 +1421,18 @@ export async function listMetrics(
   return {
     ...(counted !== undefined && { total: counted.total }),
     items: page.items.map(
-      ({ definition, category_id, dismissed_at, ...row }) => ({
-        kind: "metric" as const,
-        ...row,
-        aliases: row.aliases ?? [],
-        summary: definition.slice(0, 240),
-        category: categoryOf(tree, category_id),
-        dismissed: dismissed_at !== null,
-      }),
+      ({ definition, category_id, dismissed_at, ...row }) => {
+        const summary = excerpt(definition, 240);
+        return {
+          kind: "metric" as const,
+          ...row,
+          aliases: row.aliases ?? [],
+          summary: summary.text,
+          ...(summary.truncated && { summary_truncated: true as const }),
+          category: categoryOf(tree, category_id),
+          dismissed: dismissed_at !== null,
+        };
+      },
     ),
     next_cursor: page.next_cursor,
   };

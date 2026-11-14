@@ -264,6 +264,7 @@ async function call(
     list_columns: [`/datasets/${dataset}/columns`, { dataset }],
     list_measures: [`/datasets/${dataset}/measures`, { dataset }],
     get_dataset: [`/datasets/${dataset}`, { id: dataset }],
+    list_relationships: ["", { dataset }],
     list_variants: [`/metrics/${metricId}/variants`, { metric: metricId }],
     get_variant: [`/variants/${String(extra.id)}`, {}],
     get_metric: [`/metrics/${extra.name ?? metricId}`, { name: metricId }],
@@ -391,6 +392,18 @@ describe.each(["REST", "MCP"])("PII through %s", (transport) => {
       const detail = await call(person, transport, "get_dataset");
       if (reads) expect(detail).not.toHaveProperty("pii_hidden");
       else expect(detail).toMatchObject({ pii_hidden: 4 });
+      if (transport === "MCP") {
+        const relationships = await call(
+          person,
+          transport,
+          "list_relationships",
+        );
+        expect(relationships).toMatchObject({
+          items: (detail as { relationships?: unknown[] }).relationships ?? [],
+        });
+        if (reads) expect(relationships).not.toHaveProperty("pii_hidden");
+        else expect(relationships).toMatchObject({ pii_hidden: 2 });
+      }
       const customer = {
         name: "Customer",
         column_count: reads ? 4 : 1,

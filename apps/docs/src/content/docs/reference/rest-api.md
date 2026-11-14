@@ -1398,12 +1398,13 @@ Who may call it: Any signed-in caller: a person in a browser or with `pbmb login
 | `workspace` | query | text | no |   |
 | `app` | query | text | no |   |
 | `name_prefix` | query | text | no |   |
+| `name_contains` | query | text | no |   |
 | `cursor` | query | text | no |   |
 | `limit` | query | a whole number, at least 1 and at most 500 | no |   |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | The datasets the caller may describe, A to Z | an object with items, next_cursor |
+| 200 | The datasets the caller may describe, A to Z | an object with items, next_cursor, total |
 
 Fields of the first answer:
 
@@ -1411,6 +1412,7 @@ Fields of the first answer:
 | --- | --- | --- | --- |
 | `items` | a list of an object | yes |   |
 | `next_cursor` | text or null | yes |   |
+| `total` | a number | no |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
 
@@ -1426,7 +1428,7 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | One dataset described: its tables, relationships and descriptions | an object with open_questions, accepted_answers, kind, id, name, icon, description, description_pbi, workspace, apps, reached_through, configured_by, target_storage_mode, has_row_level_security, endorsement, sensitivity_label, schema_error, schema_changed_at, created_date, synced_at, described_by, described_at, custom, relationships_source, relationships_read_at, relationships_note, relationships, tables, pii_hidden |
+| 200 | One dataset described: its tables, relationships and descriptions | an object with open_questions, accepted_answers, kind, id, name, icon, description, description_pbi, workspace, apps, reached_through, configured_by, target_storage_mode, has_row_level_security, endorsement, sensitivity_label, schema_error, schema_changed_at, created_date, synced_at, described_by, described_at, custom, relationships_source, relationships_read_at, relationships_note, relationships, date_tables, tables, pii_hidden |
 
 Fields of the first answer:
 
@@ -1459,6 +1461,7 @@ Fields of the first answer:
 | `relationships_read_at` | text (date-time) or null | yes |   |
 | `relationships_note` | text or null | yes |   |
 | `relationships` | a list of an object | yes |   |
+| `date_tables` | a list of an object | no |   |
 | `tables` | a list of an object | yes |   |
 | `pii_hidden` | a number | no |   |
 
@@ -1475,12 +1478,13 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 | `id` | path | a GUID | yes |   |
 | `table` | query | text | no |   |
 | `name_prefix` | query | text | no |   |
+| `name_contains` | query | text | no |   |
 | `cursor` | query | text | no |   |
 | `limit` | query | a whole number, at least 1 and at most 500 | no |   |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | A dataset's columns, A to Z | an object with items, next_cursor, pii_hidden |
+| 200 | A dataset's columns, A to Z | an object with items, next_cursor, pii_hidden, total |
 
 Fields of the first answer:
 
@@ -1489,6 +1493,7 @@ Fields of the first answer:
 | `items` | a list of an object | yes |   |
 | `next_cursor` | text or null | yes |   |
 | `pii_hidden` | a number | no |   |
+| `total` | a number | no |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
@@ -1529,13 +1534,14 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 | --- | --- | --- | --- | --- |
 | `id` | path | a GUID | yes |   |
 | `table` | query | text | no |   |
+| `name_contains` | query | text | no |   |
 | `unfiled` | query | one of "true", "false" | no |   |
 | `cursor` | query | text | no |   |
 | `limit` | query | a whole number, at least 1 and at most 500 | no |   |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | A dataset's measures, A to Z, with the metric that covers each | an object with items, next_cursor, pii_hidden |
+| 200 | A dataset's measures, A to Z, with the metric that covers each | an object with items, next_cursor, pii_hidden, total |
 
 Fields of the first answer:
 
@@ -1544,6 +1550,7 @@ Fields of the first answer:
 | `items` | a list of an object | yes |   |
 | `next_cursor` | text or null | yes |   |
 | `pii_hidden` | a number | no |   |
+| `total` | a number | no |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
@@ -1831,6 +1838,8 @@ Who may call it: Any signed-in caller: a person in a browser or with `pbmb login
 | `app` | query | text | no |   |
 | `dataset` | query | text | no |   |
 | `trust_states` | query | text | no |   |
+| `name_prefix` | query | text | no |   |
+| `name_contains` | query | text | no |   |
 | `category` | query | text | no |   |
 | `not_filed` | query | text | no |   |
 | `unit` | query | text | no |   |
@@ -2322,7 +2331,7 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | A metric's variants, with their shifts and no DAX | an object with items, next_cursor |
+| 200 | A metric's variants, with their shifts and no DAX | an object with items, next_cursor, total |
 
 Fields of the first answer:
 
@@ -2330,6 +2339,7 @@ Fields of the first answer:
 | --- | --- | --- | --- |
 | `items` | a list of an object | yes |   |
 | `next_cursor` | text or null | yes |   |
+| `total` | a number | no |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
@@ -2570,6 +2580,7 @@ Fields of the first answer:
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `kind` | "query" | yes |   |
+| `origin` | one of "request", "catalog" | yes |   |
 | `id` | text | yes |   |
 | `at` | text (date-time) | yes |   |
 | `principal` | an object with kind, id | yes |   |
@@ -3560,13 +3571,15 @@ Who may call it: Any signed-in caller: a person in a browser or with `pbmb login
 | `app` | query | text | no |   |
 | `dataset` | query | text | no |   |
 | `trust_states` | query | text | no |   |
+| `name_prefix` | query | text | no |   |
+| `name_contains` | query | text | no |   |
 | `cursor` | query | text | no |   |
 | `limit` | query | text | no |   |
 | `custom.KEY` | query | text | no | Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20. |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | The glossary terms, A to Z, as small anchors | an object with items, next_cursor |
+| 200 | The glossary terms, A to Z, as small anchors | an object with items, next_cursor, total |
 
 Fields of the first answer:
 
@@ -3574,6 +3587,7 @@ Fields of the first answer:
 | --- | --- | --- | --- |
 | `items` | a list of an object | yes |   |
 | `next_cursor` | text or null | yes |   |
+| `total` | a number | no |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
 

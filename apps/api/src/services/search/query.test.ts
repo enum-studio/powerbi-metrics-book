@@ -67,12 +67,18 @@ describe("search", () => {
         kind: "metric",
         name: "net_sales",
         label: "Net sales",
+        aliases: ["Sample turnover"],
         match: "exact",
         dataset: null,
       });
       expect(answer.items.filter((hit) => hit.match === "exact")).toHaveLength(
         1,
       );
+      expect(
+        answer.items
+          .filter((hit) => hit.kind !== "metric")
+          .every((hit) => !("aliases" in hit)),
+      ).toBe(true);
       expect(await queriesEmbedded(s)).toBe(1);
     }));
 
@@ -204,7 +210,7 @@ describe("search", () => {
       expect(limiting.calls()).toBe(1);
     }));
 
-  it("cuts a summary at 240 characters, and a page at 50", () =>
+  it("cuts a summary on a word within 240 characters, and a page at 50", () =>
     searchable({ provider: "none" }, async (s) => {
       await s.tx
         .update(powerbiDataset)
@@ -216,7 +222,20 @@ describe("search", () => {
         (item) => item.kind === "dataset",
       );
       expect(dataset).toMatchObject({ match: "exact" });
-      expect(dataset?.summary).toHaveLength(240);
+      expect(dataset?.summary.length).toBeLessThanOrEqual(240);
+      expect(dataset?.summary).toMatch(/orders\.…$/u);
+      expect(dataset?.summary_truncated).toBe(true);
+      const exact = "😀".repeat(240);
+      await s.tx
+        .update(powerbiDataset)
+        .set({ description: exact })
+        .where(eq(powerbiDataset.id, s.idOf("datasets", SALES)));
+      await s.index();
+      const whole = (await search(context, { query: SALES })).items.find(
+        (item) => item.kind === "dataset",
+      );
+      expect(whole?.summary).toBe(exact);
+      expect(whole).not.toHaveProperty("summary_truncated");
       const many = await search(context, { query: "sales", limit: 50 });
       expect(many.items).toHaveLength(50);
     }));

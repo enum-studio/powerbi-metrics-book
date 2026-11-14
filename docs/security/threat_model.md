@@ -350,8 +350,9 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   client, one `connector.whoami` row in `audit_event`
   (`recordConnectorReached`), which the setup's `agents` check reads as
   proof that an admin's own client reached the connector. Reading a
-  model's details through `get_dataset` or `list_measures` can also refresh
-  the mirror and log that read, under its rate limit. Its tools reach
+  model's details through `get_dataset`, `list_relationships` or
+  `list_measures` can also refresh the mirror and log that read, under its
+  rate limit. Its tools reach
   the services on the list in `connector_surface_security_test`, and
   nothing that writes the book, the conventions or a result for another
   principal. What a tool answers from the book, Power BI or a thread is
@@ -850,7 +851,10 @@ and the event feed. Event visibility checks the recorded `dataset_ids` and
 `measure_ids`; current measure rules also protect events after a metric is
 gone. Queries containing a PII column or measure are refused before Power
 BI. A result header check before storage is the backstop. Only persons can have
-`pii_reader`; service accounts never do. `hidden_suggested_merges` and
+`pii_reader`; service accounts never do. `list_relationships` counts the relationships it
+leaves out over the whole dataset, whatever its table filter, so the count
+cannot tell which tables a hidden relationship joins; `get_dataset` works
+out a table's kind from the columns and measures it shows. `hidden_suggested_merges` and
 `live_base_variants` in checks count PII as they count datasets the caller
 cannot reach. The queue's `hidden_variants` leaves PII out, for a caller who may
 not read it. `hidden_suggested_merges`
@@ -1310,6 +1314,20 @@ Crossing: rows Power BI returned under one person's rights.
   against it, at most 4 at once, so parallel queries cannot pass it. The
   query log holds the DAX, never a row, and Power BI's error sentence
   reaches only the entry's own principal.
+- The catalog's own reads of a model (`readModelView`, logged with
+  `origin` `catalog`) count against neither the row budget nor the usage
+  report, so a person does not spend their budget on reads they never
+  asked for. They stay bounded without it: each is a fixed `INFO.VIEW`
+  query over the model's metadata with no preview, run as the person, only
+  when the model was never read or its schema changed, and at most once
+  per person and dataset in 5 minutes (`services/mirror/info-views.ts`).
+  They stay in the query log, so an admin still sees every query that
+  reached Power BI under a person's name, but the entry names no result:
+  a catalog read's rows name the model's columns, personal data included,
+  and are deleted once read. A catalog read also skips the per-minute
+  query count, the cap of 4 queries at once and the personal-data query
+  check, which is why only `readModelView` writes `catalog`, from a fixed
+  argument no input reaches; a query an agent sends is always `request`.
 - A CSV cell that starts like a formula gets a leading `'`, so a
   spreadsheet does not run it (`docs/decisions/queries.md`).
 

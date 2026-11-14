@@ -2005,6 +2005,8 @@ export interface components {
         thread_id: string;
         question: string | null;
         answer: string;
+        /** @constant */
+        excerpt_truncated?: true;
         answered_by: {
           /** @enum {string} */
           kind: "person" | "service_account";
@@ -2163,6 +2165,8 @@ export interface components {
         thread_id: string;
         question: string | null;
         answer: string;
+        /** @constant */
+        excerpt_truncated?: true;
         answered_by: {
           /** @enum {string} */
           kind: "person" | "service_account";
@@ -2211,6 +2215,8 @@ export interface components {
         name: string;
         label: string;
         summary: string;
+        /** @constant */
+        summary_truncated?: true;
         /** @enum {string} */
         trust_state: "draft" | "agent_verified" | "human_verified";
       }[];
@@ -2249,6 +2255,8 @@ export interface components {
     Entry: {
       /** @constant */
       kind: "query";
+      /** @enum {string} */
+      origin: "request" | "catalog";
       id: string;
       /** Format: date-time */
       at: string;
@@ -3737,6 +3745,8 @@ export interface operations {
         app?: string;
         dataset?: string;
         trust_states?: string;
+        name_prefix?: string;
+        name_contains?: string;
         category?: string;
         not_filed?: string;
         unit?: string;
@@ -3766,6 +3776,8 @@ export interface operations {
               label: string;
               icon: string | null;
               summary: string;
+              /** @constant */
+              summary_truncated?: true;
               aliases: string[];
               dataset_count: number;
               unit: string | null;
@@ -6670,6 +6682,8 @@ export interface operations {
                 id: string;
               };
               excerpt: string;
+              /** @constant */
+              excerpt_truncated?: true;
               /** @description The asker's display name, null for a caller who can see no dataset. Never an email. */
               author_name: string | null;
             }[];
@@ -7636,6 +7650,8 @@ export interface operations {
               key: string | null;
               label: string;
               summary: string;
+              /** @constant */
+              summary_truncated?: true;
               dataset: {
                 /** @enum {string} */
                 kind: "workspace" | "app" | "dataset" | "table";
@@ -7647,6 +7663,7 @@ export interface operations {
               score: number;
               /** @enum {string} */
               match: "exact" | "words" | "meaning";
+              aliases?: string[];
               path: {
                 /** @enum {string} */
                 kind: "workspace" | "dataset" | "table" | "folder" | "category";
@@ -7809,6 +7826,7 @@ export interface operations {
               };
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -7915,6 +7933,8 @@ export interface operations {
         app?: string;
         dataset?: string;
         trust_states?: string;
+        name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: string;
         /** @description Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20. */
@@ -7942,6 +7962,8 @@ export interface operations {
               /** @enum {string} */
               type: "dimension" | "concept";
               summary: string;
+              /** @constant */
+              summary_truncated?: true;
               column_count: number;
               aliases: string[] | null;
               owner: string | null;
@@ -7952,6 +7974,7 @@ export interface operations {
               };
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -8092,6 +8115,7 @@ export interface operations {
         workspace?: string;
         app?: string;
         name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: number;
       };
@@ -8131,6 +8155,7 @@ export interface operations {
               removed: boolean;
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -8186,6 +8211,8 @@ export interface operations {
               thread_id: string;
               question: string | null;
               answer: string;
+              /** @constant */
+              excerpt_truncated?: true;
               answered_by: {
                 /** @enum {string} */
                 kind: "person" | "service_account";
@@ -8259,9 +8286,15 @@ export interface operations {
               cross_filtering_behavior: string | null;
               is_active: boolean;
             }[];
+            date_tables?: {
+              table: string;
+              column: string;
+              joined_by: number;
+            }[];
             tables: {
-              /** @constant */
-              kind: "table";
+              /** @enum {string} */
+              kind?: "measures" | "date" | "fact" | "dimension" | "standalone";
+              column_names?: string[];
               id: string;
               name: string;
               is_hidden: boolean;
@@ -8322,6 +8355,7 @@ export interface operations {
       query?: {
         table?: string;
         name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: number;
       };
@@ -8374,6 +8408,7 @@ export interface operations {
             }[];
             next_cursor: string | null;
             pii_hidden?: number;
+            total?: number;
           };
         };
       };
@@ -8543,6 +8578,7 @@ export interface operations {
     parameters: {
       query?: {
         table?: string;
+        name_contains?: string;
         unfiled?: "true" | "false";
         cursor?: string;
         limit?: number;
@@ -8602,6 +8638,7 @@ export interface operations {
             }[];
             next_cursor: string | null;
             pii_hidden?: number;
+            total?: number;
           };
         };
       };

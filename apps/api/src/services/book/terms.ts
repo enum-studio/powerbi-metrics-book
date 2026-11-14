@@ -30,11 +30,14 @@ import {
   powerbiWorkspace,
 } from "../../db/schema/mirror.js";
 import { ServiceError } from "../../errors.js";
+import { excerpt } from "../text.js";
 import type { Principal } from "../../principal.js";
 import { currentConventions } from "../conventions/store.js";
 import { type NewEvent, withEvents } from "../events/feed.js";
 import {
   afterCursor,
+  containsName,
+  aliasContainsName,
   byIdOrName,
   appsSeen,
   inApp,
@@ -96,7 +99,10 @@ export async function resolveTerm(db: Db, reference: string): Promise<TermRow> {
     .limit(6);
   const [found, ...others] = rows;
   if (found === undefined) {
-    throw new ServiceError("not_found", `No term goes by "${reference}".`);
+    throw new ServiceError(
+      "not_found",
+      `No term goes by "${reference}". search finds a term by a word, and list_terms lists the terms A to Z.`,
+    );
   }
   if (others.length > 0) {
     const names = rows.map((row) => `${row.name} (${row.id})`).join(", ");
@@ -613,12 +619,16 @@ export async function getTerm(context: ServiceContext, reference: string) {
       dataset: ref("dataset", column.dataset_id, column.dataset_name),
       workspace: ref("workspace", column.workspace_id, column.workspace_name),
     })),
-    metrics: metrics.map((related) => ({
-      ...ref("metric", related.id, related.name),
-      label: related.label,
-      summary: related.definition.slice(0, 240),
-      trust_state: related.trust_state,
-    })),
+    metrics: metrics.map((related) => {
+      const summary = excerpt(related.definition, 240);
+      return {
+        ...ref("metric", related.id, related.name),
+        label: related.label,
+        summary: summary.text,
+        ...(summary.truncated && { summary_truncated: true as const }),
+        trust_state: related.trust_state,
+      };
+    }),
     ...questions,
   };
 }
@@ -632,6 +642,7 @@ export type TermFilters = {
   /** Custom fields to match, as text: { owner_team: "finance" }. */
   custom?: Record<string, string>;
   name_prefix?: string;
+  name_contains?: string;
   /** `cursor` is the `next_cursor` of the page before. */
   cursor?: string;
   limit?: number;
@@ -680,6 +691,28 @@ export async function listTerms(
   const hides = !(await readsPii(context));
   const limit = sizeOf(filters.limit);
   const prefix = filters.name_prefix?.toLowerCase();
+  const matching = and(
+    or(
+      containsName(term.name, filters.name_contains),
+      aliasContainsName(term.aliases, filters.name_contains),
+    ),
+    backedWhere(
+      context.db,
+      allowed,
+      await appsSeen(context, allowed),
+      filters,
+      hides,
+    ),
+    filters.trust_states === undefined
+      ? undefined
+      : inArray(term.trust_state, filters.trust_states),
+    ...Object.entries(filters.custom ?? {}).map(
+      ([key, value]) => sql`${term.custom} ->> ${key} = ${value}`,
+    ),
+    prefix === undefined
+      ? undefined
+      : sql`starts_with(lower(${term.name}), ${prefix})`,
+  );
   const rows = await context.db
     .select({
       id: term.id,
@@ -703,31 +736,19 @@ export async function listTerms(
         .as("column_count"),
     })
     .from(term)
-    .where(
-      and(
-        backedWhere(
-          context.db,
-          allowed,
-          await appsSeen(context, allowed),
-          filters,
-          hides,
-        ),
-        filters.trust_states === undefined
-          ? undefined
-          : inArray(term.trust_state, filters.trust_states),
-        ...Object.entries(filters.custom ?? {}).map(
-          ([key, value]) => sql`${term.custom} ->> ${key} = ${value}`,
-        ),
-        prefix === undefined
-          ? undefined
-          : sql`starts_with(lower(${term.name}), ${prefix})`,
-        afterCursor(term, filters.cursor),
-      ),
-    )
+    .where(and(matching, afterCursor(term, filters.cursor)))
     .orderBy(asc(term.name), asc(term.id))
     .limit(limit + 1);
   const page = pageOf(rows, limit);
-  return { items: page.items.map(anchorOf), next_cursor: page.next_cursor };
+  const [counted] =
+    filters.cursor === undefined
+      ? await context.db.select({ total: count() }).from(term).where(matching)
+      : [];
+  return {
+    ...counted,
+    items: page.items.map(anchorOf),
+    next_cursor: page.next_cursor,
+  };
 }
 
 function anchorOf(row: {
@@ -741,13 +762,15 @@ function anchorOf(row: {
   custom: Record<string, unknown>;
   column_count: number;
 }) {
+  const summary = excerpt(row.definition, 240);
   return {
     kind: "term" as const,
     id: row.id,
     name: row.name,
     icon: row.icon,
     type: row.column_count > 0 ? ("dimension" as const) : ("concept" as const),
-    summary: row.definition.slice(0, 240),
+    summary: summary.text,
+    ...(summary.truncated && { summary_truncated: true as const }),
     aliases: row.aliases,
     owner: row.owner,
     trust_state: row.trust_state,

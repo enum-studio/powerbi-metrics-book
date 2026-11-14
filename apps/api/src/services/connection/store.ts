@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import pg from "pg";
-import type { Config } from "../../config.js";
+import { connectAgain, connectionsPage, type Config } from "../../config.js";
 import type { AppDeps, Db, Vault } from "../../context.js";
 import {
   type ConnectionStatus,
@@ -19,8 +19,8 @@ import { readIdentity } from "../auth/roles.js";
 
 export type Connection = typeof powerbiConnection.$inferSelect;
 export type OpenTokens = { access_token: string; refresh_token: string };
-export const OWN_ACCOUNT_REQUIRED =
-  "This deployment now requires your own Microsoft account. Connect Power BI again.";
+export const ownAccountRequired = (config: Config) =>
+  `This deployment now requires your own Microsoft account. ${connectAgain(config)}`;
 
 export async function enforceOwnAccount(
   deps: AppDeps,
@@ -33,7 +33,7 @@ export async function enforceOwnAccount(
   if (own?.microsoft_object_id === row.microsoft_object_id) return true;
   await endConnection(tx, row.user_id, {
     status: "needs_reconnect",
-    last_error: OWN_ACCOUNT_REQUIRED,
+    last_error: ownAccountRequired(deps.config),
   });
   return false;
 }
@@ -265,9 +265,4 @@ export async function connectionDetails(
     last_used_at: row.last_used_at?.toISOString() ?? null,
     reason: row.status === "needs_reconnect" ? row.last_error : null,
   };
-}
-
-/** The page where a person connects Power BI, as the sentences name it. */
-export function connectionsPage(config: Config): string {
-  return `${config.public_base_url.href.replace(/\/$/, "")}/settings/connections`;
 }

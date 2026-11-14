@@ -30,8 +30,15 @@ import {
   createKey,
   createServiceAccount,
 } from "../../services/auth/service-accounts.js";
+import { getMetric, updateMetric } from "../../services/book/metrics.js";
+import { createTerm, relateMetric } from "../../services/book/terms.js";
 import { draftDatasets } from "../../services/book/drafter.js";
 import { removeRule, setRule } from "../../services/pii/rules.js";
+import {
+  acceptReply,
+  postThread,
+  reply,
+} from "../../services/threads/threads.js";
 import { buildDocuments } from "../../services/search/documents.js";
 
 /*
@@ -109,6 +116,84 @@ describe("GET /metrics/{name}", () => {
 });
 
 describe("the read routes", () => {
+  it("accepts name_contains and preserves first-page totals on list routes", async () => {
+    const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("Sample has no dataset");
+    for (const path of [
+      "/metrics",
+      "/terms",
+      "/datasets",
+      `/datasets/${dataset.id}/columns`,
+      `/datasets/${dataset.id}/measures`,
+    ]) {
+      const answer = await get(
+        viewer,
+        `${path}?name_contains=absent%25sample&limit=1`,
+      );
+      expect(answer).toMatchObject({
+        status: 200,
+        body: { total: 0, items: [] },
+      });
+    }
+  });
+
+  it("keeps a related metric's truncated summary flag over REST", async () => {
+    const viewer = await signedIn("viewer");
+    const original = await getMetric(admin, "sessions");
+    const term = await createTerm(admin, {
+      name: `summary_${randomUUID().slice(0, 8)}`,
+      definition: "A sample concept.",
+    });
+    try {
+      await updateMetric(admin, "sessions", {
+        definition: "Sample summary ".repeat(30),
+      });
+      await relateMetric(admin, term.id, "sessions");
+      const found = await get(viewer, `/terms/${term.id}`);
+      expect(found.status).toBe(200);
+      expect(found.body).toMatchObject({
+        metrics: [
+          {
+            summary: expect.stringMatching(/summary…$/u) as unknown,
+            summary_truncated: true,
+          },
+        ],
+      });
+    } finally {
+      await updateMetric(admin, "sessions", {
+        definition: original.definition,
+      });
+    }
+  });
+
+  it("keeps accepted answer truncation flags over REST only when cut", async () => {
+    const viewer = await signedIn("viewer");
+    const term = await createTerm(admin, {
+      name: `answer_${randomUUID().slice(0, 8)}`,
+      definition: "A sample concept.",
+    });
+    const question = await postThread(admin, {
+      kind: "question",
+      element: { kind: "term", id: term.id },
+      title: "Which period?",
+      body: "A sample question.",
+    });
+    const long = await reply(admin, question.id, "Sample answer ".repeat(200));
+    await acceptReply(admin, question.id, long.id);
+    expect((await get(viewer, `/terms/${term.id}`)).body).toMatchObject({
+      accepted_answers: [{ excerpt_truncated: true }],
+    });
+    const exact = await reply(admin, question.id, "😀".repeat(2000));
+    await acceptReply(admin, question.id, exact.id);
+    const found = await get(viewer, `/terms/${term.id}`);
+    const body = found.body as { accepted_answers: unknown[] };
+    expect(body.accepted_answers[0]).toMatchObject({
+      answer: "😀".repeat(2000),
+    });
+    expect(body.accepted_answers[0]).not.toHaveProperty("excerpt_truncated");
+  });
+
   it("answer a person, and refuse a request with no credential", async () => {
     const viewer = await signedIn("viewer");
     const curator = await signedIn("curator");
@@ -171,6 +256,25 @@ describe("the read routes", () => {
     }
   });
 
+  it("includes table summaries and date tables in dataset detail", async () => {
+    const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("the sample has no dataset");
+    const result = await get(viewer, `/datasets/${dataset.id}`);
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      date_tables: expect.any(Array) as unknown,
+      tables: expect.arrayContaining([
+        expect.objectContaining({
+          kind: expect.stringMatching(
+            /^(measures|date|fact|dimension|standalone)$/,
+          ) as unknown,
+          column_names: expect.any(Array) as unknown,
+        }),
+      ]) as unknown,
+    });
+  });
+
   it("answer one column's detail, and a missing column as not found", async () => {
     const viewer = await signedIn("viewer");
     const dataset = sample.tenant.datasets[0];
@@ -224,6 +328,8 @@ describe("the read routes", () => {
 
   it("refuse input past the connector's caps", async () => {
     const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("Sample has no dataset");
     const custom = Array.from(
       { length: 21 },
       (_, n) => `custom.f${String(n)}=x`,
@@ -234,6 +340,9 @@ describe("the read routes", () => {
       `/metrics?${custom}`,
       "/terms?custom.Bad-Key=x",
       "/metrics?trust_states=bogus",
+      "/search?query=sales&name_contains=sales",
+      "/search?query=sales&name_prefix=sales",
+      `/datasets/${dataset.id}/measures?name_prefix=Net`,
       "/metrics?not_filed=bogus",
       `/metrics/${"x".repeat(501)}`,
       "/datasets/not-an-id",
@@ -272,6 +381,12 @@ describe("the read routes", () => {
     const search = documentedParameters("/search");
     expect(search.map(({ name }) => name)).toEqual(
       expect.arrayContaining(["query", "kinds", "unit", "custom.KEY"]),
+    );
+    expect(search.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(["name_contains"]),
+    );
+    expect(search.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(["name_prefix"]),
     );
     const searchCustom = search.find(({ name }) => name === "custom.KEY");
     expect(searchCustom?.description).toContain("At most 16");

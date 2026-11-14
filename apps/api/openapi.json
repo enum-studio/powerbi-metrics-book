@@ -460,6 +460,10 @@
                 "answer": {
                   "type": "string"
                 },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "answered_by": {
                   "type": "object",
                   "properties": {
@@ -1214,6 +1218,10 @@
                 "answer": {
                   "type": "string"
                 },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "answered_by": {
                   "type": "object",
                   "properties": {
@@ -1428,6 +1436,10 @@
                 "summary": {
                   "type": "string"
                 },
+                "summary_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "trust_state": {
                   "type": "string",
                   "enum": [
@@ -1623,6 +1635,13 @@
             "type": "string",
             "const": "query"
           },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "request",
+              "catalog"
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -1769,6 +1788,7 @@
         },
         "required": [
           "kind",
+          "origin",
           "id",
           "at",
           "principal",
@@ -5432,6 +5452,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "aliases": {
                             "type": "array",
                             "items": {
@@ -5580,6 +5604,22 @@
           },
           {
             "name": "trust_states",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
             "in": "query",
             "required": false,
             "schema": {
@@ -11240,6 +11280,10 @@
                           "excerpt": {
                             "type": "string"
                           },
+                          "excerpt_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "author_name": {
                             "description": "The asker's display name, null for a caller who can see no dataset. Never an email.",
                             "type": [
@@ -12776,6 +12820,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "dataset": {
                             "anyOf": [
                               {
@@ -12834,6 +12882,12 @@
                               "words",
                               "meaning"
                             ]
+                          },
+                          "aliases": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "path": {
                             "type": "array",
@@ -13310,6 +13364,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -13557,6 +13614,10 @@
                           "summary": {
                             "type": "string"
                           },
+                          "summary_truncated": {
+                            "type": "boolean",
+                            "const": true
+                          },
                           "column_count": {
                             "type": "number"
                           },
@@ -13616,6 +13677,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -13686,6 +13750,22 @@
           },
           {
             "name": "trust_states",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
             "in": "query",
             "required": false,
             "schema": {
@@ -14030,6 +14110,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -14102,6 +14185,15 @@
           },
           {
             "in": "query",
+            "name": "name_contains",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
             "name": "cursor",
             "schema": {
               "type": "string",
@@ -14152,6 +14244,10 @@
                           },
                           "answer": {
                             "type": "string"
+                          },
+                          "excerpt_truncated": {
+                            "type": "boolean",
+                            "const": true
                           },
                           "answered_by": {
                             "type": "object",
@@ -14501,6 +14597,29 @@
                         "additionalProperties": false
                       }
                     },
+                    "date_tables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "table": {
+                            "type": "string"
+                          },
+                          "column": {
+                            "type": "string"
+                          },
+                          "joined_by": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "table",
+                          "column",
+                          "joined_by"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "tables": {
                       "type": "array",
                       "items": {
@@ -14508,7 +14627,20 @@
                         "properties": {
                           "kind": {
                             "type": "string",
-                            "const": "table"
+                            "enum": [
+                              "measures",
+                              "date",
+                              "fact",
+                              "dimension",
+                              "standalone"
+                            ]
+                          },
+                          "column_names": {
+                            "maxItems": 5,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "id": {
                             "type": "string"
@@ -14550,7 +14682,6 @@
                           }
                         },
                         "required": [
-                          "kind",
                           "id",
                           "name",
                           "is_hidden",
@@ -14800,6 +14931,9 @@
                     },
                     "pii_hidden": {
                       "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -14875,6 +15009,15 @@
           {
             "in": "query",
             "name": "name_prefix",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -15466,6 +15609,9 @@
                     },
                     "pii_hidden": {
                       "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -15532,6 +15678,15 @@
           {
             "in": "query",
             "name": "table",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,

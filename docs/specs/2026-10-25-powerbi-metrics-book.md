@@ -1644,7 +1644,9 @@ a development checkout.
 
 The connector reads, searches, queries and takes feedback. It never
 changes the book: definitions change through the curation API, which the
-CLI uses. Search returns small anchors; detail comes from `get_*`. A
+CLI uses. Search and every list return small anchors, with long text cut
+and flagged `_truncated` (`docs/decisions/connector.md`); detail comes
+from `get_*`. A
 refusal is a sentence. A dataset the principal may not describe answers
 exactly like a missing one. Every answer is snake_case JSON, bounded in
 size (16 KiB of text by default); a longer answer says how to get the rest.
@@ -1655,25 +1657,26 @@ anchor carries both.
 
 | Tool | Input | Answer |
 |---|---|---|
-| `search` | `query`, `kinds?` (metric, variant, column, term, dataset, table, measure, category), `workspace?`, `app?`, `dataset?`, `category?`, `trust_states?`, `unit?`, `custom?`, `limit?` (10, at most 50) | anchors: `kind`, `id`, `name`, `label`, `summary` (240 characters), `dataset`, `trust_state`, `score`, `match` (`exact`, `words`, `meaning`); and `search_mode` (`hybrid` or `words_only`) |
-| `list_metrics` | the filters (Search), `cursor?`, `limit?` | metric anchors, `next_cursor` |
+| `search` | `query`, `kinds?` (metric, variant, column, term, dataset, table, measure, category), `workspace?`, `app?`, `dataset?`, `category?`, `trust_states?`, `unit?`, `custom?`, `limit?` (10, at most 50) | anchors: `kind`, `id`, `name`, `label`, `summary` (240 characters), `dataset`, `trust_state`, `match` (`exact`, `words`, `meaning`), `category` (path), `table`, `display_folder`, `metric` (key), `aliases` (metric hits); and `search_mode` (`hybrid` or `words_only`) |
+| `list_metrics` | the filters (Search), `name_contains?`, `cursor?`, `limit?` | metric anchors: `id`, `name`, `label`, `summary`, `unit`, `category` (path), `trust_state`, `dataset_count`, `aliases`; `total` on the first page, `next_cursor` |
 | `get_metric` | `name` (key, alias or id) | key, label, definition, aliases, when to use, not the same as, grain and filters, unit, category path, owner, trust state with who and when, failing checks, the base variant in each dataset (dataset, workspace, measure, `measure_reference` such as `[Net Sales]` to use in DAX against that dataset, format string, `reads_selection`), a count of the other variants by shift, terms, open questions and accepted answers |
-| `list_variants` | `metric`, `dataset?`, `workspace?`, `period?`, `comparison?`, `currency?`, `cursor?` | variant anchors with dataset, measure, shift, `measure_reference`; no DAX |
-| `get_variant` | `id`, or `dataset` and `measure` | the measure's DAX and normalised DAX, format, display folder, both descriptions, its metric's anchor, its shift, `reads_selection` with the columns to filter |
+| `list_variants` | `metric`, `dataset?`, `workspace?`, `period?`, `comparison?`, `currency?`, `cursor?` | variant anchors with dataset, measure, `measure_reference`, the shift's axes that differ from the base, `reads_selection`; no DAX |
+| `get_variant` | `id`, or `dataset` and `measure` | the measure's DAX, format, display folder, both descriptions, its metric's key, its shift, `reads_selection` with the columns to filter |
 | `list_categories` | `parent?` | the tree, with metric counts |
-| `list_terms` | the filters, `cursor?` | term anchors |
+| `list_terms` | the filters, `name_contains?`, `cursor?` | term anchors: `id`, `name`, `type`, `summary`, `trust_state`, `column_count`, `aliases`; `total` on the first page |
 | `get_term` | `name` (or alias) | definition, aliases, not the same as, values, backing columns, related metrics |
 | `get_conventions` | none | the conventions' guide and rules, in words and as data; what every other answer is named and grouped by |
 | `list_workspaces` | none | the workspaces the caller can see, with dataset counts |
 | `list_apps` | none | the Power BI apps the caller can see, each with its workspace and the datasets behind it |
-| `list_datasets` | `workspace?`, `app?`, `name_prefix?`, `cursor?` | dataset anchors, each with `reached_through`: the workspace and the apps it is published in |
-| `get_dataset` | `id` or `name` | both descriptions, workspace, apps, row-level security flag, schema error, synced at, tables (columns and measures counted), relationships, custom fields |
-| `list_columns` | `dataset`, `table?`, `name_prefix?`, `cursor?` | name, table, data type, hidden, both descriptions, the term it backs |
-| `list_measures` | `dataset`, `table?`, `unfiled?`, `cursor?` | name, table, its metric's anchor and shift |
+| `list_datasets` | `workspace?`, `app?`, `name_contains?`, `cursor?` | dataset anchors, each with `reached_through`: `workspace`, `app: <name>` for each app it is published in, or `share` |
+| `get_dataset` | `id` or `name` | both descriptions, workspace, apps, row-level security flag, schema error, synced at, the date tables, tables (each with its kind, columns and measures counted, and up to five column names), relationships, custom fields; a longer answer names `list_relationships` |
+| `list_relationships` | `dataset`, `table?`, `active_only?`, `cursor?`, `limit?` | relationships: from and to table and column, cardinality, cross-filtering when not one direction, `is_active` when false; `total` on the first page, `pii_hidden`, `next_cursor` |
+| `list_columns` | `dataset`, `table?`, `name_contains?`, `cursor?` | name, table, data type, hidden, both descriptions, the term it backs |
+| `list_measures` | `dataset`, `table?`, `unfiled?`, `name_contains?`, `cursor?` | name, table, its metric's anchor and shift |
 | `execute_dax` | `dataset`, `dax`, `purpose?`, `preview_rows?` | the result anchor (Queries) |
 | `read_query_result` | `result_id`, `offset?`, `limit?` | rows, `next_offset` |
 | `get_result_csv_link` | `result_id` | `url`, `expires_at` |
-| `search_query_log` | `text?`, `dataset?`, `metric?`, `mine?`, `status?`, `since?`, `limit?` | entries: who, when, dataset, purpose, status, rows, the DAX (first 2,000 characters, the rest by `get_query`) |
+| `search_query_log` | `text?`, `dataset?`, `metric?`, `mine?`, `status?`, `since?`, `limit?` | entries: who, when, dataset, purpose, status, rows, the DAX (first 400 characters, the rest by `get_query`); the catalog's own reads left out |
 | `get_query` | `id` | one log entry in full |
 | `record_request` | `question`, `outcome`, `gaps?`, `missing?`, `elements?`, `query_ids?`, `search_ids?` | `recorded`, `id`, `kept_until`; or `recorded: false` and a note when capture is off |
 | `list_requests` | `mine?`, `outcome?`, `gap?`, `since?`, `text?`, `cursor?`, `limit?` | requests the caller may read, with only elements they may describe; `next_cursor` |
@@ -1687,7 +1690,7 @@ anchor carries both.
 | `set_upvote` | `thread_id`, `upvoted` | the new count |
 | `whoami` | none | the person or service account, roles, and the Power BI connection's state with the link to connect |
 
-Thirty-one tools, each a thin adapter over a service. A metric shared by
+Thirty-two tools, each a thin adapter over a service. A metric shared by
 fifty datasets has hundreds of variants, so `get_metric` returns the base
 variant per dataset and counts the rest; `list_variants` filters them and
 `get_variant` gives one variant's DAX. The tool

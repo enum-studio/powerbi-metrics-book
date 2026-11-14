@@ -201,7 +201,7 @@ it.each(["query", "visibility"])(
     expect(before.attributes.powerbi_dataset_ids).toContain(dataset);
     await f.settings.set("powerbi.connection_requires_matching_email", true);
     const message: unknown = expect.stringMatching(
-      /now requires.*own Microsoft account/,
+      /now requires.*own Microsoft account.*Connect Power BI again at https:\/\/metrics\.example\.com\/settings\/connections, then run this again\./,
     );
     if (use === "query")
       await expect(

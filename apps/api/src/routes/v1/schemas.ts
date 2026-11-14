@@ -6,7 +6,11 @@ import {
   TRUST_STATES,
   VIAS,
 } from "../../db/schema/book.js";
-import { PRINCIPAL_KINDS, QUERY_STATUSES } from "../../db/schema/queries.js";
+import {
+  PRINCIPAL_KINDS,
+  QUERY_ORIGINS,
+  QUERY_STATUSES,
+} from "../../db/schema/queries.js";
 import {
   THREAD_ELEMENT_KINDS,
   THREAD_KINDS,
@@ -83,6 +87,7 @@ export const Questions = {
       thread_id: z.string(),
       question: z.string().nullable(),
       answer: z.string(),
+      excerpt_truncated: z.literal(true).optional(),
       answered_by: z.object({
         kind: z.enum(["person", "service_account"]),
         id: z.string(),
@@ -218,6 +223,7 @@ export const Term = z
       anchor("metric").extend({
         label: z.string(),
         summary: z.string(),
+        summary_truncated: z.literal(true).optional(),
         trust_state: z.enum(TRUST_STATES),
       }),
     ),
@@ -276,6 +282,7 @@ export const Anchor = z
 export const Entry = z
   .object({
     kind: z.literal("query"),
+    origin: z.enum(QUERY_ORIGINS),
     id: z.string(),
     at: iso,
     principal: z.object({

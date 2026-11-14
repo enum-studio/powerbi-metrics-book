@@ -31,7 +31,7 @@ import { personPrincipal } from "../auth/principal.js";
 import { assignRole, MICROSOFT } from "../auth/roles.js";
 import { listDatasets } from "../mirror/read.js";
 import { resultCsv } from "./csv.js";
-import { executeDax } from "./execute.js";
+import { executeDax, readModelView } from "./execute.js";
 import { getQuery, searchQueryLog } from "./log.js";
 import { createResultStore } from "./store.js";
 
@@ -289,6 +289,41 @@ describe("executeDax", () => {
     // Four in flight at most, whatever the budget.
     await f.settings.set("results.daily_row_budget", 1_000_000);
     expect(await inParallel(leader, 10)).toEqual({ reached: 4, refused: 6 });
+  });
+
+  it("leaves catalog rows out of the budget and counts request rows", async () => {
+    const caller = await connected("leader", 2 * 24 * 60 * 60_000);
+    await f.settings.set("results.daily_row_budget", 1);
+    try {
+      const catalog = await readModelView(
+        caller,
+        dataset("Finance").id,
+        "MEASURES",
+      );
+      expect(catalog.row_count).toBeGreaterThan(0);
+      const request = await executeDax(caller, {
+        dataset: "Finance",
+        dax: "EVALUATE TOPN(12, 'Date')",
+        purpose: "Read the dataset's measures for the catalog",
+      });
+      await expect(getQuery(caller, catalog.query_id)).resolves.toMatchObject({
+        origin: "catalog",
+        result_id: null,
+        row_count: null,
+      });
+      await expect(getQuery(caller, request.query_id)).resolves.toMatchObject({
+        origin: "request",
+        result_id: request.result_id,
+      });
+      await expect(
+        executeDax(caller, {
+          dataset: "Finance",
+          dax: "EVALUATE 'Date'",
+        }),
+      ).rejects.toMatchObject({ kind: "rate_limited" });
+    } finally {
+      await f.settings.set("results.daily_row_budget", 1_000_000);
+    }
   });
 
   it("counts the rate limit first, then refuses a long purpose or a NUL before anything else, logging what fits", async () => {

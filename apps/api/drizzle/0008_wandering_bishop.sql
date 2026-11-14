@@ -1,0 +1,2 @@
+ALTER TABLE "query_log" ADD COLUMN "origin" text DEFAULT 'request' NOT NULL;--> statement-breakpoint
+ALTER TABLE "query_log" ADD CONSTRAINT "query_log_origin_check" CHECK ("query_log"."origin" in ('request', 'catalog'));

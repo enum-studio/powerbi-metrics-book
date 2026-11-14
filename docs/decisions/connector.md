@@ -44,3 +44,35 @@ answers of 2,000, so either could otherwise push the measures or the checks out 
 A cut can now take only that text, unless the measures themselves overflow: a base variant is about 500
 bytes, so that takes about 30 datasets on one metric. Nothing bounds that number, and `list_variants`
 pages them. Stops being right if a metric's base variants commonly reach that many.
+
+## A list row is an anchor
+
+Taken on 2026-11-14.
+
+**The connector answers a list with anchors: `apps/api/src/mcp/anchors.ts` names the fields each kind
+of row keeps, in order, and the most characters each text field may take, and leaves out nulls,
+empties and flags at their default. The REST API, the web app and the CLI keep the service's shapes.**
+On a production tenant with 46 datasets and about 1,300 metrics, a metric row had grown to about 750
+bytes, a variant row to 650 and a search hit to 800, against about 300 for a metric row on
+2026-11-05. Most of it was nulls, empty arrays, default flags and whole parent objects repeated on
+every row: a 230-byte category with its description on each metric. Each service added fields for its
+own screen, and nothing held the connector's rows to a size, so an agent paid for them on every page.
+
+A field is listed to be kept, never to be dropped, so a field a service adds later stays out of the
+connector until someone adds it to an anchor. A text field over its limit is cut on a word end by
+`excerpt` (`apps/api/src/services/text.ts`) and flagged with `<field>_truncated`; the get tool
+for that kind answers it whole. A parent is a name or a path, and a parent the call filtered on is
+left out. The bound is the connector's, so the shaping is too: the services, the REST API and the
+generated web types answer as before, gaining only optional fields.
+
+`anchors.test.ts` holds each kind of row to a target in bytes, measured on a fixed row: each limited
+text field at its limit in ASCII, every flag set, ids as UUIDs and names at 40 characters. On that row
+a metric is 650 bytes, a variant 700 and a search hit 750. A real row is smaller, because most fields
+are empty and most flags at their default: a base variant's row carries only its id, dataset, measure
+and `measure_reference`. The test fails when a row's size moves, so a field cannot come back
+unnoticed. A target is not a cut. Names are never shortened, text in a wider script takes more bytes,
+and the 16 KiB bound of `apps/api/src/mcp/result.ts` stays the limit on an answer.
+
+Stops being right if an agent commonly needs a field an anchor leaves out to choose its next call,
+which shows as a get call after nearly every list call in the query log and the usage report, or if
+the answer's bound changes from 16 KiB.

@@ -86,6 +86,40 @@ const eventsOf = (tx: Db, kind: EventKind) =>
     .orderBy(asc(event.id));
 
 describe("listThreads and getThread", () => {
+  it("keeps exactly 300 code points without a truncation flag", () =>
+    rolledBack(async (tx) => {
+      const context = session(tx)(asker);
+      const body = "😀".repeat(300);
+      const posted = await postThread(context, {
+        kind: "question",
+        element: salesDataset,
+        title: "Which period?",
+        body,
+      });
+      const listed = (await listThreads(context)).items.find(
+        (item) => item.id === posted.id,
+      );
+      expect(listed?.excerpt).toBe(body);
+      expect(listed).not.toHaveProperty("excerpt_truncated");
+    }));
+
+  it("cuts longer excerpts at a word end and flags them", () =>
+    rolledBack(async (tx) => {
+      const context = session(tx)(asker);
+      const posted = await postThread(context, {
+        kind: "question",
+        element: salesDataset,
+        title: "Which period?",
+        body: "Sample question ".repeat(30),
+      });
+      const listed = (await listThreads(context)).items.find(
+        (item) => item.id === posted.id,
+      );
+      expect(listed?.excerpt).toMatch(/Sample…$/u);
+      expect(Array.from(listed?.excerpt ?? "").length).toBeLessThanOrEqual(300);
+      expect(listed?.excerpt_truncated).toBe(true);
+    }));
+
   it("count a reply by another person as unread until the asker views the thread", () =>
     rolledBack(async (tx) => {
       const as = session(tx);
@@ -711,7 +745,8 @@ describe("open questions on an element", () => {
           {
             thread_id: answered.id,
             question: "Answered?",
-            answer: text.body.slice(0, 2000),
+            answer: "Yes. ".repeat(399) + "Yes.…",
+            excerpt_truncated: true,
             answered_by: { kind: "person", id: other.id },
             accepted_by_role: "asker",
             accepted_by_kind: "person",

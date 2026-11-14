@@ -129,7 +129,9 @@ pbmb metrics update total_net_sales_excl_vat --category sales/orders
 
 ## 8. Link terms
 
-If a variant filters or groups by an important column, the column should back a term. A dimension term is backed by columns in every dataset that has one:
+A term is a word the business uses that a newcomer needs explained: "Returning customer", "Sign-up attribution", "Cohort", "Channel". It can point to the columns that hold it and the metrics that use it. Whether it has columns is a detail of the term, not what it is.
+
+A term with columns has type `dimension`; one with none has type `concept`. Link a term to the columns that hold it in every dataset that has one, and to the metrics that use it:
 
 ```bash
 pbmb terms create Channel \
@@ -140,7 +142,7 @@ pbmb terms link Channel <channel column id>
 pbmb terms relate Channel total_net_sales_excl_vat
 ```
 
-`pbmb columns list <dataset> --table Channel` finds the column id. `link` makes the column back the term. `relate` lists the term on the metric. A concept term has no column, so skip `link`.
+`pbmb columns list <dataset> --table Channel` finds the column id. `link` makes the column back the term. `relate` lists the term on the metric. For a term with no column, skip `link`.
 
 ## 9. Dismiss what is not a metric
 

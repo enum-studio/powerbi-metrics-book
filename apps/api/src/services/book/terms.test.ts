@@ -172,7 +172,7 @@ describe("createTerm and updateTerm", () => {
         [
           () => getTerm(context, "Nothing"),
           "not_found",
-          `No term goes by "Nothing".`,
+          `No term goes by "Nothing". search finds a term by a word, and list_terms lists the terms A to Z.`,
         ],
       ];
       for (const [attempt, kind, message] of refusals) {
@@ -450,12 +450,47 @@ describe("deleteTerm", () => {
 });
 
 describe("listTerms", () => {
+  it("matches normalized names and aliases and counts before paging", () =>
+    rolledBack(async (tx) => {
+      const context = as(tx);
+      await createTerm(context, {
+        name: "Sample_word",
+        definition: "Sample.",
+        aliases: ["Odd%_\\word"],
+      });
+      await createTerm(context, {
+        name: "Sample word two",
+        definition: "Sample.",
+      });
+      const page = await listTerms(context, {
+        name_contains: "SAMPLE WORD",
+        limit: 1,
+      });
+      expect(page).toMatchObject({
+        total: 2,
+        items: [{ name: "Sample_word" }],
+      });
+      expect(
+        await listTerms(context, { name_contains: "odd% \\word" }),
+      ).toMatchObject({ total: 1 });
+      expect(
+        await listTerms(context, {
+          cursor: page.next_cursor ?? "",
+          name_contains: "sample_word",
+        }),
+      ).not.toHaveProperty("total");
+      await expect(getTerm(context, "Missing sample")).rejects.toMatchObject({
+        message:
+          'No term goes by "Missing sample". search finds a term by a word, and list_terms lists the terms A to Z.',
+      });
+    }));
+
   it("lists in name order with a summary, filters, and pages by an opaque cursor", () =>
     rolledBack(async (tx) => {
       const context = as(tx, bothCurator);
       await createTerm(context, {
         name: "Aaa season",
-        definition: "x".repeat(300),
+        definition: "Sample season ".repeat(30),
         custom: {},
       });
       await createTerm(context, { name: "Bbb channel", owner: "Trading" });
@@ -479,10 +514,14 @@ describe("listTerms", () => {
           item.summary.length,
         ]),
       ).toEqual([
-        ["Aaa season", "concept", 240],
+        ["Aaa season", "concept", 238],
         ["Bbb channel", "dimension", 0],
         ["Ccc margin", "dimension", 0],
       ]);
+      expect(everything.items[0]?.summary.length).toBeLessThanOrEqual(240);
+      expect(everything.items[0]?.summary).toMatch(/season…$/u);
+      expect(everything.items[0]?.summary_truncated).toBe(true);
+      expect(everything.items[1]).not.toHaveProperty("summary_truncated");
       expect(everything.items[1]).toMatchObject({
         kind: "term",
         owner: "Trading",

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, lt, ne, or } from "drizzle-orm";
-import type { Config } from "../../config.js";
+import { connectAgain, type Config } from "../../config.js";
 import type { AppDeps, ServiceContext } from "../../context.js";
 import {
   powerbiConnection,
@@ -20,7 +20,7 @@ import {
   accountTaken,
   endConnection,
   hidingValues,
-  OWN_ACCOUNT_REQUIRED,
+  ownAccountRequired,
   sealTokens,
 } from "./store.js";
 
@@ -35,8 +35,6 @@ const STATE_LIFETIME_MS = 10 * 60_000;
 const RETURN_PATH =
   /^\/(?:(?:setup|admin|settings|review|catalog|oauth\/consent|device)(?:\/|$)|$)/;
 const DEFAULT_RETURN = "/settings/connections";
-const STATE_SPENT =
-  "This Power BI connection link has expired or was used already. Connect Power BI again.";
 
 const sha256 = (text: string, encoding: "hex" | "base64url") =>
   createHash("sha256").update(text).digest(encoding);
@@ -179,11 +177,14 @@ async function connectAccount(
     started.session_id !== person.session_id ||
     started.expires_at <= deps.clock()
   )
-    throw new ServiceError("refused", STATE_SPENT);
+    throw new ServiceError(
+      "refused",
+      `This Power BI connection link has expired or was used already. ${connectAgain(deps.config)}`,
+    );
   if (query.code === undefined)
     throw new ServiceError(
       "refused",
-      "Microsoft did not connect Power BI. Connect Power BI again.",
+      `Microsoft did not connect Power BI. ${connectAgain(deps.config)}`,
     );
   const redeemed = await redeemCode(deps, {
     code: query.code,
@@ -251,7 +252,7 @@ async function connectAccount(
     for (const other of others)
       await endConnection(tx, other.user_id, {
         status: "needs_reconnect",
-        last_error: OWN_ACCOUNT_REQUIRED,
+        last_error: ownAccountRequired(deps.config),
       });
     return others;
   });

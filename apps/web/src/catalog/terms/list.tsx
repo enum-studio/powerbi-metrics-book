@@ -17,12 +17,13 @@ export function TermsList() {
     <>
       <h1 className="text-title font-semibold">Terms</h1>
       <p className="mt-1 max-w-(--measure) text-ui text-ink-2">
-        The company's words, and the columns that hold them. Agents read a term
-        before they filter or group by it.
+        The words the business uses, defined once: Returning customer, Sign-up
+        attribution, Cohort. A term can point to the columns that hold it and
+        the metrics that use it.
       </p>
       {q.data.length === 0 ? (
         <EmptyState title="No terms yet">
-          When a curator adds a term, it shows here.
+          When a curator defines a term, it shows here.
         </EmptyState>
       ) : (
         <div className={`mt-6 ${TABLE_BOX}`}>
