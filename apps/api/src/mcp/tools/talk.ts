@@ -12,6 +12,7 @@ import {
   reply,
   setUpvote,
 } from "../../services/threads/threads.js";
+import { anchorPage, threadAnchor } from "../anchors.js";
 import { defineTool, type Tool } from "../registry.js";
 import { cursor, pageLimit } from "./inputs.js";
 
@@ -87,7 +88,7 @@ export const talkTools: readonly Tool[] = [
   defineTool({
     name: "list_threads",
     description:
-      "Lists threads newest first, each with an excerpt, its reply and upvote counts and the replies you have not read. Use it to see what is asked about an element, or with mine to follow up on what you asked; get_thread reads one in full. Archived threads are left out unless status is archived. Page on with next_cursor.",
+      "Lists threads newest first, each with an excerpt, its reply and upvote counts and the replies you have not read. Use it to see what is asked about an element, or with mine to follow up on what you asked; get_thread reads one in full. Archived threads are left out unless status is archived. Page on with next_cursor. upvoted appears only when true. Long text is cut with a _truncated flag.",
     input: z.strictObject({
       element: element.optional(),
       kind: z.enum(THREAD_KINDS).optional().describe("Only this kind."),
@@ -109,7 +110,8 @@ export const talkTools: readonly Tool[] = [
       cursor,
       limit: pageLimit,
     }),
-    handler: (context, filters) => listThreads(context, filters),
+    handler: async (context, filters) =>
+      anchorPage(await listThreads(context, filters), threadAnchor),
   }),
   defineTool({
     name: "accept_reply",

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { createTestDeps, principals } from "../../test/deps.js";
+import { createTestDeps, principals, testPool } from "../../test/deps.js";
 import {
   asPerson,
   everyWorkspace,
@@ -14,6 +14,13 @@ import {
 import { acceptReply, postThread, reply } from "../services/threads/threads.js";
 import { searchLog } from "../db/schema/usage.js";
 import type { UsageReport } from "../services/usage/report.js";
+import { eq } from "drizzle-orm";
+import { createDb } from "../db/client.js";
+import {
+  powerbiDataset,
+  powerbiTable,
+  powerbiRelationship,
+} from "../db/schema/mirror.js";
 import { metric } from "../db/schema/book.js";
 import { defineTool, type Tool } from "./registry.js";
 import {
@@ -176,6 +183,7 @@ describe("a page too long for one answer", () => {
       "list_datasets",
       "list_measures",
       "list_metrics",
+      "list_relationships",
       "list_requests",
       "list_terms",
       "list_threads",
@@ -401,4 +409,84 @@ it("get_usage_report refits a large seeded log within 16 KiB with truncated_list
   expect(report.truncated_lists).toContain("searches_with_no_hits");
   expect(report.not_covered.searches_with_no_hits.length).toBeGreaterThan(0);
   expect(reads.mock.calls.length).toBeGreaterThan(1);
+});
+
+it("fits 30 tables and 60 relationships, then pages 400 whole relationships", async () => {
+  const db = createDb(testPool("worker_rw"));
+  const dataset = randomUUID();
+  await db.insert(powerbiDataset).values({
+    id: dataset,
+    name: "Schema size sample",
+    workspace_id: id.sales_workspace,
+  });
+  try {
+    const tables = Array.from({ length: 30 }, (_, i) => ({
+      dataset_id: dataset,
+      name: `Table ${String(i).padStart(2, "0")}`,
+      column_count: 5,
+      measure_count: 1,
+    }));
+    await db.insert(powerbiTable).values(tables);
+    const relationships = Array.from({ length: 400 }, (_, i) => ({
+      dataset_id: dataset,
+      from_table: tables[i % 30]?.name ?? "",
+      from_column: `Column ${String(i).padStart(3, "0")}`,
+      to_table: "Table 00",
+      to_column: "Id",
+      cardinality: "many_to_one",
+      cross_filtering_behavior: "one_direction",
+      is_active: true,
+    }));
+    await db.insert(powerbiRelationship).values(relationships.slice(0, 60));
+    const ctx = asPerson(everyWorkspace);
+    const summary = await tool("get_dataset").call(ctx, { id: dataset });
+    expect(summary.content).toHaveLength(1);
+    const detail = z
+      .object({
+        tables: z.array(z.unknown()),
+        relationships: z.array(z.unknown()),
+      })
+      .parse(JSON.parse(summary.content[0]?.text ?? ""));
+    expect(detail.tables).toHaveLength(30);
+    expect(detail.relationships).toHaveLength(60);
+    await db.insert(powerbiRelationship).values(relationships.slice(60));
+    let cursor: string | null = null;
+    const seen: unknown[] = [];
+    do {
+      const answer = await tool("list_relationships").call(ctx, {
+        dataset,
+        limit: 100,
+        ...(cursor === null ? {} : { cursor }),
+      });
+      expect(answer.content).toHaveLength(1);
+      const text = answer.content[0]?.text ?? "";
+      expect(Buffer.byteLength(text)).toBeLessThanOrEqual(ANSWER_LIMIT_BYTES);
+      const page = z
+        .object({
+          items: z.array(
+            z
+              .object({
+                from_table: z.string(),
+                from_column: z.string(),
+                to_table: z.string(),
+                to_column: z.string(),
+                cardinality: z.string(),
+              })
+              .strict(),
+          ),
+          next_cursor: z.string().nullable(),
+          total: z.number().optional(),
+        })
+        .parse(JSON.parse(text));
+      if (cursor === null) expect(page.total).toBe(400);
+      seen.push(...page.items);
+      cursor = page.next_cursor;
+    } while (cursor !== null);
+    expect(seen).toHaveLength(400);
+    expect(new Set(seen.map((row) => JSON.stringify(row))).size).toBe(400);
+    const cut = toolAnswer({ description: "x".repeat(20000) }, "Dataset cut.");
+    expect(cut.content.at(-1)?.text).toContain("Dataset cut.");
+  } finally {
+    await db.delete(powerbiDataset).where(eq(powerbiDataset.id, dataset));
+  }
 });

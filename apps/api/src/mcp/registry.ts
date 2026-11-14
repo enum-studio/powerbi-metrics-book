@@ -21,6 +21,7 @@ export type Tool = {
 export type ToolDefinition<Input extends z.ZodObject> = {
   /** snake_case, and on the spec's list (connector_surface_security_test.ts). */
   name: string;
+  cutSentence?: string;
   /** Says when to use the tool, which is how a model chooses it. */
   description: string;
   /** Tools take named arguments, so the input is an object. */
@@ -62,6 +63,7 @@ export function defineTool<Input extends z.ZodObject>(
                 context,
                 Object.assign({}, parsed.data, { limit: fitting }),
               ),
+          definition.cutSentence,
         );
       } catch (error) {
         if (error instanceof ServiceError) return toolError(error);
