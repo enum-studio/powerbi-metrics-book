@@ -384,6 +384,7 @@ The settings, with their defaults:
 | `search.provider`, `search.model` | none | `openai` or `gemini`, and the model |
 | `search.base_url` | none | the provider's address when not its own (the mock, a proxy); set only in the environment, because the provider's key is sent there |
 | `results.ttl_hours`, `.preview_rows`, `.page_rows_max`, `.daily_row_budget` | 24, 20, 500, 1,000,000 | Queries and results |
+| `questions.enabled` | false | ask, reply and accept answers about book elements; an admin turns Questions on under Settings, General |
 | `queries.rate_per_minute` | 60 | per principal |
 
 | Secret | Read by |
@@ -1690,8 +1691,11 @@ anchor carries both.
 | `set_upvote` | `thread_id`, `upvoted` | the new count |
 | `whoami` | none | the person or service account, roles, and the Power BI connection's state with the link to connect |
 
-Thirty-two tools, each a thin adapter over a service. A metric shared by
-fifty datasets has hundreds of variants, so `get_metric` returns the base
+Twenty-six tools by default, thirty-two when questions are on: `post_thread`,
+`reply_in_thread`, `get_thread`, `list_threads`, `accept_reply` and `set_upvote`
+are absent while off. `whoami` reports `questions`; question fields are absent
+from catalog answers while off. Each tool is a thin adapter over a service.
+A metric shared by fifty datasets has hundreds of variants, so `get_metric` returns the base
 variant per dataset and counts the rest; `list_variants` filters them and
 `get_variant` gives one variant's DAX. The tool
 descriptions say when to use each, the way `get_metric`'s says "use this
@@ -1707,7 +1711,7 @@ from.
 |---|---|---|
 | Read | `GET /search`, `/conventions`, `/metrics`, `/metrics/{name}`, `/metrics/{name}/variants`, `/variants/{id}`, `/categories`, `/terms`, `/terms/{name}`, `/workspaces`, `/apps`, `/datasets`, `/datasets/{id}`, `/datasets/{id}/columns`, `/datasets/{id}/measures`, `/elements/{kind}/{id}/docs` | anyone signed in, filtered by `describe` |
 | Queries | `POST /queries`, `GET /queries`, `GET /queries/{id}`, `GET /results/{id}`, `POST /results/{id}/csv-link`, `GET /results/{id}/csv` | `query`; results by their owner |
-| Threads | `POST /threads`, `GET /threads`, `GET /threads/{id}`, `POST /threads/{id}/replies`, `PUT` and `DELETE /threads/{id}/upvote`, `POST /threads/{id}/accept`, `POST /threads/{id}/archive` | `thread` actions |
+| Threads | `POST /threads`, `GET /threads`, `GET /threads/{id}`, `POST /threads/{id}/replies`, `PUT` and `DELETE /threads/{id}/upvote`, `POST /threads/{id}/accept`, `POST /threads/{id}/archive` | `thread` actions; while questions are off, authenticated calls answer 404 `questions_off` |
 | Curation | `GET /drafts/next`, `POST /metrics`, `PATCH /metrics/{name}`, `POST /metrics/{name}/merge`, `POST /metrics/{name}/verify`, `POST /metrics/{name}/dismiss`, `DELETE /metrics/{name}`, `GET /metrics/{name}/checks`, `GET /metrics/{name}/history`, `PATCH /variants/{id}`, `POST`, `PATCH` and `DELETE /categories/{path}`, `POST`, `PATCH` and `DELETE /terms/{name}`, `PUT` and `DELETE /terms/{name}/columns/{column_id}`, `PUT` and `DELETE /terms/{name}/metrics/{metric}`, `PUT /elements/{kind}/{id}/docs` | `book:curate`, `book:verify` |
 | Review | `POST /metrics/{name}/approve` | a curator in a browser session only |
 | Me | `GET /me`, `GET /me/grants`, `DELETE /me/grants/{id}`, `GET /powerbi/connect`, `GET /powerbi/callback`, `DELETE /powerbi/connection` | the person |

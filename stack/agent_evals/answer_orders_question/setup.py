@@ -1,10 +1,12 @@
-"""Asks the open question about orders that the task is to answer."""
+"""Turns questions on, then asks the open question about orders the task answers."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from support import metrics_by_name, pbmb_json, save_state
+
+pbmb_json("admin", "settings", "set", "questions.enabled", "true")
 
 orders = metrics_by_name()["orders"]["id"]
 asked = pbmb_json(

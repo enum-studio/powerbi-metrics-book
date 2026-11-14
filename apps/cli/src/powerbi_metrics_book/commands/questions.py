@@ -10,7 +10,10 @@ from powerbi_metrics_book.client import Json, api_path
 from powerbi_metrics_book.output import JsonOption
 from powerbi_metrics_book.tables import print_fields, print_table
 
-app = typer.Typer(help="Ask questions and leave comments on anything in the book.")
+app = typer.Typer(
+    help="Ask questions and leave comments on anything in the book. "
+    "An admin must turn questions on under Settings, General."
+)
 
 THREAD_COLUMNS = [
     "id",

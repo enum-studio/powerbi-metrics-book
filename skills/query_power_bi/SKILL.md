@@ -53,7 +53,7 @@ Give the number or table, the metric and variant you used, its trust state, the 
 
 If a query is refused for want of a Power BI connection, run `pbmb whoami` (MCP: `whoami`); it names the page where the person connects. If a refusal is about rights, say so and stop; do not try another route to the same data.
 
-If a definition looks wrong or missing, ask a question instead of guessing. Show the person the title and body first, and post after their yes: `pbmb questions ask metric <id> --title ... --body ...` (MCP: `post_thread`), after looking at `pbmb questions list --element metric:<id>` for one already open.
+If a definition looks wrong or missing, tell the person what is unclear. Check `whoami` (CLI: `pbmb whoami --json`): when questions are on, ask a question instead of guessing. Show the person the title and body first, and post after their yes: `pbmb questions ask metric <id> --title ... --body ...` (MCP: `post_thread`), after looking at `pbmb questions list --element metric:<id>` for one already open.
 
 ## 6. Record the request
 

@@ -39,7 +39,7 @@ Choose a metric to read **Definition**, **When to use it** and **Not the same as
 
 Under **Variants**, compare each measure's dataset, period or other shift, and DAX. **Copy** beside the DAX copies the expression when Power BI lets you read it. **Show Order lines in the diagram** opens that dataset with the measure's table selected and in view.
 
-Read **Open questions** before relying on the metric. Curators and admins can also read **History**, see the checks and use **Approve**. See [For curators: approving](/docs/use/for-curators-approving/) for what approval means. Ask your agent or use the CLI to change definitions or filing.
+When questions are on, read **Open questions** before relying on the metric. Curators and admins can also read **History**, see the checks and use **Approve**. See [For curators: approving](/docs/use/for-curators-approving/) for what approval means. Ask your agent or use the CLI to change definitions or filing.
 
 ## Read a term
 

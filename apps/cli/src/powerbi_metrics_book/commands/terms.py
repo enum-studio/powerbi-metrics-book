@@ -59,7 +59,11 @@ def _show_term(console: Console, term: dict[str, Json]) -> None:
             "metrics": [
                 text_of(metric.get("name")) for metric in objects_in(term, "metrics")
             ],
-            "open_questions": term.get("open_questions"),
+            **(
+                {"open_questions": term["open_questions"]}
+                if "open_questions" in term
+                else {}
+            ),
         },
     )
     line(console, "\nColumns behind it")

@@ -11,6 +11,16 @@ Every setting has three ways in: the admin section, `pbmb admin settings get|set
 
 Saving a setting checks it against the schema shown as Accepts.
 
+## `questions`
+
+### `questions.enabled`
+
+Let people and agents ask questions about metrics, datasets and terms, reply, and accept an answer.
+
+- Default: `false`
+- Environment variable: `QUESTIONS_ENABLED`
+- Accepts: true or false
+
 ## `usage`
 
 ### `usage.capture`

@@ -5,6 +5,15 @@ sidebar:
   order: 4
 ---
 
+Questions are off by default. An admin turns on **Questions** under **Settings, General**, or runs:
+
+```bash
+pbmb admin settings set questions.enabled true
+pbmb whoami --json
+```
+
+Check that `questions` is `true` before following this page. Turning questions off hides their tools, routes and catalog fields, and keeps stored threads. Requests and the usage report stay available.
+
 When a definition is missing, wrong or unclear, ask. Do not guess and do not edit the book. A question goes to the people who curate the element, and an accepted answer shows up in the element's own answers, so the next agent finds it without asking.
 
 Anyone signed in can ask or comment on a workspace, dataset, table, column, measure, metric, variant, term, category or logged query that they may see.
