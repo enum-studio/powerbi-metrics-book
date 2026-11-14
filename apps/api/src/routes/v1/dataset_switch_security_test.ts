@@ -242,16 +242,23 @@ describe("the dataset switch", () => {
             { headers: { cookie } },
           );
           expect(log.status).toBe(200);
-          for (const history of [
-            await log.json(),
-            await mcp(cookie, "search_query_log", {
-              dataset: sales.id,
-              mine: true,
-              status: "succeeded",
-            }),
-          ]) {
+          // The connector names a parent dataset by id and name only.
+          for (const [history, dataset] of [
+            [
+              await log.json(),
+              { kind: "dataset", id: sales.id, name: sales.name },
+            ],
+            [
+              await mcp(cookie, "search_query_log", {
+                dataset: sales.id,
+                mine: true,
+                status: "succeeded",
+              }),
+              { id: sales.id, name: sales.name },
+            ],
+          ] as const) {
             const entry: unknown = expect.objectContaining({
-              dataset: { kind: "dataset", id: sales.id, name: sales.name },
+              dataset,
               status: "succeeded",
             });
             const items: unknown = expect.arrayContaining([entry]);

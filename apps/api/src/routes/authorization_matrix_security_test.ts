@@ -895,6 +895,7 @@ const TOOL_REQUESTS: Partial<Record<ToolName, () => ToolSpec>> = {
   get_variant: () => about("id", at.variant),
   get_term: () => ({ input: { name: at.term } }),
   get_dataset: () => about("id", at.sales),
+  list_relationships: () => about("dataset", at.sales),
   list_columns: () => about("dataset", at.sales),
   list_measures: () => about("dataset", at.sales),
   execute_dax: () => about("dataset", at.sales, { dax: at.salesDax }),

@@ -24,7 +24,7 @@ import { TOOLS } from "./tools/index.js";
 const SPEC_TOOLS = [
   "search", "list_metrics", "get_metric", "list_variants", "get_variant",
   "list_categories", "list_terms", "get_term", "get_conventions",
-  "list_workspaces", "list_apps", "list_datasets", "get_dataset",
+  "list_workspaces", "list_apps", "list_datasets", "get_dataset", "list_relationships",
   "list_columns", "list_measures", "execute_dax", "read_query_result",
   "get_result_csv_link", "search_query_log", "get_query", "post_thread",
   "reply_in_thread", "get_thread", "list_threads", "accept_reply",
@@ -38,6 +38,7 @@ const SPEC_TOOLS = [
  */
 const ALLOWED: Record<string, readonly string[]> = {
   "config.ts": ["connectionsPage"],
+  "services/text.ts": ["excerpt"],
   "errors.ts": ["ServiceError"],
   "version.ts": ["VERSION"],
   "http/error-log.ts": ["logError"],
@@ -65,6 +66,7 @@ const ALLOWED: Record<string, readonly string[]> = {
     "listColumns",
     "listDatasets",
     "listMeasures",
+    "listRelationships",
     "listWorkspaces",
   ],
   "services/queries/execute.ts": ["executeDax"],
@@ -208,7 +210,7 @@ const code = (file: string) =>
 describe("the connector's tools", () => {
   it("are all on the spec's list, each once", () => {
     const names = TOOLS.map(({ name }) => name);
-    expect(SPEC_TOOLS).toHaveLength(31);
+    expect(SPEC_TOOLS).toHaveLength(32);
     expect(names.filter((name) => !SPEC_TOOLS.includes(name))).toEqual([]);
     expect(new Set(names).size).toBe(names.length);
     expect([...names].sort()).toEqual([...SPEC_TOOLS].sort());
@@ -219,7 +221,13 @@ describe("the connector's modules", () => {
   it("are all read: the server, the registry and every tool module", () => {
     const read = connectorModules.map((file) => relative(MCP, file));
     const expected = [
-      ...["server.ts", "registry.ts", "tools/index.ts", "tools/inputs.ts"],
+      ...[
+        "server.ts",
+        "registry.ts",
+        "anchors.ts",
+        "tools/index.ts",
+        "tools/inputs.ts",
+      ],
       ...["find", "read", "query", "talk", "whoami"].map(
         (group) => `tools/${group}.ts`,
       ),

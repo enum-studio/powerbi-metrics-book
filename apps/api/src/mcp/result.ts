@@ -114,7 +114,10 @@ function cutAt(serialised: string, limit: number): string {
  * block, since the cut would take it from the end. A longer page cut here grew
  * after it was measured, and its cursor would skip the rows the cut took.
  */
-export function toolAnswer(payload: unknown): McpToolResult {
+export function toolAnswer(
+  payload: unknown,
+  cutSentence = CUT_SENTENCE,
+): McpToolResult {
   const whole = text(payload);
   if (Buffer.byteLength(whole.text) <= ANSWER_LIMIT_BYTES)
     return { content: [whole] };
@@ -125,7 +128,7 @@ export function toolAnswer(payload: unknown): McpToolResult {
   const note =
     cursor !== null && cursor.length <= CURSOR_MAX_CHARACTERS
       ? { truncated: true, message: CUT_ROW_SENTENCE, next_cursor: cursor }
-      : { truncated: true, message: CUT_SENTENCE };
+      : { truncated: true, message: cutSentence };
   return {
     content: [
       {
