@@ -46,6 +46,7 @@ const storableOrNull = (text: string | null) =>
 export type QueryLogInput = {
   id: string;
   powerbi_account?: string | null;
+  origin?: "request" | "catalog";
   at: Date;
   dataset: { id: string; name: string; workspace_id: string } | null;
   dax: string;
@@ -72,6 +73,7 @@ export async function logQuery(
   // audit_writer inserts and nothing else, so the insert returns nothing.
   await context.auditDb.insert(queryLog).values({
     id: entry.id,
+    origin: entry.origin ?? "request",
     at: entry.at,
     principal_kind: context.principal.kind,
     principal_id: context.principal.id,
@@ -109,6 +111,7 @@ export type QueryLogFilters = {
   principal?: string;
   mine?: boolean;
   status?: QueryStatus;
+  origins?: ("request" | "catalog")[];
   since?: Date;
   until?: Date;
   /** The next_cursor of the page before. */
@@ -118,6 +121,7 @@ export type QueryLogFilters = {
 
 const shown = {
   id: queryLog.id,
+  origin: queryLog.origin,
   at: queryLog.at,
   principal_kind: queryLog.principal_kind,
   principal_id: queryLog.principal_id,
@@ -228,6 +232,9 @@ export async function searchQueryLog(
     );
   const { dataset, workspace, metric: named } = filters;
   const conditions = [
+    filters.origins === undefined
+      ? undefined
+      : inArray(queryLog.origin, filters.origins),
     filters.text === undefined
       ? undefined
       : sql`${queryLog.search_tsv} @@ websearch_to_tsquery('simple', ${filters.text})`,

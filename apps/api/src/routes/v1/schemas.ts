@@ -278,6 +278,7 @@ export const Anchor = z
 export const Entry = z
   .object({
     kind: z.literal("query"),
+    origin: z.enum(["request", "catalog"]),
     id: z.string(),
     at: iso,
     principal: z.object({

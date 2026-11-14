@@ -79,7 +79,7 @@ export async function executeDax(
   context: ServiceContext,
   input: ExecuteInput,
 ): Promise<ResultAnchor> {
-  return execute(context, input, true);
+  return execute(context, input, true, "request");
 }
 
 const MODEL_VIEW_PURPOSE = {
@@ -108,6 +108,7 @@ export async function readModelView(
       preview_rows: 0,
     },
     false,
+    "catalog",
   );
 }
 
@@ -115,6 +116,7 @@ async function execute(
   context: ServiceContext,
   input: ExecuteInput,
   checkPii: boolean,
+  origin: "request" | "catalog",
 ): Promise<ResultAnchor> {
   const started = performance.now();
   const at = context.clock();
@@ -209,6 +211,7 @@ async function execute(
     try {
       await logQuery(context, {
         id: query_id,
+        origin,
         at,
         powerbi_account: grant?.account ?? null,
         dataset,

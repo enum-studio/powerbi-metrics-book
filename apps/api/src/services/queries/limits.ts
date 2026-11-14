@@ -81,6 +81,7 @@ export async function reserveRows(
       );
 
     const mine = and(
+      eq(queryLog.origin, "request"),
       eq(queryLog.principal_kind, principal.kind),
       eq(queryLog.principal_id, principal.id),
       gt(queryLog.at, new Date(now.getTime() - DAY_MS)),

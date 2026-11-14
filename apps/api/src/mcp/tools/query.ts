@@ -118,6 +118,7 @@ export const queryTools: readonly Tool[] = [
     handler: (context, { since, ...filters }) =>
       searchQueryLog(context, {
         ...filters,
+        origins: ["request"],
         since: since === undefined ? undefined : new Date(since),
       }),
   }),

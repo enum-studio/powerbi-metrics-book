@@ -60,6 +60,38 @@ async function logged(
 const ids = (page: { items: { id: string }[] }) => page.items.map((e) => e.id);
 
 describe("searchQueryLog", () => {
+  it("filters origins and includes each entry's origin", async () => {
+    const caller = asking(`origins-${randomUUID()}`);
+    const request = await logged("EVALUATE {1}", {}, caller);
+    const catalog = await logged(
+      "EVALUATE INFO.VIEW.MEASURES()",
+      { origin: "catalog" },
+      caller,
+    );
+    expect((await searchQueryLog(caller, { mine: true })).items).toMatchObject([
+      { id: catalog, origin: "catalog" },
+      { id: request, origin: "request" },
+    ]);
+    for (const [origins, expected] of [
+      [["request"], [request]],
+      [["catalog"], [catalog]],
+      [
+        ["request", "catalog"],
+        [catalog, request],
+      ],
+      [[], []],
+    ] as const) {
+      expect(
+        ids(
+          await searchQueryLog(caller, {
+            mine: true,
+            origins: [...origins],
+          }),
+        ),
+      ).toEqual(expected);
+    }
+  });
+
   it("finds a query by a word of its DAX, its purpose or its dataset's name, newest first, page by page", async () => {
     const orders = await logged(
       "EVALUATE SUMMARIZECOLUMNS('Channel'[Channel], \"Orders\", [Orders])",
