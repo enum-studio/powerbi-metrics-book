@@ -318,6 +318,7 @@ describe("the first tools", () => {
       powerbi_connection: "not_connected",
       powerbi_connect_url: `${TEST_PUBLIC_BASE_URL}/settings/connections`,
       sample_data: false,
+      questions: false,
       usage: { capture: true, retention_days: 180 },
       book_metrics: { draft: 0, agent_verified: 0, human_verified: 0 },
     });
@@ -329,8 +330,10 @@ describe("the first tools", () => {
     const own = (await g.connect(cookie, g.client())).access_token;
     await g.deps.settings.set("usage.capture", false, principals.admin);
     await g.deps.settings.set("usage.retention_days", 30, principals.admin);
+    await g.deps.settings.set("questions.enabled", true, principals.admin);
     expect(await toolAnswer(await g.whoami(own))).toMatchObject({
       usage: { capture: false, retention_days: 30 },
+      questions: true,
     });
   });
 
