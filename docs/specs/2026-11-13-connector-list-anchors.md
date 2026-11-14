@@ -99,7 +99,11 @@ reaches the connector only when its anchor names it.
   an empty object is left out. So is a flag at its default:
   `is_hidden`, `removed`, `pii`, `reads_selection`, `has_row_level_security`
   and `upvoted` appear only when true, `is_active` only when false. Each
-  tool description says which flags appear only when they are set.
+  tool description says which flags appear only when they are set. One
+  exception: a get answer keeps the lists that say what the element holds
+  (`get_dataset`'s `tables` and `relationships`, `get_metric`'s
+  `base_variants`) when they are empty, because there an empty list is the
+  answer, and the personal-data tests assert on it.
 - **Parents.** A dataset is `{ id, name }`. A workspace and a table are their
   names. A category is its path (`"sales/orders"`). A metric is its key. A
   parent the caller filtered by is left out of every row: `table` on
