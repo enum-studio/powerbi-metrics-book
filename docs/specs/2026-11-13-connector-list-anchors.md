@@ -136,23 +136,25 @@ text field with a limit in section 2 at that limit in ASCII, ids as UUIDs,
 names, labels and parent names at 40 ASCII characters, and five aliases of
 16. A target guards against fields creeping back into a row. It is not a
 cut: names are never shortened, text in a wider script takes more bytes,
-and the 16 KiB bound of `result.ts` stays the limit on an answer.
+and the 16 KiB bound of `result.ts` stays the limit on an answer. Each
+target is the size measured on that row with every flag set, rounded up
+to 50 bytes; a `list_relationships` row is 350.
 
 | Tool | Row | Target |
 |---|---|---|
 | `list_metrics` | `id`, `name` (the key), `label`, `summary`, `unit`, `category` (path), `trust_state`, `dataset_count`, `aliases` | 650 |
-| `list_variants` | `id`, `dataset`, `measure` (name), `measure_reference`, `shift`, `reads_selection`, `selection_columns` | 300 |
-| `list_columns` | `id`, `name`, `table`, `data_type`, `column_type` (when not `data`), `is_hidden`, `display_folder`, `description`, `description_pbi`, `terms` (names), `pii` | 600 |
-| `list_measures` | `id`, `name`, `table`, `display_folder`, `is_hidden`, `description`, `description_pbi`, `metric` (key), `shift`, `pii` | 650 |
-| `list_datasets` | `id`, `name`, `workspace`, `reached_through`, `has_row_level_security`, `description`, `removed` | 400 |
+| `list_variants` | `id`, `dataset`, `measure` (name), `measure_reference`, `shift`, `reads_selection`, `selection_columns` | 700 |
+| `list_columns` | `id`, `name`, `table`, `data_type`, `column_type` (when not `data`), `is_hidden`, `display_folder`, `description`, `description_pbi`, `terms` (names), `pii` | 700 |
+| `list_measures` | `id`, `name`, `table`, `display_folder`, `is_hidden`, `description`, `description_pbi`, `metric` (key), `shift`, `pii` | 1,000 |
+| `list_datasets` | `id`, `name`, `workspace`, `reached_through`, `has_row_level_security`, `description`, `removed` | 450 |
 | `list_workspaces` | `id`, `name`, `dataset_count`, `description` | 300 |
-| `list_apps` | `id`, `name`, `workspace`, `description`, `datasets` (`{ id, name }` each) | 300 plus 70 a dataset |
-| `list_terms` | `id`, `name`, `type`, `summary`, `trust_state`, `column_count` (when above 0), `aliases` | 600 |
+| `list_apps` | `id`, `name`, `workspace`, `description`, `datasets` (`{ id, name }` each) | 450 with one dataset |
+| `list_terms` | `id`, `name`, `type`, `summary`, `trust_state`, `column_count` (when above 0), `aliases` | 550 |
 | `list_categories` | `path`, `name`, `metric_count`, `description`, `children` | 400 without children |
-| `search` | `kind`, `id`, `name`, `label`, `summary`, `dataset`, `trust_state`, `match`, `category` (a metric hit's category path, or a category hit's own), `table` and `display_folder` (variant, column and table hits), `metric` (key, variant hits), `aliases` (metric hits) | 700 |
-| `list_threads` | `id`, `kind`, `title`, `status`, `excerpt`, `element`, `author_name`, `created_at`, `reply_count`, `upvote_count` (when above 0), `unread_replies` (when above 0), `upvoted` | 700 |
-| `list_requests` | `id`, `at`, `principal`, `via`, `question`, `outcome`, `gaps`, `missing`, `elements` | 1,200 |
-| `search_query_log` | `id`, `at`, `principal`, `via`, `dataset`, `status`, `purpose`, `dax`, `error`, `row_count`, `duration_ms`, `result_id`, `metric_ids` | 1,500 |
+| `search` | `kind`, `id`, `name`, `label`, `summary`, `dataset`, `trust_state`, `match`, `category` (a metric hit's category path, or a category hit's own), `table` and `display_folder` (variant, column and table hits), `metric` (key, variant hits), `aliases` (metric hits) | 750 |
+| `list_threads` | `id`, `kind`, `title`, `status`, `excerpt`, `element`, `author_name`, `created_at`, `reply_count`, `upvote_count` (when above 0), `unread_replies` (when above 0), `upvoted` | 650 |
+| `list_requests` | `id`, `at`, `principal`, `via`, `question`, `outcome`, `gaps`, `missing`, `elements` | 800 |
+| `search_query_log` | `id`, `at`, `principal`, `via`, `dataset`, `status`, `purpose`, `dax`, `error`, `row_count`, `duration_ms`, `result_id`, `metric_ids` | 1,350 |
 
 - **A shift** carries only the axes that differ from the base: `period` when
   not `current`, `comparison` and `comparison_period` when the comparison is
