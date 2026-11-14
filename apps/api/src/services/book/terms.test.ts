@@ -172,7 +172,7 @@ describe("createTerm and updateTerm", () => {
         [
           () => getTerm(context, "Nothing"),
           "not_found",
-          `No term goes by "Nothing".`,
+          `No term goes by "Nothing". search finds a term by a word, and list_terms lists the terms A to Z.`,
         ],
       ];
       for (const [attempt, kind, message] of refusals) {
@@ -450,6 +450,41 @@ describe("deleteTerm", () => {
 });
 
 describe("listTerms", () => {
+  it("matches normalized names and aliases and counts before paging", () =>
+    rolledBack(async (tx) => {
+      const context = as(tx);
+      await createTerm(context, {
+        name: "Sample_word",
+        definition: "Sample.",
+        aliases: ["Odd%_\\word"],
+      });
+      await createTerm(context, {
+        name: "Sample word two",
+        definition: "Sample.",
+      });
+      const page = await listTerms(context, {
+        name_contains: "SAMPLE WORD",
+        limit: 1,
+      });
+      expect(page).toMatchObject({
+        total: 2,
+        items: [{ name: "Sample_word" }],
+      });
+      expect(
+        await listTerms(context, { name_contains: "odd% \\word" }),
+      ).toMatchObject({ total: 1 });
+      expect(
+        await listTerms(context, {
+          cursor: page.next_cursor ?? "",
+          name_contains: "sample_word",
+        }),
+      ).not.toHaveProperty("total");
+      await expect(getTerm(context, "Missing sample")).rejects.toMatchObject({
+        message:
+          'No term goes by "Missing sample". search finds a term by a word, and list_terms lists the terms A to Z.',
+      });
+    }));
+
   it("lists in name order with a summary, filters, and pages by an opaque cursor", () =>
     rolledBack(async (tx) => {
       const context = as(tx, bothCurator);

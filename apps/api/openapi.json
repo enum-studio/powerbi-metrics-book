@@ -5611,6 +5611,22 @@
             }
           },
           {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "category",
             "in": "query",
             "required": false,
@@ -12867,6 +12883,12 @@
                               "meaning"
                             ]
                           },
+                          "aliases": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "path": {
                             "type": "array",
                             "items": {
@@ -13342,6 +13364,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -13652,6 +13677,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -13722,6 +13750,22 @@
           },
           {
             "name": "trust_states",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
             "in": "query",
             "required": false,
             "schema": {
@@ -14066,6 +14110,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -14130,6 +14177,15 @@
           {
             "in": "query",
             "name": "name_prefix",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -14875,6 +14931,9 @@
                     },
                     "pii_hidden": {
                       "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -14950,6 +15009,15 @@
           {
             "in": "query",
             "name": "name_prefix",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -15541,6 +15609,9 @@
                     },
                     "pii_hidden": {
                       "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -15607,6 +15678,15 @@
           {
             "in": "query",
             "name": "table",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "name_contains",
             "schema": {
               "type": "string",
               "minLength": 1,

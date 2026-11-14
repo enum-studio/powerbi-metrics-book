@@ -556,6 +556,7 @@ describe("listVariants", () => {
       ]);
 
       const first = await listVariants(context, orders, { limit: 1 });
+      expect(first).toHaveProperty("total", items.length);
       const second = await listVariants(context, orders, {
         limit: 1,
         cursor: first.next_cursor ?? "",
@@ -564,6 +565,7 @@ describe("listVariants", () => {
         [...first.items, ...second.items].map((item) => item.dataset.name),
       ).toEqual([MARKETING, SALES]);
 
+      expect(second).not.toHaveProperty("total");
       // One at a time, the pages give every variant once, in the list's order.
       const paged: string[] = [];
       let cursor: string | undefined;

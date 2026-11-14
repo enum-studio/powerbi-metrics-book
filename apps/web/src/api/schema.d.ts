@@ -3745,6 +3745,8 @@ export interface operations {
         app?: string;
         dataset?: string;
         trust_states?: string;
+        name_prefix?: string;
+        name_contains?: string;
         category?: string;
         not_filed?: string;
         unit?: string;
@@ -7661,6 +7663,7 @@ export interface operations {
               score: number;
               /** @enum {string} */
               match: "exact" | "words" | "meaning";
+              aliases?: string[];
               path: {
                 /** @enum {string} */
                 kind: "workspace" | "dataset" | "table" | "folder" | "category";
@@ -7823,6 +7826,7 @@ export interface operations {
               };
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -7929,6 +7933,8 @@ export interface operations {
         app?: string;
         dataset?: string;
         trust_states?: string;
+        name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: string;
         /** @description Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20. */
@@ -7968,6 +7974,7 @@ export interface operations {
               };
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -8108,6 +8115,7 @@ export interface operations {
         workspace?: string;
         app?: string;
         name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: number;
       };
@@ -8147,6 +8155,7 @@ export interface operations {
               removed: boolean;
             }[];
             next_cursor: string | null;
+            total?: number;
           };
         };
       };
@@ -8346,6 +8355,7 @@ export interface operations {
       query?: {
         table?: string;
         name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: number;
       };
@@ -8398,6 +8408,7 @@ export interface operations {
             }[];
             next_cursor: string | null;
             pii_hidden?: number;
+            total?: number;
           };
         };
       };
@@ -8567,6 +8578,7 @@ export interface operations {
     parameters: {
       query?: {
         table?: string;
+        name_contains?: string;
         unfiled?: "true" | "false";
         cursor?: string;
         limit?: number;
@@ -8626,6 +8638,7 @@ export interface operations {
             }[];
             next_cursor: string | null;
             pii_hidden?: number;
+            total?: number;
           };
         };
       };

@@ -116,12 +116,19 @@ const bookFilters = {
 };
 const metricQuery = {
   ...bookFilters,
+  name_prefix: text.optional(),
+  name_contains: text.optional(),
   category: text.optional(),
   not_filed: flag.optional(),
   unit: text.optional(),
   ...paging,
 };
-const termQuery = { ...bookFilters, ...paging };
+const termQuery = {
+  ...bookFilters,
+  name_prefix: text.optional(),
+  name_contains: text.optional(),
+  ...paging,
+};
 const searchQuery = {
   query: text,
   kinds: commaList(SEARCH_QUERY_KINDS).optional(),
@@ -393,6 +400,7 @@ const SearchAnswer = z.object({
       trust_state: z.enum(TRUST_STATES).nullable(),
       score: z.number(),
       match: z.enum(["exact", "words", "meaning"]),
+      aliases: z.array(z.string()).optional(),
       path: z.array(
         z.object({
           kind: z.enum(["workspace", "dataset", "table", "folder", "category"]),
@@ -483,7 +491,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
 
   const variants = documented(
     "A metric's variants, with their shifts and no DAX",
-    page(VariantItem),
+    page(VariantItem).extend({ total: z.number().optional() }),
     { errors: [400, 404] },
   );
   routes.get(
@@ -548,7 +556,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
 
   const terms = documented(
     "The glossary terms, A to Z, as small anchors",
-    page(TermItem),
+    page(TermItem).extend({ total: z.number().optional() }),
     { errors: [400] },
   );
   routes.get(
@@ -592,7 +600,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
 
   const datasets = documented(
     "The datasets the caller may describe, A to Z",
-    page(DatasetItem),
+    page(DatasetItem).extend({ total: z.number().optional() }),
     { errors: [400] },
   );
   routes.get(
@@ -605,6 +613,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
         workspace: text.optional(),
         app: text.optional(),
         name_prefix: text.optional(),
+        name_contains: text.optional(),
         ...paging,
       }),
       refuse,
@@ -629,7 +638,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
 
   const columns = documented(
     "A dataset's columns, A to Z",
-    page(ColumnItem).extend(piiHidden),
+    page(ColumnItem).extend({ ...piiHidden, total: z.number().optional() }),
     {
       errors: [400, 404],
     },
@@ -644,6 +653,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
       z.strictObject({
         table: text.optional(),
         name_prefix: text.optional(),
+        name_contains: text.optional(),
         ...paging,
       }),
       refuse,
@@ -676,7 +686,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
 
   const measures = documented(
     "A dataset's measures, A to Z, with the metric that covers each",
-    page(MeasureItem).extend(piiHidden),
+    page(MeasureItem).extend({ ...piiHidden, total: z.number().optional() }),
     { errors: [400, 404] },
   );
   routes.get(
@@ -688,6 +698,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
       "query",
       z.strictObject({
         table: text.optional(),
+        name_contains: text.optional(),
         unfiled: flag.optional(),
         ...paging,
       }),

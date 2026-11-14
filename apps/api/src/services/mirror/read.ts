@@ -69,7 +69,11 @@ export const ref = <K extends string>(kind: K, id: string, name: string) => ({
   id,
   name,
 });
-export type Page<T> = { items: T[]; next_cursor: string | null };
+export type Page<T> = {
+  items: T[];
+  next_cursor: string | null;
+  total?: number;
+};
 /** `cursor` is the `next_cursor` of the page before. */
 type Paging = { cursor?: string; limit?: number; removed?: boolean };
 
@@ -96,6 +100,22 @@ export const startsWith = (column: PgColumn, prefix: string | undefined) =>
   prefix === undefined
     ? undefined
     : sql`starts_with(lower(${column}), ${prefix.toLowerCase()})`;
+
+export const containsName = (
+  column: SQL | PgColumn,
+  value: string | undefined,
+) =>
+  value === undefined
+    ? undefined
+    : sql`replace(${column}, '_', ' ') ilike ${`%${escapeLike(value.replaceAll("_", " "))}%`}`;
+
+export const aliasContainsName = (
+  aliases: PgColumn,
+  value: string | undefined,
+) =>
+  value === undefined
+    ? undefined
+    : sql`exists (select 1 from unnest(${aliases}) alias where ${containsName(sql`alias`, value)})`;
 
 /** Leaves out a measure that is PII, for a caller who may not read PII. */
 export const unlessPii = (hides: boolean) =>
@@ -295,6 +315,7 @@ export type DatasetFilters = {
   workspace?: string;
   app?: string;
   name_prefix?: string;
+  name_contains?: string;
 } & Paging;
 
 /** The datasets in a workspace, by its id or name. */
@@ -331,6 +352,18 @@ export async function listDatasets(
   const allowed = await context.access.describableDatasets(context.principal);
   const { db } = context;
   const limit = sizeOf(filters.limit);
+  const matching = and(
+    allowed,
+    live(powerbiDataset, filters.removed),
+    filters.workspace === undefined
+      ? undefined
+      : inWorkspace(db, filters.workspace),
+    filters.app === undefined
+      ? undefined
+      : inApp(db, filters.app, await appsSeen(context, allowed)),
+    startsWith(powerbiDataset.name, filters.name_prefix),
+    containsName(powerbiDataset.name, filters.name_contains),
+  );
   const rows = await db
     .select({
       id: powerbiDataset.id,
@@ -348,28 +381,23 @@ export async function listDatasets(
       powerbiWorkspace,
       eq(powerbiWorkspace.id, powerbiDataset.workspace_id),
     )
-    .where(
-      and(
-        allowed,
-        live(powerbiDataset, filters.removed),
-        filters.workspace === undefined
-          ? undefined
-          : inWorkspace(db, filters.workspace),
-        filters.app === undefined
-          ? undefined
-          : inApp(db, filters.app, await appsSeen(context, allowed)),
-        startsWith(powerbiDataset.name, filters.name_prefix),
-        afterCursor(powerbiDataset, filters.cursor),
-      ),
-    )
+    .where(and(matching, afterCursor(powerbiDataset, filters.cursor)))
     .orderBy(asc(powerbiDataset.name), asc(powerbiDataset.id))
     .limit(limit + 1);
   const page = pageOf(rows, limit);
+  const [counted] =
+    filters.cursor === undefined
+      ? await context.db
+          .select({ total: count() })
+          .from(powerbiDataset)
+          .where(matching)
+      : [];
   const apps = await appsShowing(
     context,
     page.items.map((row) => row.id),
   );
   return {
+    ...counted,
     items: page.items.map((row) => {
       const workspace = ref("workspace", row.workspace_id, row.workspace_name);
       return {
@@ -892,6 +920,7 @@ export type ColumnFilters = {
   /** A table's id or name. */
   table?: string;
   name_prefix?: string;
+  name_contains?: string;
 } & Paging;
 
 export async function listColumns(
@@ -917,6 +946,7 @@ export async function listColumns(
   const inScope = and(
     ofDataset,
     startsWith(powerbiColumn.name, filters.name_prefix),
+    containsName(powerbiColumn.name, filters.name_contains),
   );
   const rows = await context.db
     .select({
@@ -945,6 +975,14 @@ export async function listColumns(
     .orderBy(asc(powerbiColumn.name), asc(powerbiColumn.id))
     .limit(limit + 1);
   const page = pageOf(rows, limit);
+  const [counted] =
+    filters.cursor === undefined
+      ? await context.db
+          .select({ total: count() })
+          .from(powerbiColumn)
+          .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
+          .where(and(inScope, hides ? not(pii) : undefined))
+      : [];
   const terms = await termsBacking(
     context.db,
     page.items.map((row) => row.id),
@@ -958,6 +996,7 @@ export async function listColumns(
     : [];
   const hidden = hiddenRow?.n ?? 0;
   return {
+    ...counted,
     items: page.items.map((row) => columnItem(row, terms.get(row.id) ?? [])),
     next_cursor: page.next_cursor,
     ...(hidden > 0 && { pii_hidden: hidden }),
@@ -1000,7 +1039,7 @@ const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** A name as DAX writes it inside brackets: a closing bracket is doubled. */
 const inBrackets = (name: string) => name.replaceAll("]", "]]");
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
+export const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
 /**
  * Whether a measure's DAX names the column, by its text alone: 'Table'[Column]
@@ -1166,6 +1205,7 @@ export type MeasureFilters = {
   table?: string;
   /** Only the measures no metric has a variant on. */
   unfiled?: boolean;
+  name_contains?: string;
 } & Paging;
 
 export async function listMeasures(
@@ -1191,6 +1231,7 @@ export async function listMeasures(
   );
   const inScope = and(
     ofDataset,
+    containsName(powerbiMeasure.name, filters.name_contains),
     filters.unfiled === true ? isNull(metricVariant.id) : undefined,
   );
   const rows = await context.db
@@ -1231,6 +1272,18 @@ export async function listMeasures(
     .orderBy(asc(powerbiMeasure.name), asc(powerbiMeasure.id))
     .limit(limit + 1);
   const page = pageOf(rows, limit);
+  const [counted] =
+    filters.cursor === undefined
+      ? await context.db
+          .select({ total: count() })
+          .from(powerbiMeasure)
+          .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiMeasure.table_id))
+          .leftJoin(
+            metricVariant,
+            eq(metricVariant.measure_id, powerbiMeasure.id),
+          )
+          .where(and(inScope, hides ? not(pii) : undefined))
+      : [];
   const [hiddenRow] = hides
     ? await context.db
         .select({ n: count() })
@@ -1240,6 +1293,7 @@ export async function listMeasures(
     : [];
   const hidden = hiddenRow?.n ?? 0;
   return {
+    ...counted,
     items: page.items.map((row) => ({
       kind: "measure" as const,
       id: row.id,

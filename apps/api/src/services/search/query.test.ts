@@ -67,12 +67,18 @@ describe("search", () => {
         kind: "metric",
         name: "net_sales",
         label: "Net sales",
+        aliases: ["Sample turnover"],
         match: "exact",
         dataset: null,
       });
       expect(answer.items.filter((hit) => hit.match === "exact")).toHaveLength(
         1,
       );
+      expect(
+        answer.items
+          .filter((hit) => hit.kind !== "metric")
+          .every((hit) => !("aliases" in hit)),
+      ).toBe(true);
       expect(await queriesEmbedded(s)).toBe(1);
     }));
 

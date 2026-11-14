@@ -902,7 +902,10 @@ describe("talk", () => {
         { kind: "category", id: "no/such/path" },
         "No such category: no/such/path.",
       ],
-      [{ kind: "term", id: "No such term" }, 'No term goes by "No such term".'],
+      [
+        { kind: "term", id: "No such term" },
+        'No term goes by "No such term". search finds a term by a word, and list_terms lists the terms A to Z.',
+      ],
     ] as const)
       expect(
         await call(analyst, "post_thread", {

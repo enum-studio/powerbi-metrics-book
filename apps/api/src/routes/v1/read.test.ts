@@ -116,6 +116,28 @@ describe("GET /metrics/{name}", () => {
 });
 
 describe("the read routes", () => {
+  it("accepts name_contains and preserves first-page totals on list routes", async () => {
+    const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("Sample has no dataset");
+    for (const path of [
+      "/metrics",
+      "/terms",
+      "/datasets",
+      `/datasets/${dataset.id}/columns`,
+      `/datasets/${dataset.id}/measures`,
+    ]) {
+      const answer = await get(
+        viewer,
+        `${path}?name_contains=absent%25sample&limit=1`,
+      );
+      expect(answer).toMatchObject({
+        status: 200,
+        body: { total: 0, items: [] },
+      });
+    }
+  });
+
   it("keeps a related metric's truncated summary flag over REST", async () => {
     const viewer = await signedIn("viewer");
     const original = await getMetric(admin, "sessions");
@@ -306,6 +328,8 @@ describe("the read routes", () => {
 
   it("refuse input past the connector's caps", async () => {
     const viewer = await signedIn("viewer");
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("Sample has no dataset");
     const custom = Array.from(
       { length: 21 },
       (_, n) => `custom.f${String(n)}=x`,
@@ -316,6 +340,9 @@ describe("the read routes", () => {
       `/metrics?${custom}`,
       "/terms?custom.Bad-Key=x",
       "/metrics?trust_states=bogus",
+      "/search?query=sales&name_contains=sales",
+      "/search?query=sales&name_prefix=sales",
+      `/datasets/${dataset.id}/measures?name_prefix=Net`,
       "/metrics?not_filed=bogus",
       `/metrics/${"x".repeat(501)}`,
       "/datasets/not-an-id",
@@ -354,6 +381,12 @@ describe("the read routes", () => {
     const search = documentedParameters("/search");
     expect(search.map(({ name }) => name)).toEqual(
       expect.arrayContaining(["query", "kinds", "unit", "custom.KEY"]),
+    );
+    expect(search.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(["name_contains"]),
+    );
+    expect(search.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(["name_prefix"]),
     );
     const searchCustom = search.find(({ name }) => name === "custom.KEY");
     expect(searchCustom?.description).toContain("At most 16");
