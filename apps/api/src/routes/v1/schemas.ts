@@ -6,7 +6,11 @@ import {
   TRUST_STATES,
   VIAS,
 } from "../../db/schema/book.js";
-import { PRINCIPAL_KINDS, QUERY_STATUSES } from "../../db/schema/queries.js";
+import {
+  PRINCIPAL_KINDS,
+  QUERY_ORIGINS,
+  QUERY_STATUSES,
+} from "../../db/schema/queries.js";
 import {
   THREAD_ELEMENT_KINDS,
   THREAD_KINDS,
@@ -278,7 +282,7 @@ export const Anchor = z
 export const Entry = z
   .object({
     kind: z.literal("query"),
-    origin: z.enum(["request", "catalog"]),
+    origin: z.enum(QUERY_ORIGINS),
     id: z.string(),
     at: iso,
     principal: z.object({

@@ -167,10 +167,10 @@ Terms are named in sentence case, singular. A term with columns has type
 
 ### A term with columns
 
-"Cancelled order" is the boolean column `'Orders'[Is Cancelled]`,
-"Channel" is `'Sales'[Channel]`.
-Such a term is linked to the columns that back it, in every dataset that
-has one (`pbmb terms link <term> <column_id>`):
+"Cancelled order" is the boolean column `'Orders'[Is Cancelled]`, and
+"Channel" is `'Sales'[Channel]`. Such a term is linked to the columns that
+back it, in every dataset that has one (`pbmb terms link <term>
+<column_id>`):
 
 - Its shape is a metric's: the first sentence is the definition, then
   `aliases` and `not_the_same_as`.
@@ -209,9 +209,8 @@ definition:       The customers whose first order fell in the same calendar mont
 
 A term with no column must not have a name or alias that matches a column
 already backing another term. Add the word to that term as an alias
-instead.
-`term_fields` refuses a term without a definition, and a categorical term
-with columns but no values.
+instead. `term_fields` refuses a term without a definition, and a
+categorical term with columns but no values.
 
 ## Categories, custom fields and variant axes
 

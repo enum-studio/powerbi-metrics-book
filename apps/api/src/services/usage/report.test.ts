@@ -343,6 +343,44 @@ describe("usageReport", () => {
     expect(await usageReport(curator, { since })).toEqual(before);
   });
 
+  it("does not take a request as about a dataset for a linked catalog read", async () => {
+    const requestsOnSales = async () =>
+      (await usageReport(curator, { since, dataset: "Sales" })).totals.requests;
+    const before = await requestsOnSales();
+    const linking = async (origin: "request" | "catalog") => {
+      const query = randomUUID();
+      await logQuery(alice, {
+        id: query,
+        at: ago(2),
+        dataset: sales,
+        dax: "EVALUATE INFO.VIEW.COLUMNS()",
+        purpose: null,
+        status: "succeeded",
+        error: null,
+        duration_ms: 1,
+        measure_names: [],
+        metric_ids: [],
+        origin,
+      });
+      await alice.auditDb.insert(request).values({
+        id: randomUUID(),
+        at: ago(2),
+        principal_kind: alice.principal.kind,
+        principal_id: alice.principal.id,
+        via: "mcp",
+        question: `Linked to a ${origin} query`,
+        outcome: "answered",
+        gaps: [],
+        elements: [],
+        query_ids: [query],
+      });
+    };
+    await linking("catalog");
+    expect(await requestsOnSales()).toBe(before);
+    await linking("request");
+    expect(await requestsOnSales()).toBe(before + 1);
+  });
+
   it("refuses since after until", async () => {
     await expect(
       usageReport(curator, { since: now, until: since }),

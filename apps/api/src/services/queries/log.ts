@@ -16,7 +16,11 @@ import { z } from "zod";
 import type { ServiceContext } from "../../context.js";
 import { metric } from "../../db/schema/book.js";
 import { powerbiWorkspace } from "../../db/schema/mirror.js";
-import { queryLog, type QueryStatus } from "../../db/schema/queries.js";
+import {
+  queryLog,
+  type QueryOrigin,
+  type QueryStatus,
+} from "../../db/schema/queries.js";
 import { ServiceError } from "../../errors.js";
 import { looksLikeId, type Page } from "../mirror/read.js";
 
@@ -46,7 +50,7 @@ const storableOrNull = (text: string | null) =>
 export type QueryLogInput = {
   id: string;
   powerbi_account?: string | null;
-  origin?: "request" | "catalog";
+  origin?: QueryOrigin;
   at: Date;
   dataset: { id: string; name: string; workspace_id: string } | null;
   dax: string;
@@ -73,7 +77,7 @@ export async function logQuery(
   // audit_writer inserts and nothing else, so the insert returns nothing.
   await context.auditDb.insert(queryLog).values({
     id: entry.id,
-    origin: entry.origin ?? "request",
+    origin: entry.origin,
     at: entry.at,
     principal_kind: context.principal.kind,
     principal_id: context.principal.id,
@@ -111,7 +115,7 @@ export type QueryLogFilters = {
   principal?: string;
   mine?: boolean;
   status?: QueryStatus;
-  origins?: ("request" | "catalog")[];
+  origins?: QueryOrigin[];
   since?: Date;
   until?: Date;
   /** The next_cursor of the page before. */
