@@ -37,13 +37,14 @@ const SPEC_TOOLS = [
  * reads here, in a change that gets the security review.
  */
 const ALLOWED: Record<string, readonly string[]> = {
+  "config.ts": ["connectionsPage"],
   "errors.ts": ["ServiceError"],
   "version.ts": ["VERSION"],
   "http/error-log.ts": ["logError"],
   "services/auth/principal.ts": ["requirePrincipal"],
   "services/auth/sign-in-config.ts": ["onTheMock"],
   "services/conventions/service.ts": ["getConventionsForAgents"],
-  "services/connection/store.ts": ["connectionState", "connectionsPage"],
+  "services/connection/store.ts": ["connectionState"],
   "services/audit/connector.ts": ["recordConnectorReached"],
   "db/schema/book.ts": ["COMPARISONS", "TRUST_STATES"],
   "db/schema/queries.ts": ["QUERY_STATUSES"],

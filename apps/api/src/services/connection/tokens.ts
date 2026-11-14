@@ -1,12 +1,12 @@
+import { connectionsPage } from "../../config.js";
 import { eq } from "drizzle-orm";
 import type { ServiceContext } from "../../context.js";
 import { powerbiConnection } from "../../db/schema/connection.js";
 import { ServiceError } from "../../errors.js";
 import {
-  connectionsPage,
   enforceOwnAccount,
   lockConnection,
-  OWN_ACCOUNT_REQUIRED,
+  ownAccountRequired,
   openTokens,
   spendRefreshToken,
 } from "./store.js";
@@ -63,7 +63,10 @@ export async function personPowerBiGrant(
   if (found === "none")
     throw new ServiceError("needs_connection", `Connect Power BI at ${page}`);
   if (found === "own_account")
-    throw new ServiceError("needs_connection", OWN_ACCOUNT_REQUIRED);
+    throw new ServiceError(
+      "needs_connection",
+      ownAccountRequired(context.config),
+    );
   if (found === "ended")
     throw new ServiceError(
       "needs_connection",

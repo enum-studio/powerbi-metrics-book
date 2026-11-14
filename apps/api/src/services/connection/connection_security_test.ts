@@ -203,7 +203,12 @@ describe("connecting an account", () => {
       idTokenSays = says;
       try {
         const { answer } = await followConnect(app, admin.cookie);
+        const body = (await answer.clone().json()) as { message: string };
         await refusal(answer, 403, reason);
+        if (!("tid" in says))
+          expect(body.message).toContain(
+            `Connect Power BI again at ${TEST_PUBLIC_BASE_URL}/settings/connections, then run this again.`,
+          );
       } finally {
         idTokenSays = null;
       }
