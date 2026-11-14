@@ -37,6 +37,7 @@ import { type NewEvent, withEvents } from "../events/feed.js";
 import {
   afterCursor,
   containsName,
+  aliasContainsName,
   byIdOrName,
   appsSeen,
   inApp,
@@ -693,9 +694,7 @@ export async function listTerms(
   const matching = and(
     or(
       containsName(term.name, filters.name_contains),
-      filters.name_contains === undefined
-        ? undefined
-        : sql`exists (select 1 from unnest(${term.aliases}) alias where ${containsName(sql`alias`, filters.name_contains)})`,
+      aliasContainsName(term.aliases, filters.name_contains),
     ),
     backedWhere(
       context.db,

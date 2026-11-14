@@ -109,6 +109,14 @@ export const containsName = (
     ? undefined
     : sql`replace(${column}, '_', ' ') ilike ${`%${escapeLike(value.replaceAll("_", " "))}%`}`;
 
+export const aliasContainsName = (
+  aliases: PgColumn,
+  value: string | undefined,
+) =>
+  value === undefined
+    ? undefined
+    : sql`exists (select 1 from unnest(${aliases}) alias where ${containsName(sql`alias`, value)})`;
+
 /** Leaves out a measure that is PII, for a caller who may not read PII. */
 export const unlessPii = (hides: boolean) =>
   hides ? not(piiMeasure(powerbiMeasure)) : undefined;
@@ -1197,7 +1205,6 @@ export type MeasureFilters = {
   table?: string;
   /** Only the measures no metric has a variant on. */
   unfiled?: boolean;
-  name_prefix?: string;
   name_contains?: string;
 } & Paging;
 
@@ -1224,7 +1231,6 @@ export async function listMeasures(
   );
   const inScope = and(
     ofDataset,
-    startsWith(powerbiMeasure.name, filters.name_prefix),
     containsName(powerbiMeasure.name, filters.name_contains),
     filters.unfiled === true ? isNull(metricVariant.id) : undefined,
   );

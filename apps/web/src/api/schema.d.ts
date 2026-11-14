@@ -3741,12 +3741,12 @@ export interface operations {
   getApiV1Metrics: {
     parameters: {
       query?: {
-        name_prefix?: string;
-        name_contains?: string;
         workspace?: string;
         app?: string;
         dataset?: string;
         trust_states?: string;
+        name_prefix?: string;
+        name_contains?: string;
         category?: string;
         not_filed?: string;
         unit?: string;
@@ -7612,8 +7612,6 @@ export interface operations {
       query?: {
         query?: string;
         kinds?: string;
-        name_prefix?: string;
-        name_contains?: string;
         workspace?: string;
         app?: string;
         dataset?: string;
@@ -7931,12 +7929,12 @@ export interface operations {
   getApiV1Terms: {
     parameters: {
       query?: {
-        name_prefix?: string;
-        name_contains?: string;
         workspace?: string;
         app?: string;
         dataset?: string;
         trust_states?: string;
+        name_prefix?: string;
+        name_contains?: string;
         cursor?: string;
         limit?: string;
         /** @description Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20. */
@@ -8580,7 +8578,6 @@ export interface operations {
     parameters: {
       query?: {
         table?: string;
-        name_prefix?: string;
         name_contains?: string;
         unfiled?: "true" | "false";
         cursor?: string;

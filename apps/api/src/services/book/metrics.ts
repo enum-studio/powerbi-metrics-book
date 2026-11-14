@@ -40,6 +40,7 @@ import { type NewEvent, withEvents } from "../events/feed.js";
 import {
   afterCursor,
   containsName,
+  aliasContainsName,
   byIdOrName,
   appsSeen,
   inApp,
@@ -1379,9 +1380,7 @@ export async function listMetrics(
     or(
       containsName(metric.name, filters.name_contains),
       containsName(metric.label, filters.name_contains),
-      filters.name_contains === undefined
-        ? undefined
-        : sql`exists (select 1 from unnest(${metric.aliases}) alias where ${containsName(sql`alias`, filters.name_contains)})`,
+      aliasContainsName(metric.aliases, filters.name_contains),
     ),
   ];
   const rows = await db

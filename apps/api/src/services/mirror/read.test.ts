@@ -655,6 +655,17 @@ describe("what a person without pii_reader does not get", () => {
       const hiddenBy = async (name_prefix: string) =>
         (await listColumns(context, { dataset, name_prefix })).pii_hidden;
       expect([await hiddenBy("ord"), await hiddenBy("zzz")]).toEqual([1, 1]);
+      const hiddenColumn = await listColumns(context, {
+        dataset,
+        name_contains: "ORDER_date",
+      });
+      expect(hiddenColumn).toMatchObject({ items: [], total: 0 });
+      const hiddenMeasure = await listMeasures(context, {
+        dataset,
+        name_contains: "net_sales",
+      });
+      expect(names(hiddenMeasure.items)).toEqual(["Net sales LY"]);
+      expect(hiddenMeasure.total).toBe(1);
       const unfiled = await listMeasures(context, { dataset, unfiled: true });
       expect(names(unfiled.items)).toEqual(["Days in month", "Net sales LY"]);
       expect(unfiled.pii_hidden).toBe(1);

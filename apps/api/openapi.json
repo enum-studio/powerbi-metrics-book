@@ -5579,22 +5579,6 @@
         "description": "Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20.",
         "parameters": [
           {
-            "name": "name_prefix",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "name_contains",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "workspace",
             "in": "query",
             "required": false,
@@ -5620,6 +5604,22 @@
           },
           {
             "name": "trust_states",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
             "in": "query",
             "required": false,
             "schema": {
@@ -13086,22 +13086,6 @@
             }
           },
           {
-            "name": "name_prefix",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "name_contains",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "workspace",
             "in": "query",
             "required": false,
@@ -13741,22 +13725,6 @@
         "description": "Filter on custom fields with query parameters of the form custom.KEY=VALUE, such as custom.owner_team=finance. At most 20.",
         "parameters": [
           {
-            "name": "name_prefix",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "name_contains",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "workspace",
             "in": "query",
             "required": false,
@@ -13782,6 +13750,22 @@
           },
           {
             "name": "trust_states",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name_contains",
             "in": "query",
             "required": false,
             "schema": {
@@ -15694,15 +15678,6 @@
           {
             "in": "query",
             "name": "table",
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 500
-            }
-          },
-          {
-            "in": "query",
-            "name": "name_prefix",
             "schema": {
               "type": "string",
               "minLength": 1,

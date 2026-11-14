@@ -109,8 +109,6 @@ const withCustom = <S extends z.ZodRawShape>(shape: S) =>
       }),
     );
 const bookFilters = {
-  name_prefix: text.optional(),
-  name_contains: text.optional(),
   workspace: text.optional(),
   app: text.optional(),
   dataset: text.optional(),
@@ -118,12 +116,19 @@ const bookFilters = {
 };
 const metricQuery = {
   ...bookFilters,
+  name_prefix: text.optional(),
+  name_contains: text.optional(),
   category: text.optional(),
   not_filed: flag.optional(),
   unit: text.optional(),
   ...paging,
 };
-const termQuery = { ...bookFilters, ...paging };
+const termQuery = {
+  ...bookFilters,
+  name_prefix: text.optional(),
+  name_contains: text.optional(),
+  ...paging,
+};
 const searchQuery = {
   query: text,
   kinds: commaList(SEARCH_QUERY_KINDS).optional(),
@@ -693,7 +698,6 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
       "query",
       z.strictObject({
         table: text.optional(),
-        name_prefix: text.optional(),
         name_contains: text.optional(),
         unfiled: flag.optional(),
         ...paging,
