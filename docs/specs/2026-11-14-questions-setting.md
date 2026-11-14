@@ -44,7 +44,8 @@ gated in one place (load-bearing rule 4).
 - `questionsOn(context: ServiceContext): Promise<boolean>` reads the setting.
 - Every exported entry point of `threads.ts` (`postThread`, `reply`, `getThread`, `listThreads`,
   `acceptReply`, `archiveThread`, `setUpvote`) first awaits `requireQuestions(context)`, which throws
-  `QuestionsOffError` when the setting is false. The check comes before Cerbos and before any read, so
+  a `ServiceError` of a new kind, `questions_off`, when the setting is false. `ERROR_STATUS` in
+  `apps/api/src/http/error-response.ts` answers it with 404. The check comes before Cerbos and before any read, so
   an off deployment answers the same whatever the thread id.
 - `openQuestionsFor(db, element)` becomes `openQuestionsFor(context: ServiceContext, element)` and
   returns `null` when questions are off. Its three callers
@@ -71,7 +72,7 @@ the get answers open, and the next door added would forget it.
 ### 4. REST
 
 - Each route in `routes/v1/threads.ts` checks its credential first (rule 2), then the service's
-  `QuestionsOffError` becomes `404 {"error": "questions_off", "message": "Questions are off. An admin
+  `questions_off` error becomes `404 {"error": "questions_off", "message": "Questions are off. An admin
   turns them on under Settings, General."}`. An unauthenticated call still gets 401.
 - `open_questions` and `accepted_answers` become optional in the Metric, Term and Dataset schemas
   (`routes/v1/schemas.ts`, `routes/v1/read.ts`): absent when off.
@@ -110,7 +111,7 @@ the get answers open, and the next door added would forget it.
   questions off:
   - every thread route answers 404 `questions_off` to a signed-in admin and to a service account, and
     401 without a credential;
-  - every `threads.ts` entry point throws `QuestionsOffError`, also for a thread that exists;
+  - every `threads.ts` entry point throws the `questions_off` error, also for a thread that exists;
   - `tools/list` has 26 tools, and `tools/call` of each thread tool answers as an unknown tool;
   - `get_metric`, `get_dataset`, `get_term` and their REST routes carry no question fields while a
     thread with an accepted answer exists;
