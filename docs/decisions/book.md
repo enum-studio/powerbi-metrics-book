@@ -464,12 +464,16 @@ the names at migration time, so a name removed from `icon-glyphs.ts` needs a mig
 
 ## Questions are off by default
 
-**Questions are off by default, and the gate lives in the threads service.** Taken 2026-11-14.
-The `questions.enabled` setting lets an admin choose whether people and agents ask, reply and
-accept answers. Stored threads remain when it is off. A route-only gate would leave other callers
-open: the CLI, MCP and REST all use the same service. Catalog answers omit question fields while
-off. The CLI behavior is checked in `apps/cli/tests/commands/test_questions_setting.py`;
-the service gate is specified in `docs/specs/2026-11-14-questions-setting.md`, section 2.
+**Questions are off until an admin turns on `questions.enabled`, and the gate lives in the threads
+service.** Taken 2026-11-14. A question only helps when someone answers it, and a new deployment has
+no curators watching for them yet. Left on, agents would post into a queue nobody reads, so a
+company turns questions on when its curators are ready to answer.
 
-Stops being right if questions become required for every deployment, or a new caller can reach
-threads without the service. That caller must use the same gate before it reads or writes a thread.
+Every entry point of `services/threads/threads.ts` checks the setting first, so the REST routes, the
+MCP tools, the change feed and the get answers of metrics, datasets and terms are all gated in one
+place. A gate on the routes alone would leave the other doors open. Stored threads are kept while
+questions are off. `apps/api/src/services/threads/questions_setting_security_test.ts` holds the gate
+on every door; `apps/cli/tests/commands/test_questions_setting.py` holds what the CLI shows.
+
+Stops being right if questions become part of every deployment, or if a new door reaches the thread
+tables without going through the threads service.

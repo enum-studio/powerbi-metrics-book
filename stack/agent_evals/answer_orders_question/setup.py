@@ -1,4 +1,4 @@
-"""Asks the open question about orders that the task is to answer."""
+"""Turns questions on, then asks the open question about orders the task answers."""
 
 import sys
 from pathlib import Path
