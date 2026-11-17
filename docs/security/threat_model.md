@@ -653,8 +653,12 @@ Crossing: authorization questions, the api's reads and writes.
   the translator does not know fails the request rather than show too much.
 - A person's Power BI lists are read on every request from their connected
   Power BI account's object id and its groups, as read through the
-  connection: the object id and groups count only while `connected` and
-  within 7 days of the connection's groups being read. With no connection, the
+  connection: both count only while `connected`, the object id within 7
+  days of the connect or of the connection's groups being read, and the
+  groups within 7 days of being read. A reconnect of the account that is
+  connected keeps its groups until the new read replaces them, so a
+  Microsoft sign-in, which connects again, never leaves a moment in which
+  the person reaches nothing. With no connection, the
   Microsoft account they signed in with counts, within 7 days of that
   sign-in. An ended connection clears the read, so after that window
   nothing listed for the account reaches them.

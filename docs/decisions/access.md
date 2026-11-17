@@ -59,8 +59,8 @@ client. Stops being right if a client could be issued codes without PKCE.
 direct shares, groups) let them reach. `everyone` and `policy` are the other modes.** Taken
 2026-10-25 (review item 13). The book then never shows a person a dataset that Power BI would hide
 from them. The check fails closed: an entry counts only with a right that is neither missing nor
-`None`, and a person's own object id counts only while fresh (a Microsoft sign-in or a groups read
-within 7 days). Stops being right if Power BI's access lists stop being readable through the
+`None`, and a person's own object id counts only while fresh (a Microsoft sign-in, a Power BI
+connect or a groups read within 7 days). Stops being right if Power BI's access lists stop being readable through the
 Scanner API.
 
 ## Sign-in is the company's choice

@@ -44,8 +44,10 @@ export type SignedInPerson = {
  * The attributes Cerbos reads on every principal, whatever its credential:
  * the three Power BI lists, which asCerbos refuses a principal without. A
  * person's come from their connected account, or their own account when
- * disconnected. Only fresh Entra groups count. A service account's
- * are the workspaces and apps its admin gave it.
+ * disconnected. The connected account counts while Microsoft proved it
+ * within SIGN_IN_FRESH_MS, by the connect itself or a groups read, and its
+ * Entra groups while they were read that recently. A service account's are
+ * the workspaces and apps its admin gave it.
  */
 async function principalAttributes(
   db: Db,
@@ -59,6 +61,7 @@ async function principalAttributes(
       oid: powerbiConnection.microsoft_object_id,
       groups: powerbiConnection.group_object_ids,
       read_at: powerbiConnection.groups_read_at,
+      connected_at: powerbiConnection.connected_at,
     })
     .from(powerbiConnection)
     .where(
@@ -68,13 +71,16 @@ async function principalAttributes(
       ),
     );
   if (connection !== undefined) {
-    const fresh =
-      connection.read_at !== null &&
-      connection.read_at.getTime() > holder.now.getTime() - SIGN_IN_FRESH_MS;
+    const since = holder.now.getTime() - SIGN_IN_FRESH_MS;
+    const groupsFresh =
+      connection.read_at !== null && connection.read_at.getTime() > since;
     return powerbiAttributes(db, {
       kind: "person",
-      microsoft_object_id: fresh ? connection.oid : null,
-      group_object_ids: fresh ? connection.groups : [],
+      microsoft_object_id:
+        groupsFresh || connection.connected_at.getTime() > since
+          ? connection.oid
+          : null,
+      group_object_ids: groupsFresh ? connection.groups : [],
     });
   }
   return powerbiAttributes(db, {

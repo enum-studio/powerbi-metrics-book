@@ -14,6 +14,7 @@ import { find, startPowerBi } from "../../../test/powerbi-support.js";
 import { rolledBack, setRole } from "../../../test/sample-mirror.js";
 import type { Db, ServiceContext, SettingValues } from "../../context.js";
 import { user } from "../../db/schema/auth.js";
+import { powerbiConnection } from "../../db/schema/connection.js";
 import {
   metric,
   metricVariant,
@@ -374,6 +375,44 @@ describe("metadata Power BI does not show a person", () => {
         at: new Date(),
       });
       expect(await shown(await as("sales-viewer"))).toEqual([RETAIL, SALES]);
+    }));
+
+  it("matches no connected account that Microsoft has not proved for seven days, and never revives its groups", () =>
+    afterSync(sampleTenant(), async (tx, as) => {
+      const analyst = personIn(sampleTenant(), "analyst");
+      await tx
+        .insert(user)
+        .values({
+          id: userIdOf("analyst"),
+          name: "analyst",
+          email: analyst.email,
+        })
+        .onConflictDoNothing();
+      // Connected eight days ago, its groups read then: the connection, not
+      // person_identity, is what a connected person is seen through.
+      await tx.insert(powerbiConnection).values({
+        user_id: userIdOf("analyst"),
+        microsoft_object_id: analyst.object_id,
+        group_object_ids: analyst.group_ids,
+        groups_read_at: stale(),
+        // Read a moment ago and failed, so using the principal reads nothing.
+        groups_attempted_at: new Date(),
+        access_token_ciphertext: new Uint8Array([1]),
+        access_token_expires_at: new Date(),
+        refresh_token_ciphertext: new Uint8Array([1]),
+        recipient: "age1unused",
+        status: "connected",
+        connected_at: stale(),
+      });
+      const connected = await as("analyst");
+      expect(connected.principal.attributes.powerbi_workspace_ids).toEqual([]);
+      expect(await shown(connected)).toEqual([]);
+      // Connected again today: the account counts, its stale groups do not.
+      await tx
+        .update(powerbiConnection)
+        .set({ connected_at: new Date() })
+        .where(eq(powerbiConnection.user_id, userIdOf("analyst")));
+      expect(await shown(await as("analyst"))).toEqual([MARKETING]);
     }));
 
   it("never takes a group another sign-in provider names for an Entra group", () =>
