@@ -101,6 +101,34 @@ it("lets a Microsoft sign-in connect another account without changing its identi
   });
 });
 
+it("keeps no groups of an ended connection when the same account connects again", async () => {
+  const who = f.person("analyst");
+  const { cookie } = await f.signIn(who, MICROSOFT);
+  expect((await followConnect(f.app, cookie)).answer.status).toBe(302);
+  const id = await f.userId(who.email);
+  expect((await connectionOf(id))?.group_object_ids).toEqual(who.group_ids);
+  // Ended with its read left standing: only a connection that is connected
+  // carries its groups over a reconnect, whatever endConnection clears.
+  await f.deps.db
+    .update(powerbiConnection)
+    .set({
+      status: "needs_reconnect",
+      access_token_ciphertext: null,
+      access_token_expires_at: null,
+      refresh_token_ciphertext: null,
+      recipient: null,
+    })
+    .where(eq(powerbiConnection.user_id, id));
+  f.failNext("/graph", 503);
+  expect((await followConnect(f.app, cookie)).answer.status).toBe(502);
+  expect(await connectionOf(id)).toMatchObject({
+    status: "connected",
+    microsoft_object_id: who.object_id,
+    group_object_ids: [],
+    groups_read_at: null,
+  });
+});
+
 it("lets another provider connect a different email without gaining roles or tenant membership", async () => {
   const { shared, id, who } = await connect(OIDC);
   const person = { id, email: who.email, email_verified: true };

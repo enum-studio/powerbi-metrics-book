@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, lt, ne, or } from "drizzle-orm";
+import { and, eq, lt, ne, or, sql } from "drizzle-orm";
 import { connectAgain, type Config } from "../../config.js";
 import type { AppDeps, ServiceContext } from "../../context.js";
 import {
@@ -199,8 +199,6 @@ async function connectAccount(
   const values = {
     microsoft_object_id: oid,
     user_principal_name: redeemed.preferred_username,
-    group_object_ids: [],
-    groups_read_at: null,
     groups_attempted_at: null,
     ...(await sealTokens(deps.vault, redeemed)),
     status: "connected" as const,
@@ -209,6 +207,10 @@ async function connectAccount(
     last_used_at: null,
     last_error: null,
   };
+  // Every Microsoft sign-in connects again. The account that is connected
+  // keeps its groups until readGroups replaces them, as person_identity
+  // does below: reset, the person would reach nothing in between.
+  const same = sql`${powerbiConnection.status} = 'connected' and ${powerbiConnection.microsoft_object_id} = ${oid}::uuid`;
   const ended = await deps.db.transaction(async (tx) => {
     await hidingValues(
       tx
@@ -216,7 +218,11 @@ async function connectAccount(
         .values({ user_id: person.user_id, ...values })
         .onConflictDoUpdate({
           target: powerbiConnection.user_id,
-          set: values,
+          set: {
+            ...values,
+            group_object_ids: sql`case when ${same} then ${powerbiConnection.group_object_ids} else '{}'::uuid[] end`,
+            groups_read_at: sql`case when ${same} then ${powerbiConnection.groups_read_at} end`,
+          },
         }),
     );
     await tx

@@ -15,7 +15,8 @@ import {
 import { createDb } from "../../db/client.js";
 import { auditEvent } from "../../db/schema/audit.js";
 import { powerbiConnection } from "../../db/schema/connection.js";
-import { personIdentity } from "../../db/schema/mirror.js";
+import { personIdentity, powerbiAccess } from "../../db/schema/mirror.js";
+import { personPrincipal } from "../auth/principal.js";
 import { assignRole, MICROSOFT, readIdentity } from "../auth/roles.js";
 
 /*
@@ -227,7 +228,80 @@ describe("connecting Power BI", () => {
       .where(eq(personIdentity.user_id, id));
     expect(identity?.microsoft_object_id).toBe(viewer.object_id);
   });
+
+  it("keeps what the person reaches through their account and groups while a reconnect waits for Graph", async () => {
+    const { person, reach, own, grouped } = await reachingPerson("reconnect");
+    const { cookie } = await f.signIn(person, MICROSOFT);
+    expect((await followConnect(f.app, cookie)).answer.status).toBe(302);
+    expect(await reach()).toEqual([own, grouped].sort());
+
+    // Every Microsoft sign-in connects again. Graph failing holds the
+    // reconnect where it stands between storing the account and reading
+    // its groups, which the person's other requests must not notice.
+    const again = await f.signIn(person, MICROSOFT);
+    f.failNext("/graph", 503);
+    expect((await followConnect(f.app, again.cookie)).answer.status).toBe(502);
+    expect(await reach()).toEqual([own, grouped].sort());
+  });
+
+  it("lets a first connection reach through its own account before Graph reads its groups", async () => {
+    const { person, reach, own } = await reachingPerson("first");
+    const { cookie } = await f.signIn(person, MICROSOFT);
+    f.failNext("/graph", 503);
+    expect((await followConnect(f.app, cookie)).answer.status).toBe(502);
+    // Microsoft proved the account a moment ago; its groups are not read yet.
+    expect(await reach()).toEqual([own]);
+  });
 });
+
+/**
+ * A new person in one group, with a workspace their account is on and one
+ * their group is on, and the workspaces their principal reaches now.
+ */
+async function reachingPerson(name: string) {
+  const person = {
+    ...f.person("outsider"),
+    object_id: crypto.randomUUID(),
+    email: `${name}-${crypto.randomUUID()}@sample.example`,
+    user_principal_name: `${name}@sample.example`,
+    group_ids: [f.group("Analysts")],
+  };
+  f.tenant.people.push(person);
+  const [own, grouped] = [crypto.randomUUID(), crypto.randomUUID()];
+  const [group] = person.group_ids;
+  if (group === undefined) throw new Error("the person has no group");
+  await createDb(testPool("migrator"))
+    .insert(powerbiAccess)
+    .values([
+      {
+        object_kind: "workspace",
+        object_id: own,
+        principal_type: "user",
+        principal_object_id: person.object_id,
+        access_right: "Member",
+      },
+      {
+        object_kind: "workspace",
+        object_id: grouped,
+        principal_type: "group",
+        principal_object_id: group,
+        access_right: "Member",
+      },
+    ]);
+  const reach = async () =>
+    (
+      await personPrincipal(
+        f.deps,
+        {
+          id: await f.userId(person.email),
+          email: person.email,
+          email_verified: true,
+        },
+        { via: "browser", client_id: null },
+      )
+    ).attributes.powerbi_workspace_ids;
+  return { person, reach, own, grouped };
+}
 
 describe("who may connect", () => {
   it("answers 401 to each route without a session", async () => {

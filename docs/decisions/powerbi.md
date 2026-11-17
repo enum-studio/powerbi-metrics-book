@@ -292,8 +292,8 @@ The guard still holds then, but that dataset stays out of the mirror until the s
 lets each person reach, through a workspace, an app audience, a direct share or a group.** Martin,
 2026-10-25: companies organise access one way or the other, and it must work in both. Fails closed:
 an access entry counts only with a right that is neither missing nor `None`, and a person's own
-object id counts only while fresh (a Microsoft sign-in or groups read within 7 days). Microsoft
-documents the app-audience query path but nobody has reported testing it. Stops being right if a
+object id counts only while fresh (a Microsoft sign-in, a Power BI connect or a groups read within
+7 days). Microsoft documents the app-audience query path but nobody has reported testing it. Stops being right if a
 real tenant's app audience answers a query the mock refuses; see "A live test tenant".
 
 ### Relationships are read on demand, and only a 400 marks a dataset unavailable
@@ -362,6 +362,22 @@ were read within 7 days, as a sign-in's groups do; a disconnect or `invalid_gran
 the limit, a person removed from the tenant would keep seeing what `everyone_in_tenant` shows.
 Open: Entra B2B guests carry the host tenant's `tid`, so they count as tenant members. Checking the
 `acct` claim would separate them but needs the optional claim enabled on the app registration.
+
+### A connect proves the account, and a reconnect keeps its groups
+
+**A connection's object id counts from the moment it is connected, as a sign-in's does, and a
+reconnect of the account that is connected keeps its groups and their read time until Graph answers
+the new read.** Recorded 2026-11-17. Every Microsoft sign-in chains into the connect, so a person
+reconnects each time they sign in. The connect used to store the connection with no groups and no
+read time, and read the groups after it: until Graph answered, the person's other requests reached
+no dataset, and a search answered with no hits in a dataset. A probe against the dev stack saw the
+admin's dataset list come back empty 29 times in 646 while the admin signed in five times, every
+time inside a connect, and the web e2e "search on Home" test failed when its search fell in that
+window. The connect redeemed a code Microsoft issued a moment before, which proves the account as a
+sign-in does; groups still count only once read. Stops being right if the connect stops redeeming a
+code for the account it stores. `connect.test.ts` holds both cases with Graph failing, and
+`metadata_visibility_security_test.ts` checks that a connect older than 7 days, with no read since,
+reaches nothing and never revives stale groups.
 
 ### The mock requires PKCE
 
