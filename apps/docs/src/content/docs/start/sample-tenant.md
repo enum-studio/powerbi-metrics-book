@@ -49,13 +49,13 @@ Sign in as `admin@sample.example` to become the first admin. The Set up part has
 
 ## What is in it
 
-Three datasets hold the same net sales under three names:
+Three datasets hold the same net sales under three names, each on a table called Sales lines:
 
 | Dataset | Workspace | The net sales measure |
 |---|---|---|
-| Sales | Sales | `Net sales` |
-| Finance | Finance | `Revenue` |
-| Marketing | Marketing | `Net Sales` |
+| Sales | Commercial | `Net sales` |
+| Finance | Management | `Revenue` |
+| Marketing | Growth | `Net Sales` |
 
 That is what the sync works on. It finds one calculation under three names. Sales and Marketing share a name, so they become one draft, `net_sales`. Finance's `Revenue` becomes a draft of its own, because a reader of Finance alone must not learn a name from a dataset they cannot see, and the drafts queue offers the two as a merge. A fourth dataset, Campaign archive, has no tables on purpose, so you can see a dataset whose schema cannot be read.
 

@@ -51,6 +51,9 @@ const SALES = "Sales";
 const MARKETING = "Marketing";
 const RETAIL = "Retail";
 const FINANCE = "Finance";
+/** The workspaces that hold Sales and Retail, and Finance. */
+const COMMERCIAL = "Commercial";
+const MANAGEMENT = "Management";
 const userIdOf = (mailbox: string) => `sample-${mailbox}`;
 const named = <T extends { name: string }>(items: T[], name: string) =>
   find(items, (item) => item.name === name);
@@ -214,7 +217,7 @@ describe("metric dataset counts follow visible variants", () => {
   it("keeps a service account's count inside its workspace grant", () =>
     afterSync(sampleTenant(), async (_tx, as) => {
       const viewer = await as("viewer");
-      const salesWorkspace = named(sampleTenant().workspaces, SALES).id;
+      const salesWorkspace = named(sampleTenant().workspaces, COMMERCIAL).id;
       const serviceAccount: ServiceContext = {
         ...viewer,
         principal: {
@@ -471,9 +474,9 @@ describe("listApps, as the visibility mode shows datasets", () => {
       app_id: leadership.id,
     });
     leadership.report_ids.push(report);
-    named(tenant.workspaces, FINANCE).report_ids.push(report);
+    named(tenant.workspaces, MANAGEMENT).report_ids.push(report);
     return afterSync(tenant, async (_tx, as) => {
-      // The analyst reaches Sales only through the Sales workspace's list.
+      // The analyst reaches Sales only through the Commercial workspace's list.
       expect(await appsOf(await as("analyst"))).toEqual([
         [SALES_APP, [RETAIL, SALES]],
       ]);

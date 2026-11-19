@@ -3,9 +3,10 @@
 Every name, measure, table and number here is invented. None of it comes
 from a real company, tenant or person. The tenant is what is labelled sample
 data (the web app's band, `pbmb whoami` and the MCP instructions say so),
-so the names are plain: Sales, Finance, Analysts. `sampleTenant()` in
-`tenant.ts` builds it, the same on every call; tenant id
-`11111111-1111-4111-8111-111111111111`. `pnpm dev:up`, the end-to-end test
+so the names are plain: Sales, Finance, Analysts. No workspace, dataset
+and table share a name, so a breadcrumb such as Commercial / Sales / Sales
+lines reads plainly. `sampleTenant()` in `tenant.ts` builds it, the same
+on every call; tenant id `11111111-1111-4111-8111-111111111111`. `pnpm dev:up`, the end-to-end test
 and the evals run on it, and `src/bin.ts` serves it. What tests assert
 against it is in `expected.ts`, written by hand.
 
@@ -37,11 +38,11 @@ dataset, and `access.test.ts` runs it against the mock.
   audience or share see the dataset and are refused every query. Measure
   DAX needs write permission, which only the Admin, Member and Contributor
   roles give.
-- "Analysts" is a Member of the Sales workspace.
+- "Analysts" is a Member of the Commercial workspace.
 - "Directors" is a member of "Leadership", the
   audience of the Leadership app; the Leader's Graph list names both.
-- The Viewer, the Leader and the Analyst on Marketing are not workspace
-  members there, so Power BI refuses them the `/groups/{id}` query path.
+- The Viewer, the Leader and the Analyst on Marketing are not members of
+  the dataset's workspace, so Power BI refuses them the `/groups/{id}` query path.
 - Row-level security roles are not modelled. Finance's
   `has_row_level_security` only refuses service principals; the mock
   returns every row to anyone allowed to query. The Leader stands for a
@@ -56,7 +57,7 @@ dataset, and `access.test.ts` runs it against the mock.
   `userType: null`.
 - Service principals: the scanner (`c1000000-...0001`) may call the admin
   APIs and is in no workspace. The app (`c1000000-...0002`) signs people in
-  and is a Member of the Marketing workspace only, for service-account
+  and is a Member of the Growth workspace only, for service-account
   queries.
 - The app registration's redirect URIs are the api's two callbacks,
   `<base>/api/auth/callback/microsoft` and `<base>/api/v1/powerbi/callback`,
@@ -69,21 +70,19 @@ dataset, and `access.test.ts` runs it against the mock.
 
 | Dataset | Workspace | App | Odd on purpose |
 |---|---|---|---|
-| Dataset | Workspace | App | Odd on purpose |
-|---|---|---|---|
-| Sales | Sales | Sales app | none: the plain one, with the recorded queries |
-| Retail | Sales | Sales app | 16 invented tables and 20 relationships; row-level security |
-| Finance | Finance | Leadership app | row-level security |
-| Marketing | Marketing | none | refuses `INFO` views |
-| Campaign archive | Marketing | none | `schema_retrieval_error`, no tables |
+| Sales | Commercial | Sales app | none: the plain one, with the recorded queries |
+| Retail | Commercial | Sales app | 16 invented tables and 20 relationships; row-level security |
+| Finance | Management | Leadership app | row-level security |
+| Marketing | Growth | none | refuses `INFO` views |
+| Campaign archive | Growth | none | `schema_retrieval_error`, no tables |
 
-The models hold Sales (about 3,000 order lines, 2024 to September 2026),
-Product, Customer, Date, Channel, Exchange rate, Ad spend and Web sessions,
-as fits each. Date is a calculated table in each dataset; Web
+The models hold Sales lines (about 3,000 order lines, 2024 to September
+2026), Product, Customer, Date, Channel, Exchange rate, Ad spend and Web
+sessions, as fits each. Date is a calculated table in each dataset; Web
 sessions[Bounce rate] is a calculated column. Columns cover String, Int64,
 Double, Decimal, DateTime, Boolean and Binary (Product[Image]); keys are
-hidden. Sales[Ship date] to Date is inactive, Ad spend to Channel filters
-both ways, and Exchange rate is disconnected.
+hidden. Sales lines[Ship date] to Date is inactive, Ad spend to Channel
+filters both ways, and Exchange rate is disconnected.
 
 ## Measures and why each odd one is here
 

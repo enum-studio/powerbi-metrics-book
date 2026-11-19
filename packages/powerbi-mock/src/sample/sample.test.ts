@@ -119,8 +119,17 @@ describe("the sample tenant", () => {
   it("has a few thousand sales rows to page through", () => {
     const sales = tenant.datasets
       .find((d) => d.name === "Sales")
-      ?.tables.find((t) => t.name === "Sales");
+      ?.tables.find((t) => t.name === "Sales lines");
     expect(sales?.rows.length).toBeGreaterThan(2000);
+  });
+
+  it("gives a workspace, its datasets and their tables names of their own", () => {
+    const repeated = tenant.datasets.flatMap((d) => {
+      const workspace = tenant.workspaces.find((w) => w.id === d.workspace_id);
+      const path = [workspace?.name, d.name, ...d.tables.map((t) => t.name)];
+      return path.filter((name, i) => path.indexOf(name) !== i);
+    });
+    expect(repeated).toEqual([]);
   });
 
   it("gives one dataset each odd property the README lists", () => {
@@ -174,7 +183,7 @@ describe("the Retail sample dataset", () => {
     return body.results[0]?.tables[0]?.rows ?? [];
   };
 
-  it("is a large model: 16 tables and 20 relationships, in the Sales workspace", () => {
+  it("is a large model: 16 tables and 20 relationships, in the Commercial workspace", () => {
     expect(retail?.tables).toHaveLength(16);
     expect(retail?.relationships).toHaveLength(20);
     expect(retail?.workspace_id).toBe(SAMPLE_IDS.workspaces.sales);

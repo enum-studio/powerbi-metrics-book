@@ -50,7 +50,12 @@ const idOf = (items: { id: string; name: string }[], name: string) => {
   if (found === undefined) throw new Error(`The sample has no ${name}`);
   return found.id;
 };
-const workspaceId = (name: string) => idOf(tenant.workspaces, name);
+/** The workspace that holds the sample's dataset of this name. */
+const workspaceId = (dataset: string) => {
+  const found = tenant.datasets.find((item) => item.name === dataset);
+  if (found === undefined) throw new Error(`The sample has no ${dataset}`);
+  return found.workspace_id;
+};
 const datasetId = (name: string) => idOf(tenant.datasets, name);
 
 /** The sample's Admin, as a curator: every workspace. */
@@ -147,8 +152,8 @@ describe("getMetric", () => {
           base.measure_reference,
         ]),
       ).toEqual([
-        [MARKETING, "[Net Sales]"],
         [SALES, "[Net sales]"],
+        [MARKETING, "[Net Sales]"],
       ]);
       expect(full.other_variants).toContainEqual({
         shift: { ...BASE_SHIFT, period: "previous_year" },
@@ -700,9 +705,9 @@ describe("mergeMetrics", () => {
 
       const merged = await merge();
       expect(merged.base_variants.map((base) => base.measure.name)).toEqual([
+        "Orders",
+        "Orders",
         "Order count",
-        "Orders",
-        "Orders",
       ]);
       await expect(getMetric(context, count)).rejects.toMatchObject({
         kind: "not_found",

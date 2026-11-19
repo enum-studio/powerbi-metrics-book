@@ -7,7 +7,7 @@ import { CALLOUTS, drawHero } from "../drawing/hero";
 
 const RUN = [
   { tool: "search", input: '"net sales"', output: "net_sales" },
-  { tool: "get_metric", input: "net_sales", output: "SUM(Sales[Net amount])" },
+  { tool: "get_metric", input: "net_sales", output: "SUM('Sales lines'[Net amount])" },
   { tool: "execute_dax", input: "on Sales", output: "12 rows as you, csv_url" },
   { tool: "curl -o", input: "csv_url", output: "net_sales_by_month_2025.csv" },
 ];

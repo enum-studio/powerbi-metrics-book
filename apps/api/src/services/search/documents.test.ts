@@ -189,8 +189,8 @@ describe("buildDocuments", () => {
         summary: "current period",
       });
       for (const part of [
-        "Dataset: Sales (workspace Sales)",
-        "Table: Sales",
+        "Dataset: Sales (workspace Commercial)",
+        "Table: Sales lines",
         "Our words about orders.",
         "Power BI's words about orders.",
         "Metric: Number of orders",
@@ -484,7 +484,7 @@ describe("buildDocuments", () => {
       // A team workspace still names itself.
       expect(
         (await document(tx, `variant:${ids.baseVariant}`)).search_text,
-      ).toContain("(workspace Sales)");
+      ).toContain("(workspace Commercial)");
     });
   });
 

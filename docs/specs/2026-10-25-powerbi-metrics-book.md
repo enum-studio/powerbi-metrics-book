@@ -667,8 +667,8 @@ Microsoft does, its shapes checked against Microsoft's own OpenAPI file
 - The embedding endpoints of OpenAI and Gemini, answering deterministic
   vectors, so search runs end to end without a key.
 
-The sample tenant is invented: workspaces "Sales", "Finance" and "Marketing", three datasets whose
-measures are written the way real models are (the same calculation under two names, the same one
+The sample tenant is invented: workspaces "Commercial", "Management" and "Growth", three datasets
+("Sales", "Finance" and "Marketing") whose measures are written the way real models are (the same calculation under two names, the same one
 formatted differently, the same result written another way, time-intelligence variants, a helper
 measure that is not a metric, a reference cycle), and a few thousand generated rows for paging and
 CSV. The drafter's expected groups are written down beside it, so a test fails when the drafter

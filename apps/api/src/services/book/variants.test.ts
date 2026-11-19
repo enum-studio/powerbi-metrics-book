@@ -40,13 +40,20 @@ afterAll(closeTestPools);
 const SALES = "Sales";
 const FINANCE = "Finance";
 const MARKETING = "Marketing";
+/** The workspace that holds Marketing. */
+const GROWTH = "Growth";
 const tenant = sampleTenant();
 const idOf = (items: { id: string; name: string }[], name: string) => {
   const found = items.find((item) => item.name === name);
   if (found === undefined) throw new Error(`The sample has no ${name}`);
   return found.id;
 };
-const workspaceId = (name: string) => idOf(tenant.workspaces, name);
+/** The workspace that holds the sample's dataset of this name. */
+const workspaceId = (dataset: string) => {
+  const found = tenant.datasets.find((item) => item.name === dataset);
+  if (found === undefined) throw new Error(`The sample has no ${dataset}`);
+  return found.workspace_id;
+};
 
 /** The sample's Admin, as a curator: every workspace. */
 const curator = reaching(
@@ -495,7 +502,7 @@ describe("listVariants", () => {
       expect(await names({ comparison: "growth_rate" })).toEqual([
         "Net sales growth",
       ]);
-      expect(await names({ workspace: MARKETING, currency: null })).toEqual([
+      expect(await names({ workspace: GROWTH, currency: null })).toEqual([
         "Net Sales",
       ]);
       expect(await names({ currency: "USD" })).toEqual([]);
@@ -536,23 +543,24 @@ describe("listVariants", () => {
       const sales = await filing(tx, sample, SALES, "Orders");
       const marketing = await filing(tx, sample, MARKETING, "Orders");
       expect(marketing.metric.id).toBe(sales.metric.id);
-      // Ids that would put Sales first, as a random draw sometimes does.
+      // Ids that would put Marketing first, as a random draw sometimes does.
       await tx
         .update(metricVariant)
         .set({ id: "00000000-0000-4000-8000-000000000001" })
-        .where(eq(metricVariant.id, sales.variant.id));
+        .where(eq(metricVariant.id, marketing.variant.id));
       await tx
         .update(metricVariant)
         .set({ id: "ffffffff-ffff-4fff-8fff-ffffffffffff" })
-        .where(eq(metricVariant.id, marketing.variant.id));
+        .where(eq(metricVariant.id, sales.variant.id));
       const orders = sales.metric.name;
       const equal = <T extends { measure: { name: string } }>(items: T[]) =>
         items.filter((item) => item.measure.name === "Orders");
 
       const { items } = await listVariants(context, orders);
+      // Commercial, which holds Sales, sorts before Growth, which holds Marketing.
       expect(equal(items).map((item) => item.dataset.name)).toEqual([
-        MARKETING,
         SALES,
+        MARKETING,
       ]);
 
       const first = await listVariants(context, orders, { limit: 1 });
@@ -563,7 +571,7 @@ describe("listVariants", () => {
       });
       expect(
         [...first.items, ...second.items].map((item) => item.dataset.name),
-      ).toEqual([MARKETING, SALES]);
+      ).toEqual([SALES, MARKETING]);
 
       expect(second).not.toHaveProperty("total");
       // One at a time, the pages give every variant once, in the list's order.

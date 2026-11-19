@@ -57,7 +57,7 @@ def list_datasets(
 ) -> None:
     """List the datasets you may describe, A to Z.
 
-    Example: pbmb datasets list --workspace Sales
+    Example: pbmb datasets list --workspace Commercial
     """
     show_object(
         context,

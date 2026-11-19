@@ -35,7 +35,8 @@ Standards: `docs/standards/typescript.md`.
   dataset that real tenants sometimes refuse.
 - **The sample tenant is invented, and labelled at the tenant.** The web
   app's band, `pbmb whoami` and the MCP instructions say it is sample
-  data; the names are plain (Sales, Finance, Analysts). The people and
+  data; the names are plain (Sales, Finance, Analysts), and no workspace,
+  dataset and table share one (`sample.test.ts` checks). The people and
   groups are listed in `src/sample/README.md`, the tenant id is
   `11111111-1111-4111-8111-111111111111`. Nothing from a real tenant,
   company or person enters it.

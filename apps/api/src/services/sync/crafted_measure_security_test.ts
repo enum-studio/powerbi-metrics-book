@@ -100,7 +100,11 @@ describe("a sync that meets a crafted measure", () => {
     "goes on when a measure of the dataset was renamed too, with %s",
     async (_, expression) => {
       const tenant = sampleTenant();
-      const renamed = addTo(tenant, "Plain before", "COUNTROWS(Sales) * 7");
+      const renamed = addTo(
+        tenant,
+        "Plain before",
+        "COUNTROWS('Sales lines') * 7",
+      );
       await withSync(tenant, async (tx, sync) => {
         await sync();
         renamed.name = "Plain after";
@@ -189,7 +193,7 @@ describe("a sync that meets a crafted measure", () => {
 
   it("leaves a dataset turned off unread until it changes", async () => {
     const tenant = sampleTenant();
-    const crafted = addTo(tenant, "Crafted", "COUNTROWS(Sales) * 7");
+    const crafted = addTo(tenant, "Crafted", "COUNTROWS('Sales lines') * 7");
     await withSync(tenant, async (tx, sync) => {
       await sync();
       const off = tenant.datasets[0]?.id;
@@ -211,7 +215,7 @@ describe("a sync that meets a crafted measure", () => {
           .where(named);
       expect((await read())[0]?.fingerprint).toBeNull();
 
-      crafted.expression = "COUNTROWS(Sales) * 8";
+      crafted.expression = "COUNTROWS('Sales lines') * 8";
       await sync();
       expect((await read())[0]?.fingerprint).not.toBeNull();
     });

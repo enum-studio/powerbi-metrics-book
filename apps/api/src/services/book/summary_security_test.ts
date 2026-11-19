@@ -105,7 +105,7 @@ describe("the book's summary", () => {
   it("counts for a curator of one workspace that workspace, and fewer than a curator of all", () =>
     drafted(async (tx, sample) => {
       const one = reaching(
-        { powerbi_workspace_ids: [workspaceOf(sample, "Marketing")] },
+        { powerbi_workspace_ids: [workspaceOf(sample, "Growth")] },
         "curator",
       );
       const all = reaching(

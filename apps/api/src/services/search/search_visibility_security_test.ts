@@ -35,6 +35,9 @@ useSearchable();
 
 const SALES = "Sales";
 const FINANCE = "Finance";
+/** The workspaces that hold Sales and Finance. */
+const COMMERCIAL = "Commercial";
+const MANAGEMENT = "Management";
 /** Words in no document, so whatever ranks, ranks by meaning. */
 const NO_WORDS = "zqxv frumious vorpal";
 
@@ -91,7 +94,7 @@ describe("search under metadata_visibility: powerbi", () => {
       await aliased(s, "units_sold", "Sample pieces shipped");
       const outsider = s.as(person());
       const member = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", SALES)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", COMMERCIAL)] }),
       );
 
       expect(
@@ -170,7 +173,7 @@ describe("search under metadata_visibility: powerbi", () => {
   it("caps the filtered vector scan at 20000 index tuples", () =>
     searchable({ provider: "openai" }, async (s) => {
       const member = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", FINANCE)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", MANAGEMENT)] }),
       );
       const cap = async () =>
         (
@@ -193,7 +196,7 @@ describe("search under metadata_visibility: powerbi", () => {
   it("walks the HNSW index past hidden near neighbours to the visible ones", () =>
     searchable({ provider: "openai" }, async (s) => {
       const member = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", FINANCE)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", MANAGEMENT)] }),
       );
       const embedder = await createEmbedder(member);
       const [vector] = (await embedder?.embed([NO_WORDS], "query")) ?? [];
@@ -298,10 +301,10 @@ describe("search under metadata_visibility: powerbi", () => {
       await aliased(s, "gross_margin", "Sample margin kept");
 
       const salesMember = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", SALES)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", COMMERCIAL)] }),
       );
       const financeMember = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", FINANCE)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", MANAGEMENT)] }),
       );
       for (const query of [
         "Sample margin kept",
@@ -374,7 +377,7 @@ describe("search under metadata_visibility: powerbi", () => {
       await setRole(s.tx, "api_rw");
       expect(ids(await search(outsider, query))).toEqual([]);
       const member = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", SALES)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", COMMERCIAL)] }),
       );
       expect(ids(await search(member, query))[0]).toBe(made?.id);
     }));
@@ -390,7 +393,7 @@ describe("search under metadata_visibility: powerbi", () => {
       const filters = {
         app: [app?.name ?? "", app?.id ?? ""],
         dataset: [FINANCE, s.idOf("datasets", FINANCE)],
-        workspace: [FINANCE, s.idOf("workspaces", FINANCE)],
+        workspace: [MANAGEMENT, s.idOf("workspaces", MANAGEMENT)],
       };
       for (const [filter, names] of Object.entries(filters))
         for (const name of [...names, "Nothing", randomUUID()])
@@ -430,7 +433,7 @@ describe("search under metadata_visibility: powerbi", () => {
       const salesApp = s.idOf("apps", "Sales app");
       const query = { query: "Sample pieces shipped", limit: 50 };
       const member = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", SALES)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", COMMERCIAL)] }),
       );
       const granted = s.as(serviceAccount({ powerbi_app_ids: [salesApp] }));
       const found = { kind: "metric", name: "units_sold", match: "exact" };
@@ -508,7 +511,7 @@ describe("search under metadata_visibility: powerbi", () => {
         workspace_id: string;
       }>(sql`select id, workspace_id from powerbi_dataset`);
       const workspaceOf = new Map(datasets.map((d) => [d.id, d.workspace_id]));
-      const salesWorkspace = s.idOf("workspaces", SALES);
+      const salesWorkspace = s.idOf("workspaces", COMMERCIAL);
       const callers = [
         { principal: person(), datasets: [] as string[] },
         {
@@ -566,7 +569,7 @@ describe("search under metadata_visibility: powerbi", () => {
         );
       await setRole(s.tx, "api_rw");
       const member = s.as(
-        person({ powerbi_workspace_ids: [s.idOf("workspaces", SALES)] }),
+        person({ powerbi_workspace_ids: [s.idOf("workspaces", COMMERCIAL)] }),
       );
       for (const row of rows) {
         const { items } = await search(member, {
@@ -611,7 +614,7 @@ describe("search under metadata_visibility: powerbi", () => {
       await s.tx.update(powerbiColumn).set({ description_pbi: "zebra" });
       await setRole(s.tx, "api_rw");
       await s.index();
-      const sales = s.idOf("workspaces", SALES);
+      const sales = s.idOf("workspaces", COMMERCIAL);
       const inSales = (
         await s.tx.execute<{ n: number }>(
           sql`select count(*)::int as n from search_document

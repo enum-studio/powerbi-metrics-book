@@ -273,7 +273,7 @@ test.describe("as the viewer", () => {
     await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
   });
 
-  test("a variant opens its Sales table in the diagram @once", async ({
+  test("a variant opens its Sales lines table in the diagram @once", async ({
     page,
   }) => {
     const name = SAMPLE_METRIC;
@@ -293,12 +293,14 @@ test.describe("as the viewer", () => {
       .getByRole("button", { expanded: false })
       .click();
     await page
-      .getByRole("link", { name: "Show Sales in the diagram" })
+      .getByRole("link", { name: "Show Sales lines in the diagram" })
       .first()
       .click();
 
     await expect(page).toHaveURL(
-      new RegExp(`/catalog/datasets/${datasetId}\\?.*table=Sales`),
+      new RegExp(
+        `/catalog/datasets/${datasetId}\\?.*table=Sales(\\+|%20)lines`,
+      ),
     );
   });
 

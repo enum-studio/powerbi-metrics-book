@@ -17,7 +17,7 @@ An admin sets a rule with `pbmb admin pii` or the [REST API](/docs/reference/res
 |---|---|---|
 | Column | `Customer[Customer]` | That column in every table named Customer. |
 | Table | `Customer` | Every column of Customer, now and later. It does not cover measures. |
-| Measure | `Sales[Net sales]` with `--measure` | That measure, wherever the table is copied. |
+| Measure | `'Sales lines'[Net sales]` with `--measure` | That measure, wherever the table is copied. |
 
 A column rule takes precedence over its table rule. For example, mark Customer as PII, then clear `Customer[Region]` to leave Region visible. Clearing records a review with `pii: false`; removing deletes the rule, so the table rule applies again.
 

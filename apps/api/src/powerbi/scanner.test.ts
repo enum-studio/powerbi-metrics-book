@@ -101,7 +101,7 @@ describe("the scanner", () => {
     expect(JSON.stringify(result)).not.toMatch(mashup);
 
     expect(result.workspaces.map((w) => w.id)).toEqual(shared);
-    const sales = named(result.workspaces, "Sales");
+    const sales = named(result.workspaces, "Commercial");
     expect(sales.users).toContainEqual({
       principal_type: "group",
       principal_object_id: named(tenant.groups, "Analysts").object_id,
@@ -156,7 +156,7 @@ describe("the scanner", () => {
 describe("what the real scanner sends as null", () => {
   it("reads a null access list as no list and a null email as none", async () => {
     const own = sampleTenant();
-    const unlisted = find(own.workspaces, (w) => w.name === "Sales");
+    const unlisted = find(own.workspaces, (w) => w.name === "Commercial");
     unlisted.users_unlisted = true;
     const fixture = await startPowerBi(own);
     try {
@@ -175,7 +175,7 @@ describe("what the real scanner sends as null", () => {
       expect(JSON.stringify(sales.raw)).toContain('"users":null');
       expect(sales.result.workspaces[0]?.users).toBeUndefined();
 
-      const marketing = await raw(named(own.workspaces, "Marketing").id);
+      const marketing = await raw(named(own.workspaces, "Growth").id);
       expect(JSON.stringify(marketing.raw)).toContain('"emailAddress":null');
       expect(JSON.stringify(marketing.raw)).toContain('"userType":null');
       expect(marketing.result.workspaces[0]?.users).toContainEqual({
@@ -218,7 +218,7 @@ describe("a dataset the scanner answers with users: null", () => {
         },
       };
       const scanId = await startScan(nulled, [
-        named(own.workspaces, "Sales").id,
+        named(own.workspaces, "Commercial").id,
       ]);
       await waitForScan(nulled, scanId, { poll_ms: 10 });
       const datasets = (await scanResult(nulled, scanId)).workspaces.flatMap(

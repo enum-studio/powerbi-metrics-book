@@ -456,7 +456,7 @@ describe("a metric whose every variant is PII", () => {
       await setRole(tx, "api_rw");
       await tx.insert(piiRule).values({
         kind: "measure",
-        table_name: "Sales",
+        table_name: "Sales lines",
         name: "Private event total",
         pii: true,
         ...by,

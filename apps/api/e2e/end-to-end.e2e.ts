@@ -592,7 +592,7 @@ describe("Power BI Metrics Book end to end, on the mock", () => {
       row_count: number;
     }>("execute_dax", {
       dataset: state.datasets.get(SALES)?.id,
-      dax: "EVALUATE TOPN(25, 'Sales')",
+      dax: "EVALUATE TOPN(25, 'Sales lines')",
       purpose: "End-to-end: an agent pages through order lines",
       preview_rows: 5,
     });

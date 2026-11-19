@@ -63,7 +63,7 @@ Scroll to move through the diagram, pinch to zoom, or use its zoom controls. A t
 
 ## Read a table, a folder or a column
 
-A table, a display folder and a column each have a page, reached by a link. Their addresses are `/catalog/datasets/<id>/tables/<table>`, `.../folders/<folder>` and `.../columns/<column>`. A line at the top says where you are: workspace, dataset, table, then the folders down to the page.
+A table, a display folder and a column each have a page, reached by a link. Their addresses are `/catalog/datasets/<id>/tables/<table>`, `.../folders/<folder>` and `.../columns/<column>`. A line at the top says where you are: workspace, dataset, table, then the folders down to the page, such as Datasets / Commercial / Sales / Sales lines on the sample tenant.
 
 A table page shows the table's description and its fields: the measures and the columns, each with its format or data type, description and, for a measure, the metric that covers it. A folder page shows the same list for one display folder. Power BI nests folders with a backslash, so the address of `Margin` inside `Sales` ends in `folders/Sales%5CMargin`, one piece. A table, folder level or column named just `.` or `..` has no link; its name shows as text.
 

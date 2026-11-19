@@ -49,6 +49,8 @@ afterAll(closeTestPools);
 
 const GET_INFO = "/powerbi/v1.0/myorg/admin/workspaces/getInfo";
 const SALES = "Sales";
+/** The workspace that holds Sales and Retail. */
+const COMMERCIAL = "Commercial";
 
 type Sync = (kind?: SyncKind) => Promise<SyncOutcome>;
 
@@ -178,7 +180,7 @@ describe("runSync", () => {
     await withSync(tenant, async (tx, sync, mock) => {
       await sync();
       const before = await mirrorOf(tx);
-      find(tenant.workspaces, (w) => w.name === SALES).name += ", renamed";
+      find(tenant.workspaces, (w) => w.name === COMMERCIAL).name += ", renamed";
       editMeasure(tenant, "Return rate", null);
       // The sample's three workspaces and the first 97 of these make batch 1.
       const fillers = Array.from({ length: 100 }, (_, n) => ({
@@ -480,7 +482,7 @@ describe("runSync", () => {
     const tenant = sampleTenant();
     await withSync(tenant, async (tx, sync) => {
       await sync();
-      const named = find(tenant.workspaces, (w) => w.name === SALES);
+      const named = find(tenant.workspaces, (w) => w.name === COMMERCIAL);
       const datasetId = find(named.dataset_ids, () => true);
       await tx
         .update(powerbiWorkspace)
@@ -511,13 +513,13 @@ describe("runSync", () => {
     const tenant = sampleTenant();
     await withSync(tenant, async (tx, sync) => {
       await sync();
-      const named = "Marketing";
-      const marketing = find(tenant.workspaces, (w) => w.name === named);
-      const inside = [marketing.id, ...marketing.dataset_ids];
+      const named = "Growth";
+      const growth = find(tenant.workspaces, (w) => w.name === named);
+      const inside = [growth.id, ...growth.dataset_ids];
       const measures = await tx
         .select({ id: powerbiMeasure.id })
         .from(powerbiMeasure)
-        .where(inArray(powerbiMeasure.dataset_id, marketing.dataset_ids));
+        .where(inArray(powerbiMeasure.dataset_id, growth.dataset_ids));
       const { measure_id } = metricVariant;
       const ids = measures.map((m) => m.id);
       const variants = () =>
@@ -536,7 +538,7 @@ describe("runSync", () => {
         .set({ touched_at: new Date() })
         .where(inArray(metric.id, metricIds));
       const curated = await metrics();
-      tenant.workspaces = tenant.workspaces.filter((w) => w !== marketing);
+      tenant.workspaces = tenant.workspaces.filter((w) => w !== growth);
 
       await sync();
 
@@ -564,8 +566,8 @@ describe("runSync", () => {
     const tenant = sampleTenant();
     await withSync(tenant, async (tx, sync) => {
       await sync();
-      const marketing = find(tenant.workspaces, (w) => w.name === "Marketing");
-      tenant.workspaces = tenant.workspaces.filter((w) => w !== marketing);
+      const growth = find(tenant.workspaces, (w) => w.name === "Growth");
+      tenant.workspaces = tenant.workspaces.filter((w) => w !== growth);
       await sync();
       // As a book older than the rule left it: a measure of the removed dataset
       // filed in a draft named from another dataset.
@@ -574,7 +576,7 @@ describe("runSync", () => {
         .from(powerbiMeasure)
         .where(
           and(
-            inArray(powerbiMeasure.dataset_id, marketing.dataset_ids),
+            inArray(powerbiMeasure.dataset_id, growth.dataset_ids),
             eq(powerbiMeasure.name, "Ad spend"),
           ),
         );
@@ -783,7 +785,7 @@ describe("runSync", () => {
     const tenant = sampleTenant();
     await withSync(tenant, async (tx, sync) => {
       await sync();
-      const sales = find(tenant.workspaces, (w) => w.name === SALES);
+      const sales = find(tenant.workspaces, (w) => w.name === COMMERCIAL);
       const stored = async () =>
         (await mirrorOf(tx)).access
           .filter((a) => a.object_id === sales.id)
@@ -804,7 +806,7 @@ describe("runSync", () => {
     await withSync(tenant, async (_tx, sync) => {
       expect((await sync()).counts.access_lists_unsent).toBe(0);
 
-      const sales = find(tenant.workspaces, (w) => w.name === SALES);
+      const sales = find(tenant.workspaces, (w) => w.name === COMMERCIAL);
       sales.users_unlisted = true;
       expect((await sync()).counts.access_lists_unsent).toBe(1);
 
@@ -834,7 +836,7 @@ describe("runSync", () => {
       await tx.execute(sql`reset role`);
       await tx.execute(sql`set local role migrator`);
       await tx.execute(
-        sql`alter table powerbi_workspace add constraint sync_error_test check (name not like 'Sales%') not valid`,
+        sql`alter table powerbi_workspace add constraint sync_error_test check (name not like 'Commercial%') not valid`,
       );
       await setRole(tx, "worker_rw");
       await expect(sync()).rejects.toThrow();

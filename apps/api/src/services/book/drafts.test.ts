@@ -25,7 +25,12 @@ const idOf = (items: { id: string; name: string }[], name: string) => {
   if (found === undefined) throw new Error(`The sample has no ${name}`);
   return found.id;
 };
-const workspaceId = (name: string) => idOf(tenant.workspaces, name);
+/** The workspace that holds the sample's dataset of this name. */
+const workspaceId = (dataset: string) => {
+  const found = tenant.datasets.find((item) => item.name === dataset);
+  if (found === undefined) throw new Error(`The sample has no ${dataset}`);
+  return found.workspace_id;
+};
 
 /** The sample's Admin, as a curator: every workspace. */
 const curator = reaching(
