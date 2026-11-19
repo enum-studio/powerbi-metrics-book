@@ -44,7 +44,11 @@ function saveAnyway(error: ServiceError) {
  * upstream codes (Microsoft's own) that must not tell a missing element from
  * a refused one, so only a code named here is sent.
  */
-export const PUBLIC_ERROR_CODES: readonly string[] = ["docs.field_not_on_kind"];
+export const PUBLIC_ERROR_CODES: readonly string[] = [
+  "docs.field_not_on_kind",
+  "conventions.off_and_set",
+  "conventions.fixed",
+];
 
 function codeOf(error: ServiceError) {
   const { code } = error.detail;

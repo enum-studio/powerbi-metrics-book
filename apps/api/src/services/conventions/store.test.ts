@@ -74,7 +74,15 @@ describe("resolve", () => {
     [{ namng: { case: "none" } }, "namng"],
     [{ preset: "strict" }, "preset"],
     [JSON.parse('{"__proto__": {"checks": {"off": []}}}'), "__proto__"],
-    [{ checks: { off: ["metric_name_shape"] } }, "checks.off.0"],
+    [{ off: ["metric_name_shape"] }, "off.0"],
+    [{ exceptions: [{ rule: "metric_name_form", metric: "orders", reason: "A check." }] }, "exceptions.0.rule"],
+    [{ exceptions: [{ rule: "naming.kinds", term: "channel", reason: "A term." }] }, "exceptions.0"],
+    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", term: "channel", reason: "Two." }] }, "exceptions.0"],
+    [{ exceptions: [{ rule: "naming.kinds", reason: "None." }] }, "exceptions.0"],
+    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "" }] }, "exceptions.0.reason"],
+    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "x".repeat(201) }] }, "exceptions.0.reason"],
+    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "One.\nTwo." }] }, "exceptions.0.reason"],
+    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "One." }, { rule: "naming.kinds", metric: "orders", reason: "Two." }] }, "exceptions"],
     [{ naming: { kinds: ["total"] } }, "naming.kinds.0"],
     [{ naming: { qualifier_order: ["vat", "channel"] } }, "naming.qualifiers"],
     [
@@ -108,7 +116,8 @@ describe("resolve", () => {
     expect(validateConventions({ format: 2 })).toEqual([
       {
         path: "format",
-        message: "This release reads format 1 of the conventions.",
+        message:
+          "This release reads format 1 of the conventions. It says how to read the rest.",
       },
     ]);
     expect(
@@ -158,11 +167,11 @@ describe("diffConventions", () => {
     const current = resolve({});
     const proposed = resolve({
       naming: { kinds: ["total_"] },
-      checks: { off: ["metric_base_variant"] },
+      off: ["metric_base_variant"],
     });
     expect(diffConventions(current, proposed)).toEqual([
       { path: "naming.kinds", before: current.naming.kinds, after: ["total_"] },
-      { path: "checks.off", before: [], after: ["metric_base_variant"] },
+      { path: "off", before: [], after: ["metric_base_variant"] },
     ]);
     expect(diffConventions(current, current)).toEqual([]);
   });
@@ -212,11 +221,9 @@ describe("setConventions", () => {
       );
       const saved = await setConventions({ db: tx }, token, {
         trust: { human_verify_from: "any" },
-        checks: { off: ["metric_base_variant"] },
+        off: ["metric_base_variant"],
       });
-      expect(saved.changes.map((change) => change.path)).toEqual([
-        "checks.off",
-      ]);
+      expect(saved.changes.map((change) => change.path)).toEqual(["off"]);
     }));
 
   // The proof that the check runs under the lock: a save that read the
@@ -263,15 +270,18 @@ describe("setConventions", () => {
         )[0]?.document;
       const set = (document: unknown) =>
         setConventions({ db: tx }, principals.admin, document);
+      // The preset turns metric_name_form off, so a company that sets its case turns it on.
       const complete = resolve({
         preset: "minimal",
         naming: { case: "snake_case" },
+        off: [],
       });
       await set(complete);
       expect(await stored()).toEqual({
         format: 1,
         preset: "minimal",
         naming: { case: "snake_case" },
+        off: [],
       });
       expect(await currentConventions(tx)).toEqual(complete);
       // A part may set a value equal to the preset's: the company holds it.
@@ -294,11 +304,9 @@ describe("setConventions", () => {
       const set = (document: unknown) =>
         setConventions({ db: tx }, principals.admin, document);
       const first = await set({ preset: "minimal" });
-      const second = await set({ preset: "minimal", checks: { off: [] } });
+      const second = await set({ preset: "minimal", off: [] });
       expect([first.version, second.version]).toEqual([1, 2]);
-      expect(second.changes.map((change) => change.path)).toEqual([
-        "checks.off",
-      ]);
+      expect(second.changes.map((change) => change.path)).toEqual(["off"]);
       expect(await currentConventions(tx)).toEqual(second.conventions);
 
       const versions = await listVersions(tx);
@@ -338,7 +346,126 @@ describe("setConventions", () => {
         .orderBy(asc(event.id));
       expect(events.map((row) => row.data)).toEqual([
         { version: 1, paths: first.changes.map((change) => change.path) },
-        { version: 2, paths: ["checks.off"] },
+        { version: 2, paths: ["off"] },
       ]);
+    }));
+});
+
+describe("what a company part may say", () => {
+  it.each([
+    [{ format: 1, pii: { columns: [] } }, "pii"],
+    [{ format: 2 }, "format"],
+    [{ format: 1, trust: { states: ["draft"] } }, "trust.states"],
+    [{ format: 1, off: ["keys.unique"] }, "keys.unique"],
+    [
+      {
+        format: 1,
+        exceptions: [{ rule: "variants.base", metric: "orders", reason: "No." }],
+      },
+      "variants.base",
+    ],
+  ])("refuses %o, which changes the fixed rule %s", (document, rule) => {
+    expect(() => resolve(document)).toThrow(
+      expect.objectContaining({
+        kind: "invalid",
+        detail: expect.objectContaining({ code: "conventions.fixed", rule }),
+      }),
+    );
+  });
+
+  it("names an entry of off that is neither a rule nor a check", () => {
+    expect(
+      validateConventions({ off: ["naming.kinds", "naming.shape"] }),
+    ).toEqual([
+      {
+        path: "off.1",
+        message: "naming.shape is neither a rule id nor a check name.",
+      },
+    ]);
+  });
+
+  it.each([
+    [{ format: 1, naming: { kinds: ["total_"] }, off: ["naming.kinds"] }],
+    [{ format: 1, naming: { kinds: ["total_"] }, off: ["metric_name_form"] }],
+    // minimal turns metric_name_form off, and this part keeps it off.
+    [{ format: 1, preset: "minimal", naming: { case: "none" } }],
+  ])("refuses %o, which sets a rule it turns off", (part) =>
+    rolledBack(async (tx) => {
+      const saving = setConventions({ db: tx }, principals.admin, part);
+      await expect(saving).rejects.toMatchObject({
+        kind: "invalid",
+        detail: { code: "conventions.off_and_set" },
+      });
+      await expect(saving).rejects.toThrow(/naming\.(kinds|case)/);
+      expect(await listVersions(tx)).toEqual([]);
+    }),
+  );
+
+  it("takes a value and off for different rules of one check", () =>
+    rolledBack(async (tx) => {
+      await setConventions({ db: tx }, principals.admin, {
+        format: 1,
+        naming: { kinds: ["total_"] },
+        off: ["naming.case"],
+      });
+      expect((await currentConventions(tx)).off).toEqual(["naming.case"]);
+    }));
+});
+
+describe("the trust part a token sends", () => {
+  const token = { ...principals.admin, via: "cli" } as const;
+  const stored = async (tx: Db) =>
+    (await tx.select().from(conventions).orderBy(desc(conventions.version)))[0]
+      ?.document;
+  const pinned = { format: 1, trust: { human_verify_from: "browser" } };
+
+  it("refuses pinning, unpinning and changing a trust key, and takes a part that leaves it alone", () =>
+    rolledBack(async (tx) => {
+      await expect(
+        setConventions({ db: tx }, token, pinned),
+      ).rejects.toMatchObject({ kind: "refused" });
+      await setConventions({ db: tx }, principals.admin, pinned);
+      await expect(
+        setConventions({ db: tx }, token, { format: 1 }),
+      ).rejects.toMatchObject({ kind: "refused" });
+      await expect(
+        setConventions({ db: tx }, token, {
+          format: 1,
+          trust: { human_verify_from: "any" },
+        }),
+      ).rejects.toMatchObject({ kind: "refused" });
+      const kept = { ...pinned, off: ["metric_base_variant"] };
+      await setConventions({ db: tx }, token, kept);
+      expect(await stored(tx)).toEqual(kept);
+    }));
+
+  it("keeps the stored pin when a complete document leaves the trust rules as they are", () =>
+    rolledBack(async (tx) => {
+      await setConventions({ db: tx }, principals.admin, pinned);
+      await setConventions(
+        { db: tx },
+        token,
+        resolve({ naming: { case: "none" } }),
+      );
+      expect(await stored(tx)).toEqual({
+        format: 1,
+        preset: "metrics_book",
+        naming: { case: "none" },
+        trust: { human_verify_from: "browser" },
+      });
+    }));
+});
+
+describe("listVersions", () => {
+  it("lists an older complete document that no longer resolves as it was stored", () =>
+    rolledBack(async (tx) => {
+      const old = { preset: "strict", naming: { case: "none" } };
+      await tx.insert(conventions).values([
+        { version: 1, document: old, set_by: "test-admin" },
+        { version: 2, document: { format: 1 }, set_by: "test-admin" },
+      ]);
+      expect(
+        (await listVersions(tx)).map((version) => version.document),
+      ).toEqual([resolve({}), old]);
     }));
 });

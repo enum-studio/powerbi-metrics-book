@@ -42,6 +42,8 @@ import {
  * book.yml, format 1, a public interface, never holding a secret or a key.
  * book.schema.json, shipped for the CLI, is bookSchema as JSON Schema; a test
  * keeps them the same. Settings and conventions have their own schemas.
+ * The conventions travel in conventions.yml beside it; an import still takes
+ * a book.yml that holds them, and an export leaves them out.
  */
 
 // custom: a role the deployment's own policies name, assigned on purpose.
@@ -183,8 +185,6 @@ async function currentBook(context: ServiceContext) {
         .filter((s) => s.source === "database" && exported(s.key))
         .map((listing) => [listing.key, listing.value]),
     ),
-    // What the company set; resolving it over its preset gives the rules.
-    conventions: (await conventionsInForce(context.db)).company,
     role_assignments: (await listAssignments(context.db))
       .map(entryOf)
       .sort((a, b) => keyOf(a).localeCompare(keyOf(b))),
@@ -282,10 +282,11 @@ export async function importBook(
     const check = await checkSetting(context, setting.key, setting.value);
     settings.push({ ...setting, before: before?.value ?? null, check });
   }
-  const conventions = diffConventions(
-    resolve(current.conventions),
-    resolve(file.conventions ?? current.conventions),
-  );
+  const inForce = (await conventionsInForce(context.db)).conventions;
+  const conventions =
+    file.conventions === undefined
+      ? []
+      : diffConventions(inForce, resolve(file.conventions));
   const inFile = new Set((file.role_assignments ?? []).map(keyOf));
   const held = new Set(current.role_assignments.map(keyOf));
   const assignments = (file.role_assignments ?? []).filter(

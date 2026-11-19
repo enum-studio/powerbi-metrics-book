@@ -1,4 +1,4 @@
-import type { CheckName } from "./schema.js";
+import type { CheckName, Conventions } from "./schema.js";
 
 /*
  * Every rule a check applies, by the id `off`, exceptions and findings name
@@ -29,6 +29,16 @@ export interface Rule {
    * its `required` accepts.
    */
   readonly allowed: readonly (string | boolean)[] | null;
+  /** The ids of other keys the rule reads, so a company that sets one of them sets this rule too. */
+  readonly reads: readonly string[];
+  /**
+   * Another check that applies the rule, while the key's `required` is one of
+   * `when`; under any other value the rule's own check applies it.
+   */
+  readonly shared: {
+    readonly check: CheckName;
+    readonly when: readonly (string | boolean)[];
+  } | null;
 }
 
 const REQUIRED = [true, false] as const;
@@ -38,7 +48,17 @@ const keyed = (
   target: RuleTarget,
   id: string,
   allowed: readonly (string | boolean)[] | null = null,
-): Rule => ({ id, check, target, path: id.split("."), allowed });
+  more: Partial<Pick<Rule, "reads" | "shared">> = {},
+): Rule => ({
+  id,
+  check,
+  target,
+  path: id.split("."),
+  allowed,
+  reads: [],
+  shared: null,
+  ...more,
+});
 
 const keyless = (check: CheckName, target: RuleTarget): Rule => ({
   id: check,
@@ -46,6 +66,8 @@ const keyless = (check: CheckName, target: RuleTarget): Rule => ({
   target,
   path: null,
   allowed: null,
+  reads: [],
+  shared: null,
 });
 
 export const RULES: readonly Rule[] = [
@@ -53,9 +75,10 @@ export const RULES: readonly Rule[] = [
   keyed("metric_name_form", "metric", "naming.kinds"),
   keyless("metric_name_generated", "metric"),
   keyed("metric_name_comparison", "metric", "naming.forbidden_words"),
-  keyed("metric_money_qualifier", "metric", "naming.money_qualifier"),
-  // Its words come from naming.qualifiers, for the groups it places.
-  keyed("metric_qualifier_order", "metric", "naming.qualifier_order"),
+  keyed("metric_money_qualifier", "metric", "naming.money_qualifier", REQUIRED),
+  keyed("metric_qualifier_order", "metric", "naming.qualifier_order", null, {
+    reads: ["naming.qualifiers"],
+  }),
   keyed("metric_fields", "metric", "metric_fields.definition", REQUIRED),
   keyed("metric_fields", "metric", "metric_fields.aliases", REQUIRED),
   keyed("metric_fields", "metric", "metric_fields.when_to_use", REQUIRED),
@@ -63,12 +86,23 @@ export const RULES: readonly Rule[] = [
   keyed("metric_fields", "metric", "metric_fields.unit", REQUIRED),
   keyed("metric_fields", "metric", "metric_fields.category", REQUIRED),
   keyed("metric_fields", "metric", "metric_fields.custom"),
-  // metric_fields asks for it when required is true; this check, when another
-  // label shares a word, reading ignore_words too.
-  keyed("metric_not_the_same_as", "metric", "metric_fields.not_the_same_as", [
-    ...REQUIRED,
-    "when_label_shares_a_word",
-  ]),
+  // A content word is any but those of the kinds, the placed qualifiers, the
+  // money qualifiers and ignore_words.
+  keyed(
+    "metric_not_the_same_as",
+    "metric",
+    "metric_fields.not_the_same_as",
+    [...REQUIRED, "when_label_shares_a_word"],
+    {
+      reads: [
+        "naming.kinds",
+        "naming.qualifier_order",
+        "naming.qualifiers",
+        "naming.money_qualifier",
+      ],
+      shared: { check: "metric_fields", when: [true] },
+    },
+  ),
   keyless("metric_base_variant", "metric"),
   keyed("term_fields", "term", "term_fields.definition", REQUIRED),
   keyed("term_fields", "term", "term_fields.values", [
@@ -86,6 +120,43 @@ export function ruleById(id: string): Rule | undefined {
 
 export function rulesOfCheck(check: CheckName): readonly Rule[] {
   return RULES.filter((rule) => rule.check === check);
+}
+
+/** What `off` and an exception's `rule` take: a rule id, or a check name for every rule of the check. */
+export const OFF_NAMES = [
+  ...new Set(RULES.flatMap((rule) => [rule.id, rule.check])),
+];
+
+const isDocument = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** The value at a key's path; undefined where the document does not hold it. */
+export const valueAt = (document: unknown, path: readonly string[]): unknown =>
+  path.reduce<unknown>(
+    (value, key) =>
+      isDocument(value) && Object.hasOwn(value, key) ? value[key] : undefined,
+    document,
+  );
+
+/** The check that applies the rule under these conventions; see Rule.shared. */
+export function checkApplying(rule: Rule, conventions: Conventions): CheckName {
+  const { shared, path } = rule;
+  if (shared === null || path === null) return rule.check;
+  const required = valueAt(conventions, [...path, "required"]);
+  return shared.when.some((value) => value === required)
+    ? shared.check
+    : rule.check;
+}
+
+/**
+ * Off when `off` names the rule, or the check that applies it under these
+ * conventions; checkMetric and checkTerm skip a result on the same terms.
+ */
+export function isRuleOff(rule: Rule, conventions: Conventions): boolean {
+  const off: readonly string[] = conventions.off;
+  return (
+    off.includes(rule.id) || off.includes(checkApplying(rule, conventions))
+  );
 }
 
 /** What no company changes, with why; the spec's "What stays fixed". */

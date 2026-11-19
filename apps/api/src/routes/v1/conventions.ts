@@ -10,11 +10,13 @@ import {
   PRESET_NAMES,
 } from "../../services/conventions/schema.js";
 import {
+  applyAsAdmin,
   diffAsAdmin,
   getCompanyPartAsAdmin,
   listRules,
   listVersionsAsAdmin,
   setConventionsAsAdmin,
+  unusedExceptionsAsCurator,
 } from "../../services/conventions/service.js";
 import {
   credential,
@@ -57,8 +59,9 @@ const CompanyPart = z.looseObject({
 
 /**
  * GET /api/v1/conventions/rules for anyone signed in, as GET /conventions is;
- * PUT /conventions, GET /conventions/company, /conventions/versions and POST
- * /conventions/diff for `book:edit_conventions`.
+ * PUT /conventions, GET /conventions/company, /conventions/versions, POST
+ * /conventions/diff and /conventions/apply for `book:edit_conventions`; GET
+ * /conventions/exceptions/unused for a curator, as a metric's checks are.
  */
 export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
@@ -128,6 +131,66 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     async (c) =>
       diff.answer(c, {
         changes: await diffAsAdmin(as(c), c.req.valid("json")),
+      }),
+  );
+
+  const apply = documented(
+    "Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run",
+    z.object({
+      changed_rules: z.array(z.string()),
+      now_failing: z.record(z.string(), z.number().int()),
+      exceptions_added: z.number().int(),
+      version: z.number().int().nullable(),
+    }),
+    { errors: [400] },
+  );
+  routes.post(
+    "/conventions/apply",
+    apply.doc,
+    credential,
+    validator(
+      "json",
+      z.strictObject({
+        conventions: Document,
+        dry_run: z.boolean(),
+        baseline_reason: z.string().optional(),
+      }),
+      refuse,
+    ),
+    async (c) => apply.answer(c, await applyAsAdmin(as(c), c.req.valid("json"))),
+  );
+
+  const unused = documented(
+    "The exceptions nothing needs any more: their target is gone, or passes the rule without them",
+    z.object({
+      unused: z.array(
+        z.object({
+          rule: z.string(),
+          target: z.object({
+            metric: z.string().optional(),
+            term: z.string().optional(),
+            dataset: z.string().optional(),
+            table: z.string().optional(),
+            column: z.string().optional(),
+          }),
+          reason: z.string(),
+          why: z.enum(["no_such_target", "passes"]),
+        }),
+      ),
+    }),
+    { errors: [400, 404] },
+  );
+  routes.get(
+    "/conventions/exceptions/unused",
+    unused.doc,
+    credential,
+    validator("query", z.strictObject({ metric: text.optional() }), refuse),
+    async (c) =>
+      unused.answer(c, {
+        unused: await unusedExceptionsAsCurator(
+          as(c),
+          c.req.valid("query").metric,
+        ),
       }),
   );
 

@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { COMPARISONS } from "../../db/schema/book.js";
+import {
+  OFF_NAMES,
+  RULE_TARGETS,
+  RULES,
+  type RuleTarget,
+  ruleById,
+} from "./rules.js";
 
 /*
  * The conventions: every rule a check or the drafter applies is a key here,
@@ -144,6 +151,77 @@ const variants = z.strictObject({
     ),
 });
 
+const off = z.array(
+  z.enum(OFF_NAMES as [string, ...string[]], {
+    error: (issue) =>
+      `${String(issue.input)} is neither a rule id nor a check name.`,
+  }),
+);
+
+/** One line, so a reason reads as text where it is shown and cannot pass for an instruction of its own. */
+export const exceptionReason = z
+  .string()
+  .min(1)
+  .max(200)
+  .regex(/^[^\p{Cc}\u2028\u2029]*$/u, "A reason is one line.");
+
+/** The keys an exception names its element by, for each kind of target. */
+const TARGET_KEYS: Record<RuleTarget, readonly RuleTarget[]> = {
+  metric: ["metric"],
+  term: ["term"],
+  dataset: ["dataset"],
+  table: ["dataset", "table"],
+  column: ["dataset", "column"],
+};
+
+const exception = z
+  .strictObject({
+    rule: z.enum(RULES.map((rule) => rule.id) as [string, ...string[]], {
+      error: (issue) =>
+        `${String(issue.input)} is not a rule id. An exception names one rule, never a check.`,
+    }),
+    reason: exceptionReason,
+    metric: z.string().min(1).optional(),
+    term: z.string().min(1).optional(),
+    dataset: z.string().min(1).optional(),
+    table: z.string().min(1).optional(),
+    column: z
+      .string()
+      .regex(/^'.+'\[.+\]$/u, "Write a column as '<table>'[<column>].")
+      .optional(),
+  })
+  .superRefine((item, context) => {
+    const target = ruleById(item.rule)?.target;
+    if (target === undefined) return;
+    const wanted = TARGET_KEYS[target];
+    const given = RULE_TARGETS.filter((key) => item[key] !== undefined);
+    if (
+      given.length !== wanted.length ||
+      !given.every((key) => wanted.includes(key))
+    )
+      context.addIssue({
+        code: "custom",
+        message: `An exception to ${item.rule} names exactly one ${target}: ${wanted.join(" and ")}.`,
+      });
+  });
+export type ConventionsException = z.infer<typeof exception>;
+
+/** The rule and the element an exception is for, so the same one twice is found. */
+export const exceptionKey = (
+  item: Pick<ConventionsException, "rule" | RuleTarget>,
+): string =>
+  JSON.stringify([
+    item.rule,
+    ...RULE_TARGETS.map((key) => item[key] ?? null),
+  ]);
+
+const exceptions = z
+  .array(exception)
+  .refine(
+    (items) => new Set(items.map(exceptionKey)).size === items.length,
+    "Each rule and element has one exception at most.",
+  );
+
 export const conventionsSchema = z.strictObject({
   preset: z.enum(PRESET_NAMES),
   guide: z.string(),
@@ -199,9 +277,33 @@ export const conventionsSchema = z.strictObject({
     ]),
     human_verify_from: z.enum(["browser", "any"]),
   }),
-  checks: z.strictObject({ off: z.array(z.enum(CHECK_NAMES)) }),
+  off,
+  exceptions,
 });
 
 export type Conventions = z.infer<typeof conventionsSchema>;
+
+/** Every key optional at every depth, as resolve merges a part over its preset; an array stays whole. */
+const optionalShape = (shape: z.core.$ZodShape): z.core.$ZodShape =>
+  Object.fromEntries(
+    Object.entries(shape).map(([name, value]) => [
+      name,
+      z.optional(
+        value instanceof z.ZodObject
+          ? z.strictObject(optionalShape(value.shape))
+          : value,
+      ),
+    ]),
+  );
+
+/**
+ * What a company part may hold, for conventions.schema.json and an offline
+ * check of conventions.yml. A refinement reads the whole document, so it is
+ * left to resolve, which checks the part merged over its preset.
+ */
+export const companyPartSchema = z.strictObject({
+  format: z.literal(1),
+  ...optionalShape(conventionsSchema.shape),
+});
 /** What the drafter reads: how measures are grouped, named, skipped and dismissed. */
 export type DraftingRules = Conventions["drafting"];
