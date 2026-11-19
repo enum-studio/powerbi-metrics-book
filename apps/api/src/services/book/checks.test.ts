@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Conventions } from "../conventions/schema.js";
+import { ruleById } from "../conventions/rules.js";
 import { resolve } from "../conventions/store.js";
 import {
   type CheckableMetric,
@@ -317,6 +318,43 @@ describe("every metric check under metrics_book", () => {
     expect(failingRules(always, { not_the_same_as: null })).toEqual([
       "metric_fields.not_the_same_as",
     ]);
+    const results = checkMetric(
+      metric({ not_the_same_as: null }),
+      context(always),
+    ).filter(({ rule }) => rule === "metric_fields.not_the_same_as");
+    expect(results).toMatchObject([{ passed: false }]);
+  });
+
+  it("gives every result a registered rule, and no rule twice for one metric", () => {
+    const term: CheckableTerm = {
+      definition: "",
+      values: {},
+      categorical: true,
+      custom: {},
+    };
+    const metrics = [
+      checkMetric(metric(), context(metricsBook)),
+      checkMetric(
+        metric({ name: "NumberOfOrders", definition: "", unit: null }),
+        context(metricsBook, { other_labels: ["Average order costs"] }),
+      ),
+      checkMetric(
+        metric({ not_the_same_as: null }),
+        context(
+          resolve({ metric_fields: { not_the_same_as: { required: true } } }),
+        ),
+      ),
+    ];
+    const terms = checkTerm(term, {
+      conventions: metricsBook,
+      backed_by_columns: 1,
+    });
+    for (const results of [...metrics, terms]) {
+      for (const result of results)
+        expect(ruleById(result.rule), result.rule).toBeDefined();
+      const rules = results.map(({ rule }) => rule);
+      expect(new Set(rules).size).toBe(rules.length);
+    }
   });
 
   it("names the rule of each finding, one result for each rule a check applies", () => {
@@ -385,7 +423,6 @@ describe("the same metrics under minimal", () => {
     const results = checkMetric(metric(generated), context(minimal));
     expect([...new Set(results.map((result) => result.check))]).toEqual([
       "metric_fields",
-      "metric_not_the_same_as",
       "metric_base_variant",
     ]);
     expect(results.every((result) => result.passed)).toBe(true);

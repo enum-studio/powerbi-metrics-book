@@ -10,7 +10,7 @@ export function CheckMessage({
 }: {
   message: string;
   /** The id of the rule the sentence is about, shown after it. */
-  rule?: string;
+  rule: string;
   otherLabels?: readonly string[];
 }) {
   const [all, setAll] = useState(false);
@@ -19,7 +19,7 @@ export function CheckMessage({
     <>
       <p>
         {message}
-        {rule !== undefined && <RuleId rule={rule} />}
+        <RuleId rule={rule} />
       </p>
       {labels.length > 0 && (
         <ul className="mt-1 flex list-disc flex-col gap-1 pl-4 text-ink">

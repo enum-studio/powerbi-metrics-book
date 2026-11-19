@@ -104,7 +104,7 @@ function Checks({ metric, me }: { metric: Metric; me: Me }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {ordered.map(({ check, rule, message, passed, other_labels }) => (
-            <li key={rule} className="text-ui">
+            <li key={`${check}:${rule}`} className="text-ui">
               <span className="font-medium text-ink">
                 {humanize(check)}: {passed ? "passes" : "fails"}
               </span>

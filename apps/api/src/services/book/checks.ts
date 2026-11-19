@@ -412,9 +412,14 @@ export function checkMetric(
   context: MetricCheckContext,
 ): CheckResult[] {
   const off = new Set<string>(context.conventions.checks.off);
-  return METRIC_CHECK_NAMES.filter((check) => !off.has(check)).flatMap(
-    (check) => resultsOf(check, METRIC_CHECKS[check](metric, context)),
-  );
+  // Under any other setting metric_fields owns the rule, so it is told once.
+  const sharesAWord =
+    context.conventions.metric_fields.not_the_same_as.required ===
+    "when_label_shares_a_word";
+  return METRIC_CHECK_NAMES.filter(
+    (check) =>
+      !off.has(check) && (sharesAWord || check !== "metric_not_the_same_as"),
+  ).flatMap((check) => resultsOf(check, METRIC_CHECKS[check](metric, context)));
 }
 
 export function checkTerm(
