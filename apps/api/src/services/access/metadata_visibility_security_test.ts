@@ -463,7 +463,7 @@ describe("listApps, as the visibility mode shows datasets", () => {
     ]);
 
   it("under powerbi, lists no app outside the person's audience and workspaces, though it shows a dataset they may describe", () => {
-    // The Leadership app, in Finance, also shows Sales through a report bound to it.
+    // The Leadership app, in Management, also shows Sales through a report bound to it.
     const tenant = sampleTenant();
     const report = randomUUID();
     const leadership = named(tenant.apps, LEADERSHIP_APP);
@@ -499,7 +499,7 @@ describe("listApps, as the visibility mode shows datasets", () => {
     ));
 
   it("under policy, lists an app whose workspace holds, or which shows, a dataset the policy lets the caller describe", () => {
-    // The Leadership app, in Finance, shows Sales alone.
+    // The Leadership app, in Management, shows Sales alone.
     const tenant = sampleTenant();
     const sales = named(tenant.datasets, SALES).id;
     named(tenant.reports, "Leadership overview").dataset_id = sales;

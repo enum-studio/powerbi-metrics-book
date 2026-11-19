@@ -61,7 +61,7 @@ const curator = reaching(
   "curator",
 );
 
-/** The Analyst, as a curator: the Sales workspace only. */
+/** The Analyst, as a curator: the Commercial workspace only. */
 const salesCurator = reaching(
   { powerbi_workspace_ids: [workspaceId(SALES)] },
   "curator",
