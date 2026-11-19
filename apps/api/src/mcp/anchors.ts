@@ -122,7 +122,7 @@ export const variantAnchor = (row: Row, input: Input = {}): Row =>
 export const columnAnchor = (row: Row, input: Input = {}): Row =>
   keep(
     parents(row, input),
-    "id name table data_type column_type is_hidden display_folder description description_pbi terms pii",
+    "id name table data_type column_type is_hidden display_folder description description_pbi unit blank_means terms pii",
     descriptions,
   );
 export const measureAnchor = (row: Row, input: Input = {}): Row =>
@@ -134,7 +134,7 @@ export const measureAnchor = (row: Row, input: Input = {}): Row =>
 export const datasetAnchor = (row: Row, input: Input = {}): Row =>
   keep(
     parents(row, input),
-    "id name workspace reached_through has_row_level_security description removed",
+    "id name workspace reached_through has_row_level_security description when_to_use removed",
     descriptions,
   );
 export const workspaceAnchor = (row: Row): Row =>
@@ -216,13 +216,13 @@ export const datasetDetail = (row: Row): Row =>
       tables: rows(row.tables).map((table) =>
         keep(
           table,
-          "name kind is_hidden column_count measure_count description description_pbi pii column_names",
+          "name kind is_hidden column_count measure_count description description_pbi grain_and_filters pii column_names",
           descriptions,
         ),
       ),
       relationships: rows(row.relationships).map(relationshipAnchor),
     },
-    "id name workspace apps has_row_level_security description description_pbi schema_error synced_at pii_hidden open_questions accepted_answers custom relationships_note date_tables tables relationships",
+    "id name workspace apps has_row_level_security description description_pbi when_to_use freshness caveats schema_error synced_at pii_hidden open_questions accepted_answers custom relationships_note date_tables tables relationships",
     {},
     ["tables", "relationships"],
   );

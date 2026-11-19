@@ -39,10 +39,22 @@ function saveAnyway(error: ServiceError) {
   };
 }
 
+/** A refusal a client tells apart by name says so in its detail. */
+function codeOf(error: ServiceError) {
+  return typeof error.detail.code === "string"
+    ? { code: error.detail.code }
+    : {};
+}
+
 /** The REST answer to a ServiceError: its kind and its message, and the one machine-readable refusal above; never the rest of its detail. */
 export function errorResponse(c: Context, error: ServiceError): Response {
   return c.json(
-    { error: error.kind, message: error.message, ...saveAnyway(error) },
+    {
+      error: error.kind,
+      message: error.message,
+      ...codeOf(error),
+      ...saveAnyway(error),
+    },
     ERROR_STATUS[error.kind],
   );
 }

@@ -7967,6 +7967,48 @@
                       ],
                       "additionalProperties": false
                     },
+                    "when_to_use": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "freshness": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "caveats": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "grain_and_filters": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "unit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "blank_means": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "description": {
                       "type": [
                         "string",
@@ -8121,6 +8163,83 @@
                         }
                       ]
                     }
+                  },
+                  "when_to_use": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "freshness": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "caveats": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "grain_and_filters": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unit": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "blank_means": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -8159,6 +8278,48 @@
                         "name"
                       ],
                       "additionalProperties": false
+                    },
+                    "when_to_use": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "freshness": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "caveats": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "grain_and_filters": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "unit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "blank_means": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "description": {
                       "type": [
@@ -14041,6 +14202,12 @@
                               "null"
                             ]
                           },
+                          "when_to_use": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "workspace": {
                             "type": "object",
                             "properties": {
@@ -14108,6 +14275,7 @@
                           "name",
                           "icon",
                           "description",
+                          "when_to_use",
                           "workspace",
                           "reached_through",
                           "has_row_level_security",
@@ -14366,6 +14534,30 @@
                       ]
                     },
                     "description_pbi": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "when_to_use": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "freshness": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "caveats": {
                       "type": [
                         "string",
                         "null"
@@ -14674,6 +14866,12 @@
                               "null"
                             ]
                           },
+                          "grain_and_filters": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "column_count": {
                             "type": "number"
                           },
@@ -14698,6 +14896,7 @@
                           "is_hidden",
                           "description",
                           "description_pbi",
+                          "grain_and_filters",
                           "column_count",
                           "measure_count",
                           "custom"
@@ -14716,6 +14915,10 @@
                     "icon",
                     "description",
                     "description_pbi",
+                    "when_to_use",
+                    "owner",
+                    "freshness",
+                    "caveats",
                     "workspace",
                     "apps",
                     "reached_through",
@@ -14882,6 +15085,18 @@
                               "null"
                             ]
                           },
+                          "unit": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "blank_means": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "display_folder": {
                             "type": [
                               "string",
@@ -14925,6 +15140,8 @@
                           "is_hidden",
                           "description",
                           "description_pbi",
+                          "unit",
+                          "blank_means",
                           "display_folder",
                           "terms",
                           "removed"
@@ -15137,6 +15354,18 @@
                             "null"
                           ]
                         },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "blank_means": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "display_folder": {
                           "type": [
                             "string",
@@ -15192,6 +15421,8 @@
                         "is_hidden",
                         "description",
                         "description_pbi",
+                        "unit",
+                        "blank_means",
                         "display_folder",
                         "terms",
                         "removed",

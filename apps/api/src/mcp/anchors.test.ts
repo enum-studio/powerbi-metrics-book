@@ -75,7 +75,7 @@ const row = {
 const cases = [
   ["metricAnchor", "id name label summary summary_truncated unit category trust_state dataset_count aliases aliases_truncated", 650],
   ["variantAnchor", "id dataset measure measure_reference", 700],
-  ["columnAnchor", "id name table data_type display_folder description description_truncated description_pbi description_pbi_truncated terms", 700],
+  ["columnAnchor", "id name table data_type display_folder description description_truncated description_pbi description_pbi_truncated unit terms", 750],
   ["measureAnchor", "id name table display_folder description description_truncated description_pbi description_pbi_truncated metric", 1000],
   ["datasetAnchor", "id name workspace reached_through description description_truncated", 450],
   ["workspaceAnchor", "id name dataset_count description description_truncated", 300],

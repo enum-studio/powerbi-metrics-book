@@ -870,7 +870,12 @@ pbmb docs COMMAND
 
 ### `pbmb docs set`
 
-Set an element's description. It replaces the one written before.
+Set an element's description and, for a dataset, table or column, its fields.
+
+A description replaces the one written before. Give --description or
+--file, and the flags of the element's kind: a dataset takes
+--when-to-use, --owner, --freshness and --caveats, a table --grain and
+--caveats, a column --unit and --blank-means.
 
 Example: pbmb docs set measure 7c9e6679-7425-40de-944b-e07fc1f90ae7 --file net.md
 
@@ -887,10 +892,17 @@ pbmb docs set [OPTIONS] KIND ELEMENT_ID
 | --- | --- | --- | --- |
 | `--description` | str |   | The description, as plain text or Markdown. |
 | `--file` | path |   | Read the description from this UTF-8 text file. |
+| `--when-to-use` | str |   | Dataset: when to use it, and when not. |
+| `--owner` | str |   | Dataset: who owns it. |
+| `--freshness` | str |   | Dataset: how fresh its data is. |
+| `--caveats` | str |   | Dataset or table: what to watch for. |
+| `--grain` | str |   | Table: what a row is, and what the table leaves out. |
+| `--unit` | str |   | Column: its unit. |
+| `--blank-means` | str |   | Column: what a blank value means. |
 
 ### `pbmb docs show`
 
-Show an element's description, who wrote it, and its custom fields.
+Show an element's description, who wrote it, its fields and custom fields.
 
 Example: pbmb docs show column 7c9e6679-7425-40de-944b-e07fc1f90ae7
 

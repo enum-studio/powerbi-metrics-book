@@ -246,6 +246,13 @@ export const IconChoices = z
   .meta({ id: "IconChoices" });
 export const Docs = z.object({
   element: z.object({ kind: z.string(), id: z.string(), name: z.string() }),
+  when_to_use: z.string().nullable().optional(),
+  owner: z.string().nullable().optional(),
+  freshness: z.string().nullable().optional(),
+  caveats: z.string().nullable().optional(),
+  grain_and_filters: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  blank_means: z.string().nullable().optional(),
   description: z.string().nullable(),
   description_pbi: z.string().nullable(),
   described_by: z.string().nullable(),

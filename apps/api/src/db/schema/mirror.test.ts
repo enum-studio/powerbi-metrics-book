@@ -60,6 +60,22 @@ describe("the mirror's tables", () => {
     ).rejects.toThrow("permission denied for table powerbi_measure");
   });
 
+  it.each([
+    [
+      "powerbi_dataset",
+      "when_to_use = 'x', owner = 'x', freshness = 'x', caveats = 'x'",
+    ],
+    ["powerbi_table", "grain_and_filters = 'x', caveats = 'x'"],
+    ["powerbi_column", "unit = 'x', blank_means = 'x'"],
+  ])("lets api_rw write the documentation fields of %s", async (table, set) => {
+    const written = await asRole(
+      "api_rw",
+      `update ${table} set ${set} where id = $1`,
+      [randomUUID()],
+    );
+    expect(written.rowCount).toBe(0);
+  });
+
   it("lets api_rw describe a measure and file it in a folder", async () => {
     // Postgres checks a column's privilege before it reads a row, so an update
     // that matches nothing still shows the grant.

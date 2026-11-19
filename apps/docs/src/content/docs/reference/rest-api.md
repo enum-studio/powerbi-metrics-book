@@ -1428,7 +1428,7 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | One dataset described: its tables, relationships and descriptions | an object with open_questions, accepted_answers, kind, id, name, icon, description, description_pbi, workspace, apps, reached_through, configured_by, target_storage_mode, has_row_level_security, endorsement, sensitivity_label, schema_error, schema_changed_at, created_date, synced_at, described_by, described_at, custom, relationships_source, relationships_read_at, relationships_note, relationships, date_tables, tables, pii_hidden |
+| 200 | One dataset described: its tables, relationships and descriptions | an object with open_questions, accepted_answers, kind, id, name, icon, description, description_pbi, when_to_use, owner, freshness, caveats, workspace, apps, reached_through, configured_by, target_storage_mode, has_row_level_security, endorsement, sensitivity_label, schema_error, schema_changed_at, created_date, synced_at, described_by, described_at, custom, relationships_source, relationships_read_at, relationships_note, relationships, date_tables, tables, pii_hidden |
 
 Fields of the first answer:
 
@@ -1442,6 +1442,10 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `description` | text or null | yes |   |
 | `description_pbi` | text or null | yes |   |
+| `when_to_use` | text or null | yes |   |
+| `owner` | text or null | yes |   |
+| `freshness` | text or null | yes |   |
+| `caveats` | text or null | yes |   |
 | `workspace` | an object with kind, id, name | yes |   |
 | `apps` | a list of an object | yes |   |
 | `reached_through` | a list of an object | yes |   |
@@ -1516,7 +1520,7 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `column` | an object with kind, id, name, table, data_type, column_type, is_hidden, description, description_pbi, display_folder, terms, removed, pii, expression, format_string | yes |   |
+| `column` | an object with kind, id, name, table, data_type, column_type, is_hidden, description, description_pbi, unit, blank_means, display_folder, terms, removed, pii, expression, format_string | yes |   |
 | `table` | an object with id, name, description | yes |   |
 | `terms` | a list of an object | yes |   |
 | `relationships` | a list of an object | yes |   |
@@ -1588,13 +1592,20 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | An element's description and custom fields | an object with element, description, description_pbi, described_by, described_at, custom |
+| 200 | An element's description and custom fields | an object with element, when_to_use, owner, freshness, caveats, grain_and_filters, unit, blank_means, description, description_pbi, described_by, described_at, custom |
 
 Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `element` | an object with kind, id, name | yes |   |
+| `when_to_use` | text or null | no |   |
+| `owner` | text or null | no |   |
+| `freshness` | text or null | no |   |
+| `caveats` | text or null | no |   |
+| `grain_and_filters` | text or null | no |   |
+| `unit` | text or null | no |   |
+| `blank_means` | text or null | no |   |
 | `description` | text or null | yes |   |
 | `description_pbi` | text or null | yes |   |
 | `described_by` | text or null | yes |   |
@@ -1620,16 +1631,30 @@ Body (JSON, optional):
 | --- | --- | --- | --- |
 | `description` | text or null | no |   |
 | `custom` | an object | no |   |
+| `when_to_use` | text or null | no |   |
+| `owner` | text or null | no |   |
+| `freshness` | text or null | no |   |
+| `caveats` | text or null | no |   |
+| `grain_and_filters` | text or null | no |   |
+| `unit` | text or null | no |   |
+| `blank_means` | text or null | no |   |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | Set an element's description and custom fields | an object with element, description, description_pbi, described_by, described_at, custom |
+| 200 | Set an element's description and custom fields | an object with element, when_to_use, owner, freshness, caveats, grain_and_filters, unit, blank_means, description, description_pbi, described_by, described_at, custom |
 
 Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `element` | an object with kind, id, name | yes |   |
+| `when_to_use` | text or null | no |   |
+| `owner` | text or null | no |   |
+| `freshness` | text or null | no |   |
+| `caveats` | text or null | no |   |
+| `grain_and_filters` | text or null | no |   |
+| `unit` | text or null | no |   |
+| `blank_means` | text or null | no |   |
 | `description` | text or null | yes |   |
 | `description_pbi` | text or null | yes |   |
 | `described_by` | text or null | yes |   |
