@@ -1,6 +1,7 @@
 # Documentation fields, and the conventions as a file
 
-Written on 2026-11-19 at Martin's asking, for his review. Not built. It follows the Documentation
+Written on 2026-11-19 at Martin's asking, and built from the same day; its open questions were
+settled with the defaults under "Decisions". It follows the Documentation
 tabs added the same day (`docs/decisions/look.md`, "A table, a folder and a column have pages"), and
 takes its file approach from Metrics Book's project conventions spec
 (`enum-studio/metrics-book`, `docs/specs/2026-11-18-project-conventions.md`).
@@ -25,7 +26,8 @@ Two changes, which meet in one file.
 - A deployment with no `conventions.yml` behaves exactly as today.
 - `pbmb conventions apply conventions.yml` shows the difference and, for each changed rule, how many
   metrics, terms and elements now fail it, then saves.
-- An exception lets one named metric keep failing one rule; an exception that matches nothing fails.
+- An exception lets one named metric keep failing one rule; an exception whose target is gone, or
+  passes the rule without it, fails.
 - A company that saved its conventions before a release still gets that release's preset change for
   every key it did not set.
 - No key in the conventions takes a regular expression.
@@ -139,9 +141,16 @@ tables gain these columns and nothing more. `custom` stays for each company's ow
   `--grain`, `--unit` and `--blank-means`, refusing a field the kind does not have.
   `pbmb docs check [--dataset <name>]` lists the gaps.
 - **Web.** The Documentation tabs read the kind's field list from the conventions, in the order
-  of the table above, then the kind's custom fields, then Details.
+  of the table above, then the kind's custom fields, then Details. The book's `description` shows
+  as **Definition**, the word the metric page uses, with Power BI's description in its place while
+  the book has none.
 - **Checks.** `dataset_fields`, `table_fields` and `column_fields` join the check list, reported by
-  `pbmb docs check` and counted in `whoami`'s summary.
+  `pbmb docs check`. `whoami` does not count them: a count would have to check every element the
+  caller can see on every call.
+
+Today `checkTerm` runs only in tests, and no route checks the whole book. The counts `apply` shows,
+`--baseline` and unused exceptions need one runner that checks every metric, term and element
+against a given conventions document, so the runner is part of this work.
 
 ### In the conventions
 
@@ -220,6 +229,11 @@ did not set. The upgrade turns each stored version into that overlay by dropping
 to the current preset's. A value that differs stays as the company's, so no rule in force changes on
 upgrade. The database stays what the API reads; the file is how people change it and review it.
 
+A stored company part carries `format: 1`, as the file does. A stored document without it is a
+complete one from before this release, and the start upgrades it once, inside the migration
+transaction, where the preset files are on disk. The upgrade never runs on a document that has
+`format`, so a later preset change can never be read as the company's.
+
 ### Rule ids
 
 A rule's id is the path of the key it reads: `naming.kinds`, `naming.case`,
@@ -251,8 +265,9 @@ exactly one target and a `reason`: one line of at most 200 characters, shown as 
 | `table_fields.*` | `table`: `'<table>'` in a `dataset` |
 | `column_fields.*` | `column`: `'<table>'[<column>]` in a `dataset` |
 
-There are no wildcards. An exception that matches nothing fails `pbmb metrics check` and
-`pbmb docs check` with `conventions.exception_unused`, so the list only shrinks.
+There are no wildcards. An exception is unused when its target no longer exists or passes the rule
+without it. An unused exception fails `pbmb metrics check` and `pbmb docs check` with
+`conventions.exception_unused`, so the list only shrinks.
 
 `pbmb conventions apply conventions.yml --baseline --reason "Names in use before the house style"`
 writes one exception for each current failure of a rule the file changes. This is how a production
@@ -320,12 +335,17 @@ in `docs/security/agents.md`, rule 3, and `docs/security/threat_model.md` gains 
 - `off` and exceptions can weaken the book. `pbmb conventions show --json` and `whoami` report how
   many rules are off and how many exceptions exist, so a weakened book shows in review.
 - Removing regular expressions removes the one way the conventions could stall a sync.
-- The CLI reads the file with its existing safe loader, which refuses anchors and aliases, and every
-  path it reads (`guide`) stays inside the deployment folder.
+- The CLI reads the file with the loader `pbmb conventions` already uses, which refuses anchors and
+  aliases (`pbmb check` uses it for `conventions.yml` too), and every path it reads (`guide`) stays
+  inside the deployment folder.
 - An exception's reason and the guide are data an agent reads, never instructions it follows
   (agents rule 5); they are shown as text.
-- The new documentation columns get grants for `api_rw` only, and a security test proves the sync's
-  role cannot write them.
+- The new documentation columns get update grants for `api_rw`, as `description` has. The sync's
+  role, `worker_rw`, holds every right on the mirror tables, so no grant keeps it out. What keeps it
+  out is that the sync's upserts never name these columns, and a security test proves a sync leaves
+  them as a curator wrote them.
+- A list of exceptions names metrics, terms, datasets, tables and columns. Element targets are shown
+  only to a caller who can see the element, and a PII column only to a `pii_reader`.
 
 ## 5. Delivery order
 
@@ -354,9 +374,15 @@ One migration per branch.
 - **No regular expressions.** Stops being right if companies need patterns that prefixes and names
   cannot say; then a linear-time engine, never JavaScript's.
 
-## Open questions for Martin
+- **`owner` is a built-in dataset field, not required.** Stops being right if companies mostly name
+  a person or team in a custom field anyway.
+- **`conventions.yml` stands beside `book.yml`.** Stops being right if people keep the two in step
+  by hand and get it wrong.
+- **A table's `definition` is required on fact, dimension and standalone tables, never on measures
+  or date tables.** Stops being right if agents misread a date table for lack of one.
 
-1. Is `owner` a built-in dataset field, or left to each company's custom fields?
-2. Should `conventions.yml` stand beside `book.yml`, as above, or stay inside it?
-3. Should a table's `definition` be required on every kind of table, or only on facts and
-   dimensions?
+## Questions settled with defaults
+
+Martin's three open questions were settled with the defaults above when the build started
+unattended: `owner` built in, `conventions.yml` beside `book.yml`, and a table's `definition`
+required on every table but measures and date tables. Each can change in review.
