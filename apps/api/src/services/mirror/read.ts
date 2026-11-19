@@ -304,6 +304,7 @@ export type DatasetAnchor = {
   name: string;
   icon: string | null;
   description: string | null;
+  when_to_use: string | null;
   workspace: Ref;
   reached_through: Reach[];
   has_row_level_security: boolean;
@@ -371,6 +372,7 @@ export async function listDatasets(
       icon: powerbiDataset.icon,
       description: powerbiDataset.description,
       description_pbi: powerbiDataset.description_pbi,
+      when_to_use: powerbiDataset.when_to_use,
       has_row_level_security: powerbiDataset.has_row_level_security,
       removed_at: powerbiDataset.removed_at,
       workspace_id: powerbiWorkspace.id,
@@ -406,6 +408,7 @@ export async function listDatasets(
         name: row.name,
         icon: row.icon,
         description: described(row.description, row.description_pbi),
+        when_to_use: row.when_to_use,
         workspace,
         reached_through: reachedThrough(
           context.principal,
@@ -968,6 +971,8 @@ export async function listColumns(
       is_hidden: powerbiColumn.is_hidden,
       description: powerbiColumn.description,
       description_pbi: powerbiColumn.description_pbi,
+      unit: powerbiColumn.unit,
+      blank_means: powerbiColumn.blank_means,
       display_folder: powerbiColumn.display_folder,
       removed_at: powerbiColumn.removed_at,
       table_id: powerbiTable.id,
@@ -1022,6 +1027,8 @@ type ColumnRow = {
   is_hidden: boolean;
   description: string | null;
   description_pbi: string | null;
+  unit: string | null;
+  blank_means: string | null;
   display_folder: string | null;
   removed_at: Date | null;
   table_id: string;
@@ -1039,6 +1046,8 @@ const columnItem = (row: ColumnRow, terms: { id: string; name: string }[]) => ({
   is_hidden: row.is_hidden,
   description: row.description,
   description_pbi: row.description_pbi,
+  unit: row.unit,
+  blank_means: row.blank_means,
   display_folder: row.display_folder,
   /** Usually none or one; a column may back several terms. */
   terms,

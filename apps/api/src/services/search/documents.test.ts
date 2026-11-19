@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../context.js";
 import {
@@ -254,6 +254,56 @@ describe("buildDocuments", () => {
       expect(await countOf(tx, "table")).toBe(tablesInMirror);
       expect(await countOf(tx, "column")).toBe(columnsInMirror);
       expect(await countOf(tx, "category")).toBe(2);
+    });
+  });
+
+  it("puts each built-in documentation field of a dataset, table and column in its search text", async () => {
+    await inSampleMirror("worker_rw", async (tx, sample) => {
+      const ids = await seedBook(tx, sample);
+      const sales = sample.tenant.datasets.find((d) => d.name === SALES);
+      const [table] = await tx
+        .select({ id: powerbiTable.id })
+        .from(powerbiTable)
+        .where(
+          and(
+            eq(powerbiTable.dataset_id, sales?.id ?? ""),
+            eq(powerbiTable.name, "Customer"),
+          ),
+        );
+      await tx
+        .update(powerbiDataset)
+        .set({
+          when_to_use: "datasetwhen",
+          owner: "datasetowner",
+          freshness: "datasetfresh",
+          caveats: "datasetcaveat",
+        })
+        .where(eq(powerbiDataset.id, sales?.id ?? ""));
+      await tx
+        .update(powerbiTable)
+        .set({ grain_and_filters: "tablegrain", caveats: "tablecaveat" })
+        .where(eq(powerbiTable.id, table?.id ?? ""));
+      await tx
+        .update(powerbiColumn)
+        .set({ unit: "columnunit", blank_means: "columnblank" })
+        .where(eq(powerbiColumn.id, ids.column));
+      await buildDocuments(tx);
+      const text = async (kind: string, id: string) =>
+        (await document(tx, `${kind}:${id}`)).search_text;
+      const dataset = await text("dataset", sales?.id ?? "");
+      for (const word of [
+        "datasetwhen",
+        "datasetowner",
+        "datasetfresh",
+        "datasetcaveat",
+      ])
+        expect(dataset, word).toContain(word);
+      const tableText = await text("table", table?.id ?? "");
+      for (const word of ["tablegrain", "tablecaveat"])
+        expect(tableText, word).toContain(word);
+      const column = await text("column", ids.column);
+      for (const word of ["columnunit", "columnblank"])
+        expect(column, word).toContain(word);
     });
   });
 

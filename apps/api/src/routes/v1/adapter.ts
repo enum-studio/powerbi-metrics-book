@@ -69,7 +69,11 @@ export const credential: MiddlewareHandler<AppEnv> = async (c, next) => {
 
 /** What an error answers, as http/error-response.ts writes it. */
 export const ErrorBody = z
-  .object({ error: z.enum(ERROR_KINDS), message: z.string() })
+  .object({
+    error: z.enum(ERROR_KINDS),
+    message: z.string(),
+    code: z.string().optional(),
+  })
   .meta({ id: "Error" });
 
 const ERRORS = {

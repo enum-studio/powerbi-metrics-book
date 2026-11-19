@@ -553,7 +553,19 @@ export function curationRoutes(deps: AppDeps): Hono<AppEnv> {
     validator("param", z.object({ kind: text, id: guid }), refuse),
     validator(
       "json",
-      z.strictObject({ description: freeOrNull, custom }).partial(),
+      z
+        .strictObject({
+          description: freeOrNull,
+          custom,
+          when_to_use: freeOrNull,
+          owner: freeOrNull,
+          freshness: freeOrNull,
+          caveats: freeOrNull,
+          grain_and_filters: freeOrNull,
+          unit: freeOrNull,
+          blank_means: freeOrNull,
+        })
+        .partial(),
       refuse,
     ),
     async (c) =>

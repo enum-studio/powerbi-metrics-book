@@ -1970,6 +1970,7 @@ export interface components {
         | "upstream"
         | "unavailable";
       message: string;
+      code?: string;
     };
     Me: {
       id: string;
@@ -5397,6 +5398,13 @@ export interface operations {
               id: string;
               name: string;
             };
+            when_to_use?: string | null;
+            owner?: string | null;
+            freshness?: string | null;
+            caveats?: string | null;
+            grain_and_filters?: string | null;
+            unit?: string | null;
+            blank_means?: string | null;
             description: string | null;
             description_pbi: string | null;
             described_by: string | null;
@@ -5462,6 +5470,13 @@ export interface operations {
           custom?: {
             [key: string]: string | number | boolean | null;
           };
+          when_to_use?: string | null;
+          owner?: string | null;
+          freshness?: string | null;
+          caveats?: string | null;
+          grain_and_filters?: string | null;
+          unit?: string | null;
+          blank_means?: string | null;
         };
       };
     };
@@ -5478,6 +5493,13 @@ export interface operations {
               id: string;
               name: string;
             };
+            when_to_use?: string | null;
+            owner?: string | null;
+            freshness?: string | null;
+            caveats?: string | null;
+            grain_and_filters?: string | null;
+            unit?: string | null;
+            blank_means?: string | null;
             description: string | null;
             description_pbi: string | null;
             described_by: string | null;
@@ -8294,6 +8316,7 @@ export interface operations {
               name: string;
               icon: string | null;
               description: string | null;
+              when_to_use: string | null;
               workspace: {
                 /** @enum {string} */
                 kind: "workspace" | "app" | "dataset" | "table";
@@ -8395,6 +8418,10 @@ export interface operations {
             icon: string | null;
             description: string | null;
             description_pbi: string | null;
+            when_to_use: string | null;
+            owner: string | null;
+            freshness: string | null;
+            caveats: string | null;
             workspace: {
               /** @constant */
               kind: "workspace";
@@ -8455,6 +8482,7 @@ export interface operations {
               is_hidden: boolean;
               description: string | null;
               description_pbi: string | null;
+              grain_and_filters: string | null;
               column_count: number;
               measure_count: number;
               custom: {
@@ -8552,6 +8580,8 @@ export interface operations {
               is_hidden: boolean;
               description: string | null;
               description_pbi: string | null;
+              unit: string | null;
+              blank_means: string | null;
               display_folder: string | null;
               terms: {
                 id: string;
@@ -8647,6 +8677,8 @@ export interface operations {
               is_hidden: boolean;
               description: string | null;
               description_pbi: string | null;
+              unit: string | null;
+              blank_means: string | null;
               display_folder: string | null;
               terms: {
                 id: string;

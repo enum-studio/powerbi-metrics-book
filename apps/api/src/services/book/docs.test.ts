@@ -48,6 +48,10 @@ describe("getDocs", () => {
     const context = asPerson(appReader);
     expect(await getDocs(context, { kind: "dataset", id: id.sales })).toEqual({
       element: { kind: "dataset", id: id.sales, name: "Sales" },
+      when_to_use: null,
+      owner: null,
+      freshness: null,
+      caveats: null,
       description: "Every order line since 2024.",
       description_pbi: "Orders and revenue.",
       described_by: null,
@@ -221,6 +225,90 @@ describe("setDocs", () => {
         (await setDocs(context, element, { custom: { owner_team: "Finance" } }))
           .custom,
       ).toEqual({ owner_team: "Finance" });
+    }));
+});
+
+describe("the built-in fields", () => {
+  it("are written per kind, trimmed, cleared by a blank, recorded, and carried by the answer of their kind only", () =>
+    rolledBack(async (tx) => {
+      const context = as(tx);
+      const dataset = await setDocs(
+        context,
+        { kind: "dataset", id: id.sales },
+        { when_to_use: "  For sales  ", owner: "Sales Operations" },
+      );
+      expect(dataset).toMatchObject({
+        when_to_use: "For sales",
+        owner: "Sales Operations",
+        freshness: null,
+        caveats: null,
+        described_by: "test-curator",
+      });
+      expect(dataset).not.toHaveProperty("unit");
+      const table = await setDocs(
+        context,
+        { kind: "table", id: id.sales_table },
+        { grain_and_filters: "One row per order line", caveats: "No returns" },
+      );
+      expect(table).toMatchObject({
+        grain_and_filters: "One row per order line",
+      });
+      expect(table).not.toHaveProperty("owner");
+      const column = await setDocs(
+        context,
+        { kind: "column", id: id.channel },
+        { unit: "EUR", blank_means: "Not priced" },
+      );
+      expect(column).toMatchObject({ unit: "EUR", blank_means: "Not priced" });
+      expect(
+        await getDocs(context, { kind: "measure", id: id.net_sales }),
+      ).not.toHaveProperty("unit");
+      const cleared = await setDocs(
+        context,
+        { kind: "dataset", id: id.sales },
+        { owner: "  " },
+      );
+      expect(cleared).toMatchObject({ owner: null, when_to_use: "For sales" });
+      const [change] = await tx
+        .select()
+        .from(bookChange)
+        .where(
+          and(
+            eq(bookChange.action, "docs"),
+            eq(bookChange.element_id, id.sales),
+          ),
+        )
+        .orderBy(asc(bookChange.id));
+      expect(change).toMatchObject({
+        before: { when_to_use: null },
+        after: { when_to_use: "For sales" },
+      });
+    }));
+
+  it("are refused on a kind that lacks them, naming the field and the kind", () =>
+    rolledBack(async (tx) => {
+      const context = as(tx);
+      for (const [kind, element, field] of [
+        ["dataset", id.sales, "unit"],
+        ["column", id.channel, "owner"],
+        ["measure", id.net_sales, "caveats"],
+        ["table", id.sales_table, "when_to_use"],
+      ] as const)
+        await expect(
+          setDocs(context, { kind, id: element }, { [field]: "x" }),
+        ).rejects.toMatchObject({
+          kind: "invalid",
+          message: `${field} is not a field of a ${kind}. ${
+            kind === "dataset"
+              ? "A dataset has when_to_use, owner, freshness, caveats."
+              : kind === "column"
+                ? "A column has unit, blank_means."
+                : kind === "table"
+                  ? "A table has grain_and_filters, caveats."
+                  : "A measure has no built-in fields."
+          }`,
+          detail: { code: "docs.field_not_on_kind", field, kind },
+        });
     }));
 });
 
