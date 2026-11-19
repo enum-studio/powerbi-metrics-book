@@ -1,0 +1,94 @@
+import pg from "pg";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { roleUrl } from "../../../test/database.js";
+import { resolve } from "./store.js";
+import { upgradeStoredConventions } from "./upgrade.js";
+
+// The upgrade runs as the migrator, inside the start's migration.
+const migrator = new pg.Client({ connectionString: roleUrl("migrator") });
+await migrator.connect();
+afterAll(() => migrator.end());
+beforeEach(() => migrator.query("delete from conventions"));
+
+const store = (version: number, document: object) =>
+  migrator.query(
+    "insert into conventions (version, document, set_by) values ($1, $2, 'test-admin')",
+    [version, JSON.stringify(document)],
+  );
+
+type Row = { version: number; document: object; text: string; xmin: string };
+const stored = async () =>
+  (
+    await migrator.query<Row>(
+      "select version, document, document::text as text, xmin::text from conventions order by version",
+    )
+  ).rows;
+
+describe("upgradeStoredConventions", () => {
+  it("turns each complete document into the company's part, resolving to the same rules", async () => {
+    const preset = resolve({});
+    const minimal = resolve({ preset: "minimal" });
+    const kinds = [...preset.naming.kinds, "_share"];
+    const complete = [
+      preset,
+      { ...preset, naming: { ...preset.naming, kinds } },
+      {
+        ...minimal,
+        metric_fields: {
+          ...minimal.metric_fields,
+          when_to_use: { required: true },
+        },
+      },
+    ];
+    for (const [at, document] of complete.entries())
+      await store(at + 1, document);
+
+    expect(await upgradeStoredConventions(migrator)).toBe(3);
+
+    const rows = await stored();
+    expect(rows.map((row) => row.document)).toEqual([
+      { format: 1, preset: "metrics_book" },
+      { format: 1, preset: "metrics_book", naming: { kinds } },
+      {
+        format: 1,
+        preset: "minimal",
+        metric_fields: { when_to_use: { required: true } },
+      },
+    ]);
+    expect(rows.map((row) => resolve(row.document))).toEqual(complete);
+  });
+
+  it("upgrades nothing twice, and never touches a document that has its format", async () => {
+    await store(1, resolve({}));
+    const part = {
+      format: 1,
+      preset: "metrics_book",
+      naming: { case: "snake_case" },
+    };
+    await store(2, part);
+    const [, before] = await stored();
+
+    expect(await upgradeStoredConventions(migrator)).toBe(1);
+    expect(await upgradeStoredConventions(migrator)).toBe(0);
+    const [first, after] = await stored();
+    expect(first?.document).toEqual({ format: 1, preset: "metrics_book" });
+    expect(after).toEqual(before);
+  });
+
+  it("stops at a document it cannot read, naming its version, and changes nothing", async () => {
+    await store(1, resolve({}));
+    await store(2, { naming: { case: "camel_case" } });
+    await migrator.query("begin");
+    try {
+      await expect(upgradeStoredConventions(migrator)).rejects.toThrow(
+        /^Version 2 of the conventions cannot be upgraded: .*naming\.case/,
+      );
+    } finally {
+      await migrator.query("rollback");
+    }
+    expect((await stored()).map((row) => row.document)).not.toContainEqual({
+      format: 1,
+      preset: "metrics_book",
+    });
+  });
+});

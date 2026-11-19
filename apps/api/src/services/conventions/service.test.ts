@@ -3,8 +3,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals } from "../../../test/deps.js";
 import { asPerson, rolledBack } from "../../../test/mirror-fixtures.js";
 import { event } from "../../db/schema/events.js";
+import { FIXED_RULES, RULES } from "./rules.js";
 import {
+  getCompanyPartAsAdmin,
   getConventionsForAgents,
+  listRules,
   setConventionsAsAdmin,
   summariseRules,
 } from "./service.js";
@@ -82,6 +85,79 @@ describe("getConventionsForAgents", () => {
     expect(text).not.toContain("never holds these words");
     expect(text).not.toContain("custom field");
   });
+});
+
+describe("listRules", () => {
+  it("gives each rule its value in force, where it comes from and whether it is off, and the fixed rules", () =>
+    rolledBack(async (tx) => {
+      const viewer = asPerson(principals.viewer, { db: tx });
+      const preset = resolve({});
+      const before = await listRules(viewer);
+      expect(before.rules.map((rule) => rule.id)).toEqual(
+        RULES.map((rule) => rule.id),
+      );
+      expect(before.rules.every((rule) => rule.source === "preset")).toBe(true);
+      expect(before.fixed).toEqual(FIXED_RULES);
+
+      await setConventionsAsAdmin(asPerson(principals.admin, { db: tx }), {
+        format: 1,
+        naming: { kinds: ["total_"] },
+        metric_fields: { not_the_same_as: { ignore_words: ["net"] } },
+        checks: { off: ["metric_base_variant"] },
+      });
+      const after = await listRules(viewer);
+      const byId = new Map(after.rules.map((rule) => [rule.id, rule]));
+      expect(byId.get("naming.kinds")).toEqual({
+        id: "naming.kinds",
+        check: "metric_name_form",
+        target: "metric",
+        value: ["total_"],
+        source: "company",
+        allowed: null,
+        off: false,
+        exceptions: 0,
+      });
+      expect(byId.get("metric_fields.not_the_same_as")).toMatchObject({
+        source: "company",
+        value: {
+          ...preset.metric_fields.not_the_same_as,
+          ignore_words: ["net"],
+        },
+        allowed: [true, false, "when_label_shares_a_word"],
+      });
+      expect(byId.get("naming.case")).toMatchObject({
+        value: preset.naming.case,
+        source: "preset",
+      });
+      expect(byId.get("metric_base_variant")).toMatchObject({
+        value: null,
+        source: "preset",
+        off: true,
+      });
+    }));
+});
+
+describe("getCompanyPartAsAdmin", () => {
+  it("answers an admin the stored part of the version in force, and refuses a curator", () =>
+    rolledBack(async (tx) => {
+      const admin = asPerson(principals.admin, { db: tx });
+      expect(await getCompanyPartAsAdmin(admin)).toEqual({
+        format: 1,
+        preset: "metrics_book",
+      });
+      await setConventionsAsAdmin(admin, {
+        preset: "minimal",
+        naming: { kinds: ["total_"] },
+      });
+      expect(await getCompanyPartAsAdmin(admin)).toEqual({
+        format: 1,
+        preset: "minimal",
+        naming: { kinds: ["total_"] },
+      });
+      await expect(
+        getCompanyPartAsAdmin(asPerson(principals.curator, { db: tx })),
+      ).rejects.toMatchObject({ kind: "refused" });
+    }));
 });
 
 describe("setConventionsAsAdmin", () => {

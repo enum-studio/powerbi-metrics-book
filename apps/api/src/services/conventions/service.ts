@@ -1,12 +1,15 @@
 import type { ServiceContext } from "../../context.js";
 import { BOOK } from "../book/changes.js";
+import { FIXED_RULES, RULES } from "./rules.js";
 import type { Conventions, CustomFieldSpec } from "./schema.js";
 import {
+  conventionsInForce,
   currentConventions,
   diffConventions,
   listVersions,
   resolve,
   setConventions,
+  valueAt,
 } from "./store.js";
 
 /** The rules as agents get them: everything in the conventions but the guide. */
@@ -124,6 +127,38 @@ export async function getConventionsForAgents(
 ) {
   const { guide, ...rules } = await currentConventions(context.db);
   return { preset: rules.preset, guide, summary: summariseRules(rules), rules };
+}
+
+/**
+ * Every rule with its value in force, and `company` as its source when the
+ * company's part holds its key or anything under it. Anyone signed in may read
+ * them, as they may the conventions.
+ */
+export async function listRules(context: Pick<ServiceContext, "db">) {
+  const { conventions, company } = await conventionsInForce(context.db);
+  const off = new Set<string>(conventions.checks.off);
+  return {
+    rules: RULES.map(({ id, check, target, path, allowed }) => ({
+      id,
+      check,
+      target,
+      value: path === null ? null : valueAt(conventions, path),
+      source:
+        path !== null && valueAt(company, path) !== undefined
+          ? ("company" as const)
+          : ("preset" as const),
+      allowed: allowed === null ? null : [...allowed],
+      off: off.has(check),
+      exceptions: 0,
+    })),
+    fixed: [...FIXED_RULES],
+  };
+}
+
+/** The company's part of the version in force, as stored, for whoever may edit the conventions. */
+export async function getCompanyPartAsAdmin(context: ServiceContext) {
+  await context.access.require(context.principal, BOOK, "edit_conventions");
+  return (await conventionsInForce(context.db)).company;
 }
 
 /** Validates, versions and announces; see setConventions. */

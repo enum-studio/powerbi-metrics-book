@@ -224,8 +224,11 @@ export const ROUTE_MATRIX = {
     curator_cli_token: "refused",
   },
   "PUT /api/v1/conventions": ADMINS,
+  "GET /api/v1/conventions/company": ADMINS,
   "GET /api/v1/conventions/versions": ADMINS,
   "POST /api/v1/conventions/diff": ADMINS,
+  // As GET /api/v1/conventions: the rules' values are the conventions'.
+  "GET /api/v1/conventions/rules": SIGNED_IN,
   // powerbi.service_account_queries is off by default.
   "POST /api/v1/queries": { ...SEES_SALES, service_account_granted: "refused" },
   "GET /api/v1/queries": SIGNED_IN,

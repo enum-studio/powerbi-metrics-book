@@ -24,6 +24,19 @@ export type ConventionsChange = {
 };
 export type ConventionsVersion = typeof conventions.$inferSelect;
 
+/** The format a company part carries, as the conventions file does. */
+export const CONVENTIONS_FORMAT = 1;
+/**
+ * What a company set over its preset: the version stored, and the file.
+ * Resolving it over the preset gives the conventions in force. A document
+ * without `format` is a complete one, written before a company part was stored.
+ */
+export type CompanyPart = {
+  readonly format: typeof CONVENTIONS_FORMAT;
+  readonly preset?: PresetName;
+  readonly [key: string]: unknown;
+};
+
 /**
  * The repository's conventions/presets, five folders above this module:
  * from apps/api/src/services/conventions in a checkout, and from
@@ -43,6 +56,14 @@ type Document = Record<string, unknown>;
 
 const isDocument = (value: unknown): value is Document =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** The value at a key's path; undefined where the document does not hold it. */
+export const valueAt = (document: unknown, path: readonly string[]): unknown =>
+  path.reduce<unknown>(
+    (value, key) =>
+      isDocument(value) && Object.hasOwn(value, key) ? value[key] : undefined,
+    document,
+  );
 
 const isPresetName = (value: unknown): value is PresetName =>
   PRESET_NAMES.some((name) => name === value);
@@ -97,17 +118,27 @@ const refused = (path: string, message: string) => ({
   problems: [{ path, message }],
 });
 
+const isCompanyPart = (document: unknown): document is CompanyPart =>
+  isDocument(document) && document.format === CONVENTIONS_FORMAT;
+
 function tryResolve(
   document: unknown,
 ): { conventions: Conventions } | { problems: ConventionsProblem[] } {
   if (!isDocument(document)) {
     return refused("", "The conventions are a mapping of keys.");
   }
-  const named = document.preset ?? "metrics_book";
+  const { format, ...rules } = document;
+  if (format !== undefined && format !== CONVENTIONS_FORMAT) {
+    return refused(
+      "format",
+      `This release reads format ${String(CONVENTIONS_FORMAT)} of the conventions.`,
+    );
+  }
+  const named = rules.preset ?? "metrics_book";
   if (!isPresetName(named)) {
     return refused("preset", `Name a preset: ${PRESET_NAMES.join(" or ")}.`);
   }
-  const parsed = conventionsSchema.safeParse(merge(preset(named), document));
+  const parsed = conventionsSchema.safeParse(merge(preset(named), rules));
   return parsed.success
     ? { conventions: parsed.data }
     : { problems: problemsOf(parsed.error) };
@@ -121,7 +152,8 @@ export function validateConventions(document: unknown): ConventionsProblem[] {
 
 /**
  * The preset the document names (metrics_book when it names none) merged
- * under the document's own keys, then checked whole.
+ * under the document's own keys, then checked whole. The document is a
+ * company part or a complete document; `format` is not a rule, so it goes.
  */
 export function resolve(document: unknown): Conventions {
   const resolved = tryResolve(document);
@@ -138,6 +170,36 @@ export function resolve(document: unknown): Conventions {
   );
 }
 
+/**
+ * The leaves of `document` that differ from the same path in `base`: objects
+ * key by key, arrays and every other value whole. An object left empty goes.
+ */
+function differing(document: Document, base: Document): Document {
+  return Object.fromEntries(
+    Object.entries(document).flatMap(([key, value]) => {
+      const under = Object.hasOwn(base, key) ? base[key] : undefined;
+      if (isDocument(value) && isDocument(under)) {
+        const kept = differing(value, under);
+        return Object.keys(kept).length === 0 ? [] : [[key, kept]];
+      }
+      return isDeepStrictEqual(value, under) ? [] : [[key, value]];
+    }),
+  );
+}
+
+/**
+ * The company's part of resolved conventions: its preset and every value that
+ * differs from that preset's, so resolving it gives the same conventions back.
+ */
+export function toCompanyPart(document: Conventions): CompanyPart {
+  const { preset: named, ...rules } = document;
+  return {
+    format: CONVENTIONS_FORMAT,
+    preset: named,
+    ...differing(rules, resolve({ preset: named })),
+  };
+}
+
 async function newest(db: Db): Promise<ConventionsVersion | undefined> {
   const [row] = await db
     .select()
@@ -148,9 +210,9 @@ async function newest(db: Db): Promise<ConventionsVersion | undefined> {
 }
 
 /**
- * A stored version is complete, so resolving it only fills keys a later
- * release added. One that no longer resolves is a fault to fix, not a reason
- * to fall back to other rules.
+ * A stored version is resolved over its preset as the release ships it, so a
+ * key the company did not set takes the preset's value. One that no longer
+ * resolves is a fault to fix, not a reason to fall back to other rules.
  */
 function inForce(version: ConventionsVersion | undefined): Conventions {
   if (version === undefined) return resolve({ preset: "metrics_book" });
@@ -166,8 +228,29 @@ export async function currentConventions(db: Db): Promise<Conventions> {
   return inForce(await newest(db));
 }
 
-export function listVersions(db: Db): Promise<ConventionsVersion[]> {
-  return db.select().from(conventions).orderBy(desc(conventions.version));
+/** The newest version resolved, and the company's part of it as stored. */
+export async function conventionsInForce(
+  db: Db,
+): Promise<{ conventions: Conventions; company: CompanyPart }> {
+  const version = await newest(db);
+  const resolved = inForce(version);
+  const stored = version?.document;
+  return {
+    conventions: resolved,
+    company: isCompanyPart(stored) ? stored : toCompanyPart(resolved),
+  };
+}
+
+/** Every version, newest first, each resolved as it is read in force. */
+export async function listVersions(db: Db): Promise<ConventionsVersion[]> {
+  const versions = await db
+    .select()
+    .from(conventions)
+    .orderBy(desc(conventions.version));
+  return versions.map((version) => ({
+    ...version,
+    document: inForce(version),
+  }));
 }
 
 /** Arrays are compared whole, as resolve replaces them whole. */
@@ -220,7 +303,9 @@ function refuseTrustChangeUnlessBrowser(
 /**
  * Saves the next version. The trust rule is checked here, against the version
  * read under the lock this save writes under, so every caller gets it and no
- * save can land between the check and the write.
+ * save can land between the check and the write. A company part is stored as
+ * given, values equal to the preset's included; a complete document as what
+ * differs from its preset.
  */
 export async function setConventions(
   deps: Pick<AppDeps, "db">,
@@ -232,6 +317,7 @@ export async function setConventions(
   changes: ConventionsChange[];
 }> {
   const proposed = resolve(document);
+  const part = isCompanyPart(document) ? document : toCompanyPart(proposed);
   return withEvents(deps.db, async (tx, emit) => {
     // Versions are numbered in order, so two admins saving at once take turns.
     await tx.execute(
@@ -244,7 +330,7 @@ export async function setConventions(
     refuseTrustChangeUnlessBrowser(principal, changes);
     await tx
       .insert(conventions)
-      .values({ version, document: proposed, set_by: principal.id });
+      .values({ version, document: part, set_by: principal.id });
     await recordBookChange(tx, {
       principal,
       element_kind: "conventions",

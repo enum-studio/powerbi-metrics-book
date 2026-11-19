@@ -781,6 +781,31 @@ CONVENTIONS_ANSWER = {
     "rules": RULES,
 }
 CHANGE = {"path": "naming.case", "before": "snake_case", "after": "none"}
+RULE_LIST = {
+    "rules": [
+        {
+            "id": "naming.case",
+            "check": "metric_name_form",
+            "target": "metric",
+            "value": "snake_case",
+            "source": "company",
+            "allowed": ["snake_case", "none"],
+            "off": False,
+            "exceptions": 0,
+        },
+        {
+            "id": "metric_base_variant",
+            "check": "metric_base_variant",
+            "target": "metric",
+            "value": None,
+            "source": "preset",
+            "allowed": None,
+            "off": True,
+            "exceptions": 0,
+        },
+    ],
+    "fixed": [{"id": "format", "reason": "It says how to read the rest."}],
+}
 
 
 def conventions_api(
@@ -789,6 +814,7 @@ def conventions_api(
     return routes(
         {
             ("GET", "/conventions"): json_response(200, CONVENTIONS_ANSWER),
+            ("GET", "/conventions/rules"): json_response(200, RULE_LIST),
             ("POST", "/conventions/diff"): diff
             or json_response(200, {"changes": [CHANGE]}),
             ("PUT", "/conventions"): save
@@ -813,7 +839,26 @@ def test_conventions_show_prints_the_guide_then_the_rules_in_words(
     result = run("conventions", "show")
 
     assert result.stdout.index("Names follow") < result.stdout.index("- A metric key")
-    assert json.loads(run("conventions", "show", "--json").stdout) == CONVENTIONS_ANSWER
+    shown = json.loads(run("conventions", "show", "--json").stdout)
+    assert shown == {**CONVENTIONS_ANSWER, **RULE_LIST}
+
+
+def test_conventions_show_lists_each_rule_with_its_source_and_whether_it_is_off(
+    serve: Serve,
+) -> None:
+    serve(conventions_api())
+
+    rows = [
+        row.split()
+        for row in run("conventions", "show").stdout.splitlines()
+        if row.strip().startswith(("id", "naming.case", "metric_base_variant"))
+    ]
+
+    assert rows == [
+        ["id", "value", "source", "off"],
+        ["naming.case", "snake_case", "company", "false"],
+        ["metric_base_variant", "-", "preset", "true"],
+    ]
 
 
 def test_conventions_export_is_the_yaml_that_import_takes(serve: Serve) -> None:

@@ -8534,6 +8534,203 @@
         ]
       }
     },
+    "/api/v1/conventions/rules": {
+      "get": {
+        "operationId": "getApiV1ConventionsRules",
+        "summary": "Every rule by its id: its value, where the value comes from, and whether it is off",
+        "responses": {
+          "200": {
+            "description": "Every rule by its id: its value, where the value comes from, and whether it is off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "check": {
+                            "type": "string",
+                            "enum": [
+                              "metric_name_form",
+                              "metric_name_generated",
+                              "metric_name_comparison",
+                              "metric_money_qualifier",
+                              "metric_qualifier_order",
+                              "metric_fields",
+                              "metric_not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields"
+                            ]
+                          },
+                          "target": {
+                            "type": "string",
+                            "enum": [
+                              "metric",
+                              "term",
+                              "dataset",
+                              "table",
+                              "column"
+                            ]
+                          },
+                          "value": {},
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "preset",
+                              "company"
+                            ]
+                          },
+                          "allowed": {
+                            "anyOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": [
+                                    "string",
+                                    "boolean"
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "off": {
+                            "type": "boolean"
+                          },
+                          "exceptions": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "check",
+                          "target",
+                          "value",
+                          "source",
+                          "allowed",
+                          "off",
+                          "exceptions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "fixed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "rules",
+                    "fixed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conventions/company": {
+      "get": {
+        "operationId": "getApiV1ConventionsCompany",
+        "summary": "What the company set over its preset, in the version in force",
+        "responses": {
+          "200": {
+            "description": "What the company set over its preset, in the version in force",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "format": {
+                      "type": "number",
+                      "const": 1
+                    },
+                    "preset": {
+                      "type": "string",
+                      "enum": [
+                        "metrics_book",
+                        "minimal"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "format"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/conventions": {
       "put": {
         "operationId": "putApiV1Conventions",

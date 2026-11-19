@@ -22,7 +22,7 @@ from powerbi_metrics_book.answers import (
 )
 from powerbi_metrics_book.client import ApiError, Client, Json
 from powerbi_metrics_book.output import JsonOption, Session, open_session
-from powerbi_metrics_book.tables import line
+from powerbi_metrics_book.tables import line, print_table
 
 app = typer.Typer(
     help="The company's rules for names, descriptions, variants and verification."
@@ -140,7 +140,10 @@ def show(context: typer.Context, json_output: JsonOption = False) -> None:
 
     Read this before you name, describe, group or verify anything. The checks
     (`pbmb metrics check`) read these rules, and the company's rules win over
-    any general naming advice.
+    any general naming advice. Each rule is listed by its id, with its value,
+    whether the company set it (source company) or kept the preset's, and
+    whether it is off. --json lists them under `rules`, and the rules no company
+    can change, with why, under `fixed`.
     """
     with open_session(context, json_output) as session:
         answer = object_of(session.client.get("/conventions"), "the conventions")
@@ -149,14 +152,23 @@ def show(context: typer.Context, json_output: JsonOption = False) -> None:
             raise ApiError(
                 "upstream", "The api did not answer a summary of the rules.", 200
             )
+        listed = object_of(session.client.get("/conventions/rules"), "the rules")
+        rules = objects_in(listed, "rules")
+        shown: dict[str, Json] = {
+            **answer,
+            "rules": listed.get("rules"),
+            "fixed": listed.get("fixed"),
+        }
 
         def render(console: Console) -> None:
             line(console, string_field(answer, "guide"))
             line(console, "\nRules")
             for sentence in summary:
                 line(console, f"- {one_line(sentence)}")
+            line(console, "")
+            print_table(console, rules, ["id", "value", "source", "off"])
 
-        session.emit(answer, render)
+        session.emit(shown, render)
 
 
 @app.command("export")

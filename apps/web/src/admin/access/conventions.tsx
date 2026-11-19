@@ -1,6 +1,11 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { SectionBox } from "../layout/ui";
-import { conventionsQuery, conventionVersionsQuery } from "./api";
+import {
+  conventionCompanyQuery,
+  conventionRulesQuery,
+  conventionsQuery,
+  conventionVersionsQuery,
+} from "./api";
 import { Guide } from "./guide";
 import { CopyButton } from "../../shell/copy-button";
 import { CELL, DataTable, stamp } from "./parts";
@@ -25,47 +30,38 @@ const COMMANDS = [
   },
 ] as const;
 
-/** A document's leaves as dotted paths with their values: the stored overrides, one line each. */
-function leaves(value: unknown, path: string[] = []): [string, string][] {
-  if (typeof value === "object" && value !== null && !Array.isArray(value))
-    return Object.entries(value).flatMap(([key, each]) =>
-      leaves(each, [...path, key]),
-    );
-  return [[path.join("."), JSON.stringify(value)]];
-}
-
-function WhatChanged() {
-  const { data: conventions } = useSuspenseQuery(conventionsQuery);
+/** Who saved the version in force, and the rules the company sets in it; every other rule is the preset's. */
+export function WhatChanged({ preset }: { preset: string }) {
   const { data: versions } = useSuspenseQuery(conventionVersionsQuery);
+  const { data: rules } = useSuspenseQuery(conventionRulesQuery);
+  const { data: company } = useSuspenseQuery(conventionCompanyQuery);
   const newest = versions[0];
-  const preset = PRESETS[conventions.preset] ?? conventions.preset;
-  const changes =
-    newest === undefined
-      ? []
-      : leaves(newest.document).filter(
-          ([path]) => path !== "preset" && path !== "guide",
-        );
+  const set = rules.filter((rule) => rule.source === "company");
   return (
     <SectionBox title="Preset">
       <p className="max-w-(--measure) text-ui text-ink-2">
-        Started from <span className="font-medium text-ink">{preset}</span>.{" "}
+        Started from{" "}
+        <span className="font-medium text-ink">
+          {PRESETS[preset] ?? preset}
+        </span>
+        .{" "}
         {newest === undefined
           ? "Nothing has been changed: the preset is in force."
-          : `Version ${String(newest.version)} was saved by ${newest.set_by} on ${stamp(newest.set_at)}. It changes ${String(changes.length)} ${changes.length === 1 ? "value" : "values"} of the preset${newest.document.guide === undefined ? "" : " and carries the company's own guide"}.`}
+          : `Version ${String(newest.version)} was saved by ${newest.set_by} on ${stamp(newest.set_at)}. The company sets ${String(set.length)} ${set.length === 1 ? "rule" : "rules"} itself${company.guide === undefined ? "" : ", and its own guide"}.`}
       </p>
-      {changes.length > 0 && (
+      {set.length > 0 && (
         <DataTable
-          label="What was changed"
+          label="Rules the company sets"
           min="min-w-[32rem]"
           head={["Rule", "Set to"]}
         >
-          {changes.map(([path, value]) => (
-            <tr key={path}>
-              <td className={`${CELL} font-mono text-ink`}>{path}</td>
+          {set.map(({ id, value }) => (
+            <tr key={id}>
+              <td className={`${CELL} font-mono text-ink`}>{id}</td>
               <td
                 className={`${CELL} font-mono break-words [overflow-wrap:anywhere]`}
               >
-                {value}
+                {JSON.stringify(value)}
               </td>
             </tr>
           ))}
@@ -89,7 +85,7 @@ export function Conventions() {
           ))}
         </ul>
       </SectionBox>
-      <WhatChanged />
+      <WhatChanged preset={conventions.preset} />
       <SectionBox title="Edit">
         <p className="max-w-(--measure) text-ui text-ink-2">
           The conventions are changed through the command line, so every change
