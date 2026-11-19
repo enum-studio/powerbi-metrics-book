@@ -1447,7 +1447,7 @@ Fields of the first answer:
 | --- | --- | --- | --- |
 | `changed_rules` | a list of text | yes |   |
 | `now_failing` | an object | yes |   |
-| `exceptions_added` | a whole number, at least -9007199254740991 and at most 9007199254740991 | yes |   |
+| `exceptions_added` | a list of an object | yes |   |
 | `version` | a whole number, at least -9007199254740991 and at most 9007199254740991 or null | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.

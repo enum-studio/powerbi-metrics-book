@@ -1,27 +1,19 @@
-import { and, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { AppDeps } from "../../context.js";
-import {
-  metric,
-  metricVariant,
-  term,
-  termColumn,
-} from "../../db/schema/book.js";
-import {
-  powerbiColumn,
-  powerbiDataset,
-  powerbiMeasure,
-} from "../../db/schema/mirror.js";
+import { metric, term, termColumn } from "../../db/schema/book.js";
+import { powerbiColumn } from "../../db/schema/mirror.js";
 import { RULE_TARGETS, RULES } from "../conventions/rules.js";
-import type { Conventions } from "../conventions/schema.js";
+import { type Conventions, exceptionKey } from "../conventions/schema.js";
 import {
   type CheckResult,
   type CheckTarget,
   checkMetric,
   checkTerm,
+  type ExceptionIndex,
+  exceptionIndex,
   wordsComparedWithOtherLabels,
 } from "./checks.js";
-import { baseVariant } from "./drafter.js";
-import { liveMeasure, toDataset, toMeasure } from "./metrics.js";
+import { liveVariants } from "./metrics.js";
 
 /*
  * The checks over the whole book, as the system: every metric not dismissed
@@ -30,6 +22,8 @@ import { liveMeasure, toDataset, toMeasure } from "./metrics.js";
 
 export type { CheckTarget };
 type Deps = Pick<AppDeps, "db">;
+/** The conventions a run checks under, with their exceptions indexed once for the run. */
+type Run = { conventions: Conventions; exceptions: ExceptionIndex };
 
 export interface Failure {
   rule: string;
@@ -47,18 +41,14 @@ type Checked = { target: CheckTarget; results: CheckResult[] };
 
 /**
  * For each metric's own content words, the label of one other metric that
- * shares one. A runner keeps only whether a result fails, and one such label
- * fails metric_not_the_same_as as the whole list would, so no metric is
- * compared with every other.
+ * shares one, among `labels`. A runner keeps only whether a result fails, and
+ * one such label fails metric_not_the_same_as as the whole list would, so no
+ * metric is compared with every other.
  */
-async function sharingLabels(
-  { db }: Deps,
+function sharingLabels(
+  labels: readonly { id: string; label: string }[],
   conventions: Conventions,
-): Promise<(id: string, words: string[]) => string[]> {
-  const labels = await db
-    .select({ id: metric.id, label: metric.label })
-    .from(metric)
-    .where(isNull(metric.dismissed_at));
+): (id: string, words: string[]) => string[] {
   const byWord = new Map<string, { id: string; label: string }[]>();
   for (const other of labels) {
     const words = wordsComparedWithOtherLabels(
@@ -82,46 +72,32 @@ async function sharingLabels(
 }
 
 async function checkedMetrics(
-  deps: Deps,
-  conventions: Conventions,
+  { db }: Deps,
+  run: Run,
   names?: readonly string[],
 ): Promise<Checked[]> {
-  const { db } = deps;
+  const { conventions } = run;
   const named =
     names === undefined ? undefined : inArray(metric.name, [...names]);
-  const rows = await db
-    .select()
-    .from(metric)
-    .where(and(isNull(metric.dismissed_at), named));
+  const which = and(isNull(metric.dismissed_at), named);
+  const rows = await db.select().from(metric).where(which);
   if (rows.length === 0) return [];
-  const bases = await db
-    .select({
-      metric_id: metricVariant.metric_id,
-      live: count(),
-      other:
-        sql<number>`count(*) filter (where ${metricVariant.period} = 'other')`.mapWith(
-          Number,
-        ),
-    })
-    .from(metricVariant)
-    .innerJoin(metric, eq(metric.id, metricVariant.metric_id))
-    .innerJoin(powerbiMeasure, toMeasure)
-    .innerJoin(powerbiDataset, toDataset)
-    .where(
-      and(
-        isNull(metric.dismissed_at),
-        named,
-        or(baseVariant, eq(metricVariant.period, "other")),
-        liveMeasure,
-      ),
-    )
-    .groupBy(metricVariant.metric_id);
+  const bases = await liveVariants(db, which);
   const variants = new Map(bases.map((row) => [row.metric_id, row]));
   const needsLabels = rows.some(
     (row) => wordsComparedWithOtherLabels(row, conventions).length > 0,
   );
+  // The whole book's rows hold every label; named metrics are compared with all of them.
   const sharing = needsLabels
-    ? await sharingLabels(deps, conventions)
+    ? sharingLabels(
+        names === undefined
+          ? rows
+          : await db
+              .select({ id: metric.id, label: metric.label })
+              .from(metric)
+              .where(isNull(metric.dismissed_at)),
+        conventions,
+      )
     : () => [];
   return rows.map((row) => {
     const found = variants.get(row.id);
@@ -129,7 +105,7 @@ async function checkedMetrics(
     return {
       target: { metric: row.name },
       results: checkMetric(row, {
-        conventions,
+        ...run,
         other_labels: sharing(
           row.id,
           wordsComparedWithOtherLabels(row, conventions),
@@ -144,7 +120,7 @@ async function checkedMetrics(
 
 async function checkedTerms(
   { db }: Deps,
-  conventions: Conventions,
+  run: Run,
   names?: readonly string[],
 ): Promise<Checked[]> {
   const named =
@@ -172,7 +148,7 @@ async function checkedTerms(
       target: { term: row.name },
       results: checkTerm(
         { ...row, categorical: found?.categorical ?? false },
-        { conventions, backed_by_columns: found?.columns ?? 0 },
+        { ...run, backed_by_columns: found?.columns ?? 0 },
       ),
     };
   });
@@ -190,11 +166,10 @@ export async function failuresInBook(
   conventions: Conventions,
   rules?: ReadonlySet<string>,
 ): Promise<Failure[]> {
+  const run: Run = { conventions, exceptions: exceptionIndex(conventions) };
   const checked = [
-    ...(targetsOf("metric", rules)
-      ? await checkedMetrics(deps, conventions)
-      : []),
-    ...(targetsOf("term", rules) ? await checkedTerms(deps, conventions) : []),
+    ...(targetsOf("metric", rules) ? await checkedMetrics(deps, run) : []),
+    ...(targetsOf("term", rules) ? await checkedTerms(deps, run) : []),
   ];
   return checked.flatMap(({ target, results }) =>
     results
@@ -205,9 +180,6 @@ export async function failuresInBook(
       .map((result) => ({ rule: result.rule, target })),
   );
 }
-
-const keyOf = (target: CheckTarget): string =>
-  JSON.stringify(RULE_TARGETS.map((key) => target[key] ?? null));
 
 /** Whether `target` holds every value `only` gives. */
 const within = (target: CheckTarget, only: CheckTarget): boolean =>
@@ -221,6 +193,7 @@ export async function unusedExceptions(
   conventions: Conventions,
   only?: CheckTarget,
 ): Promise<UnusedException[]> {
+  const run: Run = { conventions, exceptions: exceptionIndex(conventions) };
   const exceptions = conventions.exceptions
     .map(({ rule, reason, ...target }) => ({ rule, reason, target }))
     .filter(({ target }) => only === undefined || within(target, only));
@@ -230,14 +203,14 @@ export async function unusedExceptions(
   const metrics = namesOf("metric");
   const terms = namesOf("term");
   const checked = [
-    ...(metrics.length > 0
-      ? await checkedMetrics(deps, conventions, metrics)
-      : []),
-    ...(terms.length > 0 ? await checkedTerms(deps, conventions, terms) : []),
+    ...(metrics.length > 0 ? await checkedMetrics(deps, run, metrics) : []),
+    ...(terms.length > 0 ? await checkedTerms(deps, run, terms) : []),
   ];
-  const byTarget = new Map(checked.map((each) => [keyOf(each.target), each]));
+  const byTarget = new Map(
+    checked.map((each) => [exceptionKey(each.target), each]),
+  );
   return exceptions.flatMap(({ rule, reason, target }): UnusedException[] => {
-    const found = byTarget.get(keyOf(target));
+    const found = byTarget.get(exceptionKey(target));
     if (found === undefined)
       return [{ rule, target, reason, why: "no_such_target" }];
     const result = found.results.find((each) => each.rule === rule);

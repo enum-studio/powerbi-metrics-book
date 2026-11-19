@@ -185,6 +185,10 @@ const Checks = z.object({
         .array(z.string())
         .optional()
         .describe("The metrics the sentence counts, closest first."),
+      exception: z
+        .string()
+        .optional()
+        .describe("Failing, it passes by an exception with this reason."),
     }),
   ),
 });

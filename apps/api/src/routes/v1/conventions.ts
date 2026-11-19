@@ -139,7 +139,7 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     z.object({
       changed_rules: z.array(z.string()),
       now_failing: z.record(z.string(), z.number().int()),
-      exceptions_added: z.number().int(),
+      exceptions_added: conventionsSchema.shape.exceptions,
       version: z.number().int().nullable(),
     }),
     { errors: [400] },

@@ -11,7 +11,6 @@ import {
   conventionsInForce,
   isCompanyPart,
   lockConventions,
-  resolve,
   saveVersion,
 } from "./store.js";
 
@@ -56,21 +55,17 @@ export function changedRules(
 /**
  * Applies a company part: what it changes against the version in force, how
  * many metrics and terms then fail each changed rule, and, unless it is a dry
- * run, the save. A baseline reason first writes one exception for each of
- * those failures, so what exists is listed once and every new name is held to
- * the rule. It saves even when names now fail: the checks are the gate.
+ * run, the save. A baseline reason first adds one exception for each of those
+ * failures, so what exists is listed once and every new name is held to the
+ * rule; the answer lists them, sorted, for the file to hold. It saves even
+ * when names now fail: the checks are the gate. A part equal to the one in
+ * force saves nothing, so applying a file again is free.
  */
 export async function applyConventions(
   deps: Pick<AppDeps, "db">,
   principal: Principal,
   { conventions: document, dry_run, baseline_reason }: ApplyInput,
 ) {
-  const proposed = resolve(document);
-  if (!isCompanyPart(document))
-    throw new ServiceError(
-      "invalid",
-      "Apply takes the company's part: format: 1 and the keys the company sets.",
-    );
   const reason =
     baseline_reason === undefined
       ? undefined
@@ -84,8 +79,14 @@ export async function applyConventions(
     const current = dry_run
       ? await conventionsInForce(tx)
       : await lockConventions(tx);
-    // Refused before the whole book is read, when it would be refused anyway.
-    checkSave(principal, current, document);
+    // Refused before the book is read; a fixed rule before the part's shape.
+    const given = checkSave(principal, current, document);
+    if (!isCompanyPart(document))
+      throw new ServiceError(
+        "invalid",
+        "Apply takes the company's part: format: 1 and the keys the company sets.",
+      );
+    const { proposed } = given;
     const changed = changedRules(current.conventions, proposed);
     const failures = await failuresInBook(
       { db: tx },
@@ -98,25 +99,29 @@ export async function applyConventions(
     const added =
       reason?.data === undefined
         ? []
-        : failures.map(({ rule, target }) => ({
-            rule,
-            ...target,
-            reason: reason.data,
-          }));
-    const saved =
+        : failures
+            .map(({ rule, target }) => ({
+              rule,
+              ...target,
+              reason: reason.data,
+            }))
+            .sort((a, b) => exceptionKey(a).localeCompare(exceptionKey(b)));
+    const save =
       added.length === 0
-        ? document
-        : { ...document, exceptions: [...proposed.exceptions, ...added] };
+        ? given
+        : checkSave(principal, current, {
+            ...document,
+            exceptions: [...proposed.exceptions, ...added],
+          });
     const answer = {
       changed_rules: changed,
       now_failing,
-      exceptions_added: added.length,
+      exceptions_added: added,
     };
-    if (dry_run) {
-      checkSave(principal, current, saved);
-      return { ...answer, version: null };
-    }
-    const { version } = await saveVersion(tx, emit, principal, current, saved);
+    if (dry_run) return { ...answer, version: null };
+    if (isDeepStrictEqual(save.part, current.company))
+      return { ...answer, version: current.version };
+    const { version } = await saveVersion(tx, emit, save);
     return { ...answer, version };
   });
 }

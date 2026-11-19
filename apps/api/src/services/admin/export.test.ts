@@ -490,7 +490,7 @@ describe("book.yml conventions", () => {
     inRolledBackBook(async (deployment) => {
       const complete = resolve({
         preset: "minimal",
-        metric_fields: { category: { required: true } },
+        naming: { case: "snake_case" },
       });
       const file = stringify({ format: 1, conventions: complete });
       expect(await importBook(deployment, file, { apply: true })).toMatchObject(
@@ -499,7 +499,7 @@ describe("book.yml conventions", () => {
       expect(await stored(deployment)).toEqual({
         format: 1,
         preset: "minimal",
-        metric_fields: { category: { required: true } },
+        naming: { case: "snake_case" },
       });
     }));
 });

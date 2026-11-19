@@ -1,6 +1,6 @@
 import type pg from "pg";
 import { createLogger, type Logger } from "../../log.js";
-import { resolve, toCompanyPart, validateConventions } from "./store.js";
+import { resolve, toSavablePart, validateConventions } from "./store.js";
 
 export type LegacyTransform = (
   document: Record<string, unknown>,
@@ -28,7 +28,8 @@ export const LEGACY_TRANSFORMS: readonly LegacyTransform[] = [moveChecksOff];
  * the migrator. A document with `format` is never read here, so a later
  * preset change is never taken for the company's. The newest version must
  * upgrade, or the start stops; an older one that no longer resolves is left
- * as it was, with a warning, since nothing reads it in force.
+ * as it was, with a warning, since nothing reads it in force. toSavablePart
+ * drops, with a warning, a value set under a rule the part turns off.
  */
 export async function upgradeStoredConventions(
   client: pg.Client,
@@ -50,7 +51,7 @@ export async function upgradeStoredConventions(
     const problems = validateConventions(current);
     if (problems.length > 0 && newest)
       throw new Error(
-        `Version ${String(version)} of the conventions cannot be upgraded: ${JSON.stringify(problems)}`,
+        `Version ${String(version)} of the conventions cannot be upgraded: ${JSON.stringify(problems)}. The api will not start until it can. Go back to the previous release, save the conventions again with a valid value, then deploy this release.`,
       );
     if (problems.length > 0) {
       logger.warn(
@@ -59,9 +60,15 @@ export async function upgradeStoredConventions(
       );
       continue;
     }
+    const { part, dropped } = toSavablePart(resolve(current));
+    if (dropped.length > 0)
+      logger.warn(
+        "a value set under a rule the conventions turn off had no effect and was dropped",
+        { version, keys: dropped.join(", ") },
+      );
     await client.query(
       "update conventions set document = $1 where version = $2",
-      [JSON.stringify(toCompanyPart(resolve(current))), version],
+      [JSON.stringify(part), version],
     );
     upgraded++;
   }

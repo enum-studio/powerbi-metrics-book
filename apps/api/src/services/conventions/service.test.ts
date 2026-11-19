@@ -162,13 +162,12 @@ describe("listRules, off and source", () => {
     return new Map(rules.map((rule) => [rule.id, rule]));
   };
 
-  it("gives a rule the company's source when the company sets a key it reads", () =>
+  it("gives a rule the company's source only when the company sets its own key", () =>
     rolledBack(async (tx) => {
       const byId = await rulesUnder(tx, {
         naming: { qualifiers: { per: ["per", "each"] } },
       });
-      expect(byId.get("naming.qualifier_order")?.source).toBe("company");
-      expect(byId.get("naming.case")?.source).toBe("preset");
+      expect(byId.get("naming.qualifier_order")?.source).toBe("preset");
     }));
 
   it("turns not_the_same_as off by the check that applies it under its required", () =>

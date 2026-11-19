@@ -9,7 +9,7 @@ import { ServiceError } from "../../errors.js";
 import type { Principal } from "../../principal.js";
 import { recordBookChange } from "../book/changes.js";
 import { type NewEvent, withEvents } from "../events/feed.js";
-import { FIXED_RULES, isRuleOff, RULES, valueAt } from "./rules.js";
+import { FIXED_RULES, isDocument, isRuleOff, RULES, valueAt } from "./rules.js";
 import {
   type Conventions,
   conventionsSchema,
@@ -54,9 +54,6 @@ const presets = new Map<PresetName, Record<string, unknown>>();
 export const CONVENTIONS_LOCK = "powerbi_metrics_book.conventions";
 
 type Document = Record<string, unknown>;
-
-const isDocument = (value: unknown): value is Document =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const isPresetName = (value: unknown): value is PresetName =>
   PRESET_NAMES.some((name) => name === value);
@@ -127,11 +124,10 @@ export const isCompanyPart = (document: unknown): document is CompanyPart =>
  */
 function fixedRuleIn(format: unknown, rules: Document): Refusal | undefined {
   const { off, exceptions } = rules;
+  const otherFormat = format !== undefined && format !== CONVENTIONS_FORMAT;
   const named = (id: string): string | undefined => {
-    if (id === "format")
-      return format === undefined || format === CONVENTIONS_FORMAT
-        ? undefined
-        : "format";
+    if (id === "format" && otherFormat) return "format";
+    // `format` is not among `rules`, so for it the rest finds off and exceptions.
     if (valueAt(rules, id.split(".")) !== undefined) return id;
     if (Array.isArray(off) && off.includes(id)) return "off";
     const excepted =
@@ -143,7 +139,7 @@ function fixedRuleIn(format: unknown, rules: Document): Refusal | undefined {
     const path = named(id);
     if (path === undefined) continue;
     const fixed =
-      id === "format"
+      path === "format"
         ? `This release reads format ${String(CONVENTIONS_FORMAT)} of the conventions.`
         : `${id} stays fixed.`;
     return {
@@ -201,27 +197,46 @@ export function resolve(document: unknown): Conventions {
 }
 
 /**
- * A part that sets a rule's value and turns that rule off says two things
- * about it, so it is refused: a file says one thing about each rule.
+ * The ids, each its key's dotted path, of the rules a part sets and turns off
+ * in its own `off`, which resolve takes whole; one only the preset turns off
+ * may take a value.
  */
-function refuseOffAndSet(part: CompanyPart, resolved: Conventions): void {
-  const both = RULES.find(
+function setAndTurnedOff(part: CompanyPart, resolved: Conventions): string[] {
+  if (valueAt(part, ["off"]) === undefined) return [];
+  return RULES.filter(
     (rule) =>
       rule.path !== null &&
       valueAt(part, rule.path) !== undefined &&
       isRuleOff(rule, resolved),
-  );
+  ).map((rule) => rule.id);
+}
+
+/**
+ * A part that sets a rule's value and turns that rule off says two things
+ * about it, so it is refused: a file says one thing about each rule.
+ */
+function refuseOffAndSet(part: CompanyPart, resolved: Conventions): void {
+  const [both] = setAndTurnedOff(part, resolved);
   if (both === undefined) return;
   throw refusal({
     problems: [
       {
-        path: both.id,
-        message: `It sets ${both.id} and turns it off. Take it out of off, or leave its value to the preset.`,
+        path: both,
+        message: `It sets ${both} and turns it off. Take it out of off, or leave its value to the preset.`,
       },
     ],
     code: "conventions.off_and_set",
-    rule: both.id,
+    rule: both,
   });
+}
+
+/** `document` without the value at `path`; a mapping left empty goes too. */
+function without(document: Document, path: readonly string[]): Document {
+  const [key, ...rest] = path;
+  if (key === undefined) return document;
+  const { [key]: under, ...others } = document;
+  const kept = isDocument(under) && rest.length > 0 ? without(under, rest) : {};
+  return Object.keys(kept).length === 0 ? others : { ...others, [key]: kept };
 }
 
 /**
@@ -252,6 +267,19 @@ export function toCompanyPart(document: Conventions): CompanyPart {
     preset: named,
     ...differing(rules, resolve({ preset: named })),
   };
+}
+
+/**
+ * The company's part as toCompanyPart makes it, less each value set under a
+ * rule its own `off` turns off: the value had no effect, and a save refuses
+ * it. `dropped` names those rules.
+ */
+export function toSavablePart(resolved: Conventions) {
+  const company = toCompanyPart(resolved);
+  const dropped = setAndTurnedOff(company, resolved);
+  let part: Document = company;
+  for (const id of dropped) part = without(part, id.split("."));
+  return { part, dropped };
 }
 
 async function newest(db: Db): Promise<ConventionsVersion | undefined> {
@@ -400,6 +428,15 @@ export async function lockConventions(tx: Db): Promise<InForce> {
   return conventionsInForce(tx);
 }
 
+/** A document checkSave passed, with whom it was checked for and the version it would follow. */
+export type CheckedSave = {
+  principal: Principal;
+  current: InForce;
+  part: CompanyPart;
+  proposed: Conventions;
+  changes: ConventionsChange[];
+};
+
 /**
  * Checks `document` against `current` as a save would: valid, saying one
  * thing about each rule, and changing trust.* only from a browser.
@@ -408,32 +445,29 @@ export function checkSave(
   principal: Principal,
   current: InForce,
   document: unknown,
-): { part: CompanyPart; proposed: Conventions; changes: ConventionsChange[] } {
+): CheckedSave {
   const proposed = resolve(document);
   const part = partOf(document, proposed, current);
   refuseOffAndSet(part, proposed);
   const changes = diffConventions(current.conventions, proposed);
   refuseTrustChangeUnlessBrowser(principal, changes, current.company, part);
-  return { part, proposed, changes };
+  return { principal, current, part, proposed, changes };
 }
 
 /**
- * Saves `document` as the next version after `current`, which the caller read
- * under lockConventions in this transaction: checkSave, the row, its record
- * in book_change and its event.
+ * Saves a checked document as the next version after the one it was checked
+ * against, which the caller read under lockConventions in this transaction:
+ * the row, its record in book_change and its event.
  */
 export async function saveVersion(
   tx: Db,
   emit: (event: NewEvent) => void,
-  principal: Principal,
-  current: InForce,
-  document: unknown,
+  { principal, current, part, proposed, changes }: CheckedSave,
 ): Promise<{
   version: number;
   conventions: Conventions;
   changes: ConventionsChange[];
 }> {
-  const { part, proposed, changes } = checkSave(principal, current, document);
   const version = current.version + 1;
   await tx
     .insert(conventions)
@@ -474,7 +508,8 @@ export async function setConventions(
 }> {
   // Checked before the lock, so a document that cannot be valid waits for nothing.
   resolve(document);
-  return withEvents(deps.db, async (tx, emit) =>
-    saveVersion(tx, emit, principal, await lockConventions(tx), document),
-  );
+  return withEvents(deps.db, async (tx, emit) => {
+    const current = await lockConventions(tx);
+    return saveVersion(tx, emit, checkSave(principal, current, document));
+  });
 }

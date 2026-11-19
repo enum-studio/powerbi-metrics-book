@@ -1,12 +1,6 @@
 import { z } from "zod";
 import { COMPARISONS } from "../../db/schema/book.js";
-import {
-  OFF_NAMES,
-  RULE_TARGETS,
-  RULES,
-  type RuleTarget,
-  ruleById,
-} from "./rules.js";
+import { OFF_NAMES, RULE_TARGETS, RULES, ruleById } from "./rules.js";
 
 /*
  * The conventions: every rule a check or the drafter applies is a key here,
@@ -205,11 +199,11 @@ const exception = z
   });
 export type ConventionsException = z.infer<typeof exception>;
 
-/** The rule and the element an exception is for, so the same one twice is found. */
+const KEYED_BY = ["rule", ...RULE_TARGETS] as const;
+/** The rule and the element an exception is for, so the same one twice is found; without a rule, the element alone. */
 export const exceptionKey = (
-  item: Pick<ConventionsException, "rule" | RuleTarget>,
-): string =>
-  JSON.stringify([item.rule, ...RULE_TARGETS.map((key) => item[key] ?? null)]);
+  item: Partial<Pick<ConventionsException, (typeof KEYED_BY)[number]>>,
+): string => JSON.stringify(KEYED_BY.map((key) => item[key] ?? null));
 
 const exceptions = z
   .array(exception)

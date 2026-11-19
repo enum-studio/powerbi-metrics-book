@@ -446,11 +446,30 @@ describe("what a company part may say", () => {
     ]);
   });
 
+  it("refuses format in off or as an exception's rule as the fixed rule it is", () => {
+    for (const document of [
+      { format: 1, off: ["format"] },
+      {
+        format: 1,
+        exceptions: [{ rule: "format", metric: "orders", reason: "No." }],
+      },
+    ])
+      expect(() => resolve(document)).toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(
+            "format stays fixed. It says how to read the rest.",
+          ) as unknown,
+          detail: expect.objectContaining({
+            code: "conventions.fixed",
+            rule: "format",
+          }) as unknown,
+        }),
+      );
+  });
+
   it.each([
     [{ format: 1, naming: { kinds: ["total_"] }, off: ["naming.kinds"] }],
     [{ format: 1, naming: { kinds: ["total_"] }, off: ["metric_name_form"] }],
-    // minimal turns metric_name_form off, and this part keeps it off.
-    [{ format: 1, preset: "minimal", naming: { case: "none" } }],
   ])("refuses %o, which sets a rule it turns off", (part) =>
     rolledBack(async (tx) => {
       const saving = setConventions({ db: tx }, principals.admin, part);
@@ -462,6 +481,14 @@ describe("what a company part may say", () => {
       expect(await listVersions(tx)).toEqual([]);
     }),
   );
+
+  it("takes a value for a rule only its preset turns off", () =>
+    rolledBack(async (tx) => {
+      // minimal turns metric_name_form off; the part's own off is empty.
+      const part = { format: 1, preset: "minimal", naming: { case: "none" } };
+      await setConventions({ db: tx }, principals.admin, part);
+      expect((await currentConventions(tx)).naming.case).toBe("none");
+    }));
 
   it("takes a value and off for different rules of one check", () =>
     rolledBack(async (tx) => {

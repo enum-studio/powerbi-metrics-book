@@ -7,7 +7,9 @@ import {
   type CheckableTerm,
   checkMetric,
   checkTerm,
+  exceptionIndex,
   METRIC_CHECKS,
+  type TermCheckContext,
   wordsComparedWithOtherLabels,
   type MetricCheckContext,
   validateCustomFields,
@@ -45,11 +47,21 @@ const context = (
   overrides: Partial<MetricCheckContext> = {},
 ): MetricCheckContext => ({
   conventions,
+  exceptions: exceptionIndex(conventions),
   other_labels: [],
   live_base_variants: 1,
   advise: true,
   live_other_variants: 0,
   ...overrides,
+});
+
+const termContext = (
+  conventions: Conventions,
+  backed_by_columns: number,
+): TermCheckContext => ({
+  conventions,
+  exceptions: exceptionIndex(conventions),
+  backed_by_columns,
 });
 
 const failingResults = (
@@ -349,10 +361,7 @@ describe("every metric check under metrics_book", () => {
         ),
       ),
     ];
-    const terms = checkTerm(term, {
-      conventions: metricsBook,
-      backed_by_columns: 1,
-    });
+    const terms = checkTerm(term, termContext(metricsBook, 1));
     for (const results of [...metrics, terms]) {
       for (const result of results)
         expect(ruleById(result.rule), result.rule).toBeDefined();
@@ -566,10 +575,9 @@ describe("a company's own conventions", () => {
       custom: {},
     });
     const definition = (name: string) =>
-      checkTerm(blank(name), {
-        conventions: excepted,
-        backed_by_columns: 0,
-      }).find((result) => result.rule === "term_fields.definition");
+      checkTerm(blank(name), termContext(excepted, 0)).find(
+        (result) => result.rule === "term_fields.definition",
+      );
     expect(definition("channel")).toMatchObject({
       passed: true,
       exception: "Plain.",
@@ -640,10 +648,9 @@ describe("term_fields", () => {
     columns = 1,
     rules = metricsBook,
   ) =>
-    checkTerm(
-      { ...channel, ...term },
-      { conventions: rules, backed_by_columns: columns },
-    ).every((result) => result.passed);
+    checkTerm({ ...channel, ...term }, termContext(rules, columns)).every(
+      (result) => result.passed,
+    );
 
   it("asks a categorical dimension term for its values, and a concept term for none", () => {
     expect(passes({})).toBe(true);
@@ -656,9 +663,7 @@ describe("term_fields", () => {
 
   it("asks every term for its definition and its required custom fields", () => {
     const blank = { ...channel, definition: "" };
-    expect(
-      checkTerm(blank, { conventions: minimal, backed_by_columns: 1 }),
-    ).toEqual([
+    expect(checkTerm(blank, termContext(minimal, 1))).toEqual([
       {
         check: "term_fields",
         rule: "term_fields.definition",

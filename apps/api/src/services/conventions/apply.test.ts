@@ -23,11 +23,11 @@ async function book(tx: Db): Promise<void> {
     await metricIn(tx, name);
 }
 
-const apply = (tx: Db, input: { dry_run: boolean; baseline_reason?: string }) =>
-  applyConventions({ db: tx }, principals.admin, {
-    conventions: part,
-    ...input,
-  });
+const apply = (
+  tx: Db,
+  input: { dry_run: boolean; baseline_reason?: string },
+  conventions: object = part,
+) => applyConventions({ db: tx }, principals.admin, { conventions, ...input });
 
 const stored = async (tx: Db) =>
   (await tx.select().from(conventions).orderBy(desc(conventions.version)))[0]
@@ -72,12 +72,18 @@ describe("applyConventions", () => {
           "metric_fields.not_the_same_as": 0,
           "naming.kinds": 2,
         },
-        exceptions_added: 0,
+        exceptions_added: [],
         version: null,
       });
       expect(
         await apply(tx, { dry_run: true, baseline_reason: BASELINE }),
-      ).toMatchObject({ exceptions_added: 2, version: null });
+      ).toMatchObject({
+        exceptions_added: [
+          { rule: "naming.kinds", metric: "margin", reason: BASELINE },
+          { rule: "naming.kinds", metric: "orders", reason: BASELINE },
+        ],
+        version: null,
+      });
       expect(await listVersions(tx)).toEqual([]);
     }));
 
@@ -96,23 +102,21 @@ describe("applyConventions", () => {
       expect(changes).toMatchObject([{ element_id: "1", action: "update" }]);
     }));
 
-  it("writes one exception for each failure of a changed rule with a baseline reason", () =>
+  it("writes one exception for each failure of a changed rule with a baseline reason, and lists them sorted", () =>
     rolledBack(async (tx) => {
       await book(tx);
+      const exceptions = [
+        { rule: "naming.kinds", metric: "margin", reason: BASELINE },
+        { rule: "naming.kinds", metric: "orders", reason: BASELINE },
+      ];
       expect(
         await apply(tx, { dry_run: false, baseline_reason: BASELINE }),
       ).toMatchObject({
         now_failing: { "naming.kinds": 2 },
-        exceptions_added: 2,
+        exceptions_added: exceptions,
         version: 1,
       });
-      expect(await stored(tx)).toEqual({
-        ...part,
-        exceptions: [
-          { rule: "naming.kinds", metric: "orders", reason: BASELINE },
-          { rule: "naming.kinds", metric: "margin", reason: BASELINE },
-        ],
-      });
+      expect(await stored(tx)).toEqual({ ...part, exceptions });
       const inForce = await currentConventions(tx);
       expect(
         await failuresInBook({ db: tx }, inForce, new Set(["naming.kinds"])),
@@ -122,6 +126,41 @@ describe("applyConventions", () => {
         changed_rules: ["naming.kinds"],
         now_failing: { "naming.kinds": 2 },
       });
+      // The file the CLI writes holds them, so applying it again adds none and saves nothing.
+      for (const baseline_reason of [undefined, BASELINE])
+        expect(
+          await apply(
+            tx,
+            { dry_run: false, ...(baseline_reason && { baseline_reason }) },
+            { ...part, exceptions },
+          ),
+        ).toEqual({
+          changed_rules: [],
+          now_failing: {},
+          exceptions_added: [],
+          version: 1,
+        });
+      expect(await listVersions(tx)).toHaveLength(1);
+    }));
+
+  it("saves nothing, and records nothing, for a part equal to the one in force", () =>
+    rolledBack(async (tx) => {
+      await book(tx);
+      await apply(tx, { dry_run: false });
+      for (const dry_run of [true, false])
+        expect(await apply(tx, { dry_run })).toEqual({
+          changed_rules: [],
+          now_failing: {},
+          exceptions_added: [],
+          version: dry_run ? null : 1,
+        });
+      expect(await listVersions(tx)).toHaveLength(1);
+      expect(
+        await tx
+          .select()
+          .from(bookChange)
+          .where(eq(bookChange.element_kind, "conventions")),
+      ).toHaveLength(1);
     }));
 
   it("takes only a company part", () =>

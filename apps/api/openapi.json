@@ -6341,6 +6341,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "exception": {
+                            "description": "Failing, it passes by an exception with this reason.",
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -10895,9 +10899,65 @@
                       }
                     },
                     "exceptions_added": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string",
+                            "enum": [
+                              "naming.case",
+                              "naming.kinds",
+                              "metric_name_generated",
+                              "naming.forbidden_words",
+                              "naming.money_qualifier",
+                              "naming.qualifier_order",
+                              "metric_fields.definition",
+                              "metric_fields.aliases",
+                              "metric_fields.when_to_use",
+                              "metric_fields.grain_and_filters",
+                              "metric_fields.unit",
+                              "metric_fields.category",
+                              "metric_fields.custom",
+                              "metric_fields.not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields.definition",
+                              "term_fields.values",
+                              "term_fields.custom"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "metric": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "term": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "dataset": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "table": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "column": {
+                            "type": "string",
+                            "pattern": "^'.+'\\[.+\\]$"
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
                     "version": {
                       "anyOf": [

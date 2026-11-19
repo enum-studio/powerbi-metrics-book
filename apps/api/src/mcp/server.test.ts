@@ -56,7 +56,8 @@ const call = (id: number, method: string, parameters?: unknown) => ({
   ...(parameters === undefined ? {} : { params: parameters }),
 });
 
-const conventions = () => getConventionsForAgents(f.deps);
+const conventions = () =>
+  getConventionsForAgents({ ...f.deps, principal: principals.viewer });
 
 /** Runs `check` with the stack pointed at the mock, as the sample deployment is, and puts the authority back. */
 async function onTheMockAuthority(

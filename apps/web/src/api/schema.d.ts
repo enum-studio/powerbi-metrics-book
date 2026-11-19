@@ -4404,6 +4404,8 @@ export interface operations {
               message: string;
               /** @description The metrics the sentence counts, closest first. */
               other_labels?: string[];
+              /** @description Failing, it passes by an exception with this reason. */
+              exception?: string;
             }[];
           };
         };
@@ -6515,7 +6517,34 @@ export interface operations {
             now_failing: {
               [key: string]: number;
             };
-            exceptions_added: number;
+            exceptions_added: {
+              /** @enum {string} */
+              rule:
+                | "naming.case"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "naming.money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields.values"
+                | "term_fields.custom";
+              reason: string;
+              metric?: string;
+              term?: string;
+              dataset?: string;
+              table?: string;
+              column?: string;
+            }[];
             version: number | null;
           };
         };

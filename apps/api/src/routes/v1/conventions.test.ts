@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, expect, it } from "vitest";
 import {
   cerbosAccess,
@@ -101,7 +102,7 @@ it("applies a part for an admin, and sends the codes a client acts on", async ()
       "naming.case",
       "naming.kinds",
     ]) as unknown,
-    exceptions_added: 0,
+    exceptions_added: [],
     version: null,
   });
   const refusals = [
@@ -152,4 +153,49 @@ it("lists to a curator the exceptions nothing needs, for the book or one metric"
     headers: { cookie: viewer.cookie },
   });
   expect(refused.status).toBe(403);
+});
+
+it("answers a metric's failure under an exception as passing with its reason, and lists a baseline's exceptions", async () => {
+  const admin = await signedIn("admin");
+  const curator = await signedIn("curator");
+  const name = `excepted_${randomUUID().slice(0, 8)}`;
+  const made = await curator("POST", "/api/v1/metrics", {
+    name,
+    label: "Excepted",
+  });
+  expect(made.status).toBe(201);
+  const definition = async () => {
+    const checked = await curator("GET", `/api/v1/metrics/${name}/checks`);
+    expect(checked.status).toBe(200);
+    const { checks } = (await checked.json()) as {
+      checks: { rule: string }[];
+    };
+    return checks.find(({ rule }) => rule === "metric_fields.definition");
+  };
+  expect(await definition()).toMatchObject({ passed: false });
+  const reason = "Named before the house style.";
+  const exceptions = [
+    { rule: "metric_fields.definition", metric: name, reason },
+  ];
+  const saved = await admin("PUT", "/api/v1/conventions", {
+    format: 1,
+    exceptions,
+  });
+  expect(saved.status).toBe(200);
+  expect(await definition()).toMatchObject({ passed: true, exception: reason });
+  const baseline = "Names in use before the house style";
+  const dry = await admin("POST", "/api/v1/conventions/apply", {
+    conventions: { format: 1, naming: { kinds: ["total_"] }, exceptions },
+    dry_run: true,
+    baseline_reason: baseline,
+  });
+  expect(dry.status).toBe(200);
+  const { exceptions_added: added } = (await dry.json()) as {
+    exceptions_added: unknown[];
+  };
+  expect(added).toContainEqual({
+    rule: "naming.kinds",
+    metric: name,
+    reason: baseline,
+  });
 });

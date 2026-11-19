@@ -127,7 +127,7 @@ export const OFF_NAMES = [
   ...new Set(RULES.flatMap((rule) => [rule.id, rule.check])),
 ];
 
-const isDocument = (value: unknown): value is Record<string, unknown> =>
+export const isDocument = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** The value at a key's path; undefined where the document does not hold it. */

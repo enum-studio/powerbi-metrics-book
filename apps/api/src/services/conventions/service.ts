@@ -149,42 +149,62 @@ async function hiddenMetrics(
   return new Set(rows.map((row) => row.name));
 }
 
-/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. */
-export async function getConventionsForAgents(
-  context: Pick<ServiceContext, "db">,
-) {
+/**
+ * The exceptions whose element the caller may see: a metric's to whoever sees
+ * the metric, a term's to anyone signed in, as term names are. No rule targets
+ * a dataset, table or column yet, so one is hidden; the element checks show a
+ * dataset's by describableDatasets, a table's or column's through its dataset,
+ * and a PII column's only to a caller who readsPii.
+ */
+async function visibleExceptions(
+  context: ServiceContext,
+  exceptions: Conventions["exceptions"],
+): Promise<Conventions["exceptions"]> {
+  const metrics = new Set(exceptions.flatMap((item) => item.metric ?? []));
+  const hidden = await hiddenMetrics(context, [...metrics]);
+  return exceptions.filter(({ metric, term }) =>
+    metric === undefined ? term !== undefined : !hidden.has(metric),
+  );
+}
+
+/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. The summary counts every exception; the list holds those the caller may see. */
+export async function getConventionsForAgents(context: ServiceContext) {
   const { guide, ...rules } = await currentConventions(context.db);
-  return { preset: rules.preset, guide, summary: summariseRules(rules), rules };
+  const exceptions = await visibleExceptions(context, rules.exceptions);
+  return {
+    preset: rules.preset,
+    guide,
+    summary: summariseRules(rules),
+    rules: { ...rules, exceptions },
+  };
 }
 
 /**
  * Every rule with its value in force, and `company` as its source when the
- * company's part holds its key, a key it reads, or anything under them. Off
- * when `off` names it or the check that applies it. Anyone signed in may read
- * them, as they may the conventions.
+ * company's part holds its key or anything under it. Anyone signed in may read
+ * them, as they may the conventions. A rule is off when `off` names it or the
+ * check that applies it.
  */
 export async function listRules(context: Pick<ServiceContext, "db">) {
   const { conventions, company } = await conventionsInForce(context.db);
+  const off = new Set(
+    RULES.filter((rule) => isRuleOff(rule, conventions)).map(({ id }) => id),
+  );
   return {
-    rules: RULES.map((rule) => {
-      const { id, check, target, path, allowed, reads } = rule;
-      const keys = [...(path === null ? [] : [path.join(".")]), ...reads];
-      return {
-        id,
-        check,
-        target,
-        value: path === null ? null : valueAt(conventions, path),
-        source: keys.some(
-          (key) => valueAt(company, key.split(".")) !== undefined,
-        )
+    rules: RULES.map(({ id, check, target, path, allowed }) => ({
+      id,
+      check,
+      target,
+      value: path === null ? null : valueAt(conventions, path),
+      source:
+        path !== null && valueAt(company, path) !== undefined
           ? ("company" as const)
           : ("preset" as const),
-        allowed: allowed === null ? null : [...allowed],
-        off: isRuleOff(rule, conventions),
-        exceptions: conventions.exceptions.filter((item) => item.rule === id)
-          .length,
-      };
-    }),
+      allowed: allowed === null ? null : [...allowed],
+      off: off.has(id),
+      exceptions: conventions.exceptions.filter((item) => item.rule === id)
+        .length,
+    })),
     fixed: [...FIXED_RULES],
   };
 }
@@ -222,7 +242,7 @@ export async function applyAsAdmin(context: ServiceContext, input: ApplyInput) {
 /**
  * The exceptions nothing needs any more, as GET /metrics/:name/checks is
  * answered: to a curator, for one metric they may see, or for the whole book
- * but a metric they cannot see.
+ * among the exceptions whose element they may see.
  */
 export async function unusedExceptionsAsCurator(
   context: ServiceContext,
@@ -236,14 +256,8 @@ export async function unusedExceptionsAsCurator(
     const found = await resolveMetric(context.db, allowed, hides, reference);
     return unusedExceptions(context, conventions, { metric: found.name });
   }
-  const unused = await unusedExceptions(context, conventions);
-  const hidden = await hiddenMetrics(
-    context,
-    unused.flatMap(({ target }) => target.metric ?? []),
-  );
-  return unused.filter(
-    ({ target }) => target.metric === undefined || !hidden.has(target.metric),
-  );
+  const exceptions = await visibleExceptions(context, conventions.exceptions);
+  return unusedExceptions(context, { ...conventions, exceptions });
 }
 
 /** Every saved version, newest first, for whoever may edit the conventions. */
