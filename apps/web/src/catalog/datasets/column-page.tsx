@@ -6,6 +6,7 @@ import { ErrorState, Loading } from "../../shell/states";
 import { datasetQuery, tableFieldsQuery } from "../queries";
 import { columnIcon } from "../tree/fields";
 import { folderPaths } from "../tree/folders";
+import { Documentation } from "./documentation";
 import { MeasureLink } from "./field-list";
 import { FieldBreadcrumb, NoSuchField } from "./folder-page";
 import { columnQuery } from "./queries";
@@ -72,22 +73,18 @@ export function ColumnPage({
               </span>
             ))}
         </div>
-        <p>
-          {item.description ?? item.description_pbi ?? "No description yet."}
-        </p>
-        <dl className="grid grid-cols-2 gap-2">
-          {[
+        <Documentation
+          kind="column"
+          id={item.id}
+          details={[
             ["Data type", item.data_type],
             ["Format string", item.format_string],
             ["Display folder", item.display_folder],
             ["Column type", item.column_type],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-meta text-ink-3">{label}</dt>
-              <dd>{value ?? "None"}</dd>
-            </div>
-          ))}
-        </dl>
+            ["Table", table],
+            ["Dataset", dataset.data.name],
+          ]}
+        />
         {item.column_type === "calculated" && item.expression !== null && (
           <CodePanel heading="DAX" label="DAX" code={item.expression} />
         )}

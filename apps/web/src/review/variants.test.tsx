@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-router", async (original) => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
 }));
 
-it("marks the row selected by ?variant, open, while the others stay folded", () => {
+it("marks the row selected by ?variant and keeps every variant's DAX open", () => {
   const variants: VariantAnchor[] = ["v1", "v2"].map((id) => ({
     id,
     dataset: { kind: "dataset", id: "d1", name: "Sales" },
@@ -42,10 +42,7 @@ it("marks the row selected by ?variant, open, while the others stay folded", () 
   expect(html.match(/<ul/g)).toHaveLength(1);
   expect(html.match(/data-current-variant/g)).toHaveLength(1);
   expect(html).toMatch(/data-current-variant="v2"[^>]*bg-accent-soft/);
-  expect(html.match(/aria-expanded="false"/g)).toHaveLength(1);
-  expect(html.match(/aria-expanded="true"/g)).toHaveLength(1);
-  expect(html.match(/Loading the DAX/g)).toHaveLength(1);
-  expect(html.indexOf('aria-expanded="true"')).toBeGreaterThan(
-    html.indexOf('data-current-variant="v2"'),
-  );
+  expect(html).not.toContain('aria-expanded="false"');
+  expect(html.match(/aria-expanded="true"/g)).toHaveLength(2);
+  expect(html.match(/Loading the DAX/g)).toHaveLength(2);
 });

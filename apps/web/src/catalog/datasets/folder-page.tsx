@@ -6,7 +6,7 @@ import { Breadcrumb, Crumb } from "../../shell/breadcrumb";
 import { EmptyState, ErrorState, Loading } from "../../shell/states";
 import { datasetQuery, tableFieldsQuery } from "../queries";
 import { folderParam, hasDotName } from "../tree/folders";
-import { FieldList } from "./field-list";
+import { FieldList, tableFields } from "./field-list";
 import { Breakable } from "../../shell/breakable";
 
 /** A name that is no link: titled and clipped like the links, so a long one gives way on a narrow screen. */
@@ -144,6 +144,7 @@ export function FolderPage({
   if (fields.error) return <ErrorState error={fields.error} />;
   if (!fields.data) return <Loading what="the fields" />;
   const Icon = path.length === 0 ? Table2 : Folder;
+  const { measures, columns } = tableFields(fields.data);
   return (
     <>
       <FieldBreadcrumb
@@ -168,24 +169,7 @@ export function FolderPage({
           id={id}
           table={table}
           path={path}
-          fields={[
-            ...fields.data.measures.map((item) => ({
-              kind: "Measure" as const,
-              name: item.name,
-              display_folder: item.display_folder,
-              type: item.format_string,
-              description: item.description ?? item.description_pbi,
-              metric: item.metric,
-              measureId: item.id,
-            })),
-            ...fields.data.columns.map((item) => ({
-              kind: "Column" as const,
-              name: item.name,
-              display_folder: item.display_folder,
-              type: item.data_type,
-              description: item.description ?? item.description_pbi,
-            })),
-          ]}
+          fields={[...measures, ...columns]}
         />
       </div>
     </>

@@ -1,13 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { EyeOff, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { api, read } from "../../api/client";
+import { type ReactNode, useEffect, useRef } from "react";
 import { meQuery } from "../../api/me";
 import { Notice } from "../../shell/notice";
 import type { DiagramModel, DiagramTable } from "../diagram/model";
 import { useDemo } from "../../shell/demo";
+import { hasDotName } from "../tree/folders";
 import { useColumnPii } from "./column-pii";
+import { piiHiddenQuery } from "./queries";
 
 export function TablePanel({
   datasetId,
@@ -35,21 +36,7 @@ export function TablePanel({
     name === field ? { "aria-current": true, ref: markedRow } : {};
   const demo = useDemo();
   const { change, notice, dismiss } = useColumnPii();
-  const hidden = useQuery({
-    queryKey: ["catalog", "pii-hidden", datasetId, table.name],
-    queryFn: async () =>
-      (
-        await read(
-          api.GET("/api/v1/datasets/{id}/columns", {
-            params: {
-              path: { id: datasetId },
-              query: { table: table.name, limit: 1 },
-            },
-          }),
-        )
-      ).pii_hidden ?? 0,
-    retry: false,
-  });
+  const hidden = useQuery(piiHiddenQuery(datasetId, table.name));
   const matching = model.relationships
     .map((relationship, index) => ({ relationship, index }))
     .filter(
@@ -59,7 +46,22 @@ export function TablePanel({
     );
   return (
     <>
-      <PanelTitle title={table.name} onClose={onClose} />
+      <PanelTitle
+        title={
+          hasDotName(table.name) ? (
+            table.name
+          ) : (
+            <Link
+              to="/catalog/datasets/$id/tables/$table"
+              params={{ id: datasetId, table: table.name }}
+              className="hover:text-accent"
+            >
+              {table.name}
+            </Link>
+          )
+        }
+        onClose={onClose}
+      />
       <p className="mb-5 text-ui text-ink-3">
         {table.description ?? "No description in Power BI or the book."}
       </p>
@@ -82,7 +84,21 @@ export function TablePanel({
           className="group flex items-center gap-2 border-b border-line py-2 text-ui aria-[current=true]:bg-accent-soft"
         >
           <span className="flex-1">
-            <span>{column.name}</span>{" "}
+            {hasDotName(table.name, column.name) ? (
+              <span>{column.name}</span>
+            ) : (
+              <Link
+                to="/catalog/datasets/$id/tables/$table/columns/$column"
+                params={{
+                  id: datasetId,
+                  table: table.name,
+                  column: column.name,
+                }}
+                className="hover:text-accent"
+              >
+                {column.name}
+              </Link>
+            )}{" "}
             {column.pii &&
               (me?.may_admin ? (
                 <Link
@@ -168,7 +184,7 @@ export function PanelTitle({
   title,
   onClose,
 }: {
-  title: string;
+  title: ReactNode;
   onClose: () => void;
 }) {
   return (

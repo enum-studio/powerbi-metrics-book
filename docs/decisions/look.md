@@ -450,6 +450,24 @@ Stops being right when the api answers a column by table and name (then the page
 two), or when "used by" comes from the model's dependency view instead of the text.
 `catalog/datasets/column-page.test.tsx` holds the column page.
 
+**Replaced in part, 2026-11-19. The diagram is only the dataset page's. A table's name opens its page
+wherever it shows: the tree, the dataset's Tables and Measures tabs, and the diagram's panel, whose
+columns open their pages too. A measure in the tree opens its table's page on Measures, with the measure
+marked (`?tab=measures&field=...`). A table page has Documentation, Columns, Measures and Relationships
+tabs and opens on Documentation; a dataset page gains a Documentation tab after Diagram.** Taken at
+Martin's asking: a table and a column are read like a catalog's entries, as Secoda shows them, and a
+click that lands in the diagram loses the page a person meant to open. Documentation reads
+`GET /api/v1/elements/:kind/:id/docs` and the conventions, and shows the description, Power BI's
+description where it differs, each `element_fields` custom field, then the mirror's facts, in that order
+on every kind, so the structure is the company's (rule 11) and no field is named in code. The Columns
+and Measures tabs list every field flat, A to Z, with its folder, so the filter searches the whole table;
+the first 100 show, as in the tree. "Show Order lines in the diagram" on a variant and "Show in the
+diagram" on a term still open the diagram, since they say so.
+
+Stops being right when the conventions give each kind its own fields (then the tab reads the kind's
+list), or when people edit documentation in the browser rather than through `pbmb docs` and agents.
+`catalog/datasets/table-page.test.tsx` holds the table page.
+
 ## Icons: five kinds, chosen by curators, drawn as text or a glyph
 
 **Metrics, categories, terms, datasets and workspaces can carry an icon: one emoji, or a glyph from a
@@ -481,3 +499,12 @@ stays a link outside it.
 
 Stops being right when a metric's page is mostly read for its DAX, or when people ask to open all
 variants at once. `review/variants.test.tsx` holds it.
+
+**Replaced, 2026-11-19. Every variant opens with its DAX showing, and its arrow folds it away. A
+variant asks for its DAX as it comes within 600px of the screen, so a metric with hundreds of
+variants does not ask for all of them at once.** Taken at Martin's asking: he wants a variant's DAX
+visible without a click, which is the second condition above. The cost the fold was taken for comes
+back: on a metric with many variants, Open questions and History sit below a long run of DAX.
+
+Stops being right if that run of DAX hides Open questions from the people who need them; then those
+move above the variants, rather than the DAX going back behind a click.

@@ -102,8 +102,9 @@ async function problemsOn(
 const RETAIL = "/catalog/datasets/d1000000-0000-4000-8000-000000000005";
 
 /**
- * The dataset page past its first look: each tab tapped, then a table's
- * panel and a relationship's panel opened, each checked as it stands.
+ * The dataset page past its first look: each tab tapped, then a
+ * relationship's panel and a table's panel opened, then a table's page and
+ * each of its tabs, each checked as it stands.
  */
 async function datasetProblems(page: Page, width: number): Promise<string[]> {
   const found: string[] = [];
@@ -112,40 +113,66 @@ async function datasetProblems(page: Page, width: number): Promise<string[]> {
     for (const problem of await page.evaluate(problemsAt, width))
       found.push(`${where}: ${problem}`);
   };
-  const tab = (label: string) =>
+  // A tab with a count is matched by its word and a space; one without, by the word alone.
+  const tabOf = (nav: string, label: string, counted: boolean) =>
     page
-      .getByRole("navigation", { name: "Dataset" })
-      .getByRole("button", { name: new RegExp(`^${label} `) });
+      .getByRole("navigation", { name: nav })
+      .getByRole(
+        "button",
+        counted
+          ? { name: new RegExp(`^${label} `) }
+          : { name: label, exact: true },
+      );
+  const tabs = async (nav: string, labels: [string, boolean][]) => {
+    for (const [label, counted] of labels) {
+      const shown = tabOf(nav, label, counted);
+      await shown.tap();
+      await expect(shown).toHaveClass(/border-accent/);
+      await check(`the ${nav} page's ${label} tab`);
+    }
+  };
   await page.goto(RETAIL);
-  await expect(tab("Tables")).toBeVisible();
-  for (const label of ["Diagram", "Tables", "Measures", "Relationships"]) {
-    // Diagram has no count, so its name is the word alone.
-    const shown =
-      label === "Diagram"
-        ? page
-            .getByRole("navigation", { name: "Dataset" })
-            .getByRole("button", { name: "Diagram", exact: true })
-        : tab(label);
-    await shown.tap();
-    await expect(shown).toHaveClass(/border-accent/);
-    await check(`the ${label} tab`);
-  }
-  await tab("Tables").tap();
-  // A table's name may carry the long word, so it is matched by its start.
-  await page.getByRole("button", { name: /^Order lines/ }).tap();
-  await expect(
-    page.getByRole("heading", { level: 2, name: /^Order lines/ }),
-  ).toBeVisible();
-  await check("the table panel");
-  await tab("Relationships").tap();
+  await expect(tabOf("Dataset", "Tables", true)).toBeVisible();
+  await tabs("Dataset", [
+    ["Diagram", false],
+    ["Documentation", false],
+    ["Tables", true],
+    ["Measures", true],
+    ["Relationships", true],
+  ]);
   await page
     .getByRole("button", { name: /^'Order lines/ })
     .first()
     .tap();
+  const panel = page.getByRole("complementary");
   await expect(
-    page.getByRole("heading", { level: 2, name: "Relationship" }),
+    panel.getByRole("heading", { level: 2, name: "Relationship" }),
   ).toBeVisible();
   await check("the relationship panel");
+  // A table's name may carry the long word, so it is matched by its start.
+  await panel.getByRole("button", { name: /^Order lines/ }).tap();
+  await expect(
+    panel.getByRole("heading", { level: 2, name: /^Order lines/ }),
+  ).toBeVisible();
+  await check("the table panel");
+  await tabOf("Dataset", "Tables", true).tap();
+  // The table's row comes before its fields, one of which is a measure of the same name.
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: /^Order lines/ })
+    .first()
+    .tap();
+  await expect(tabOf("Table", "Documentation", false)).toBeVisible();
+  await tabs("Table", [
+    ["Documentation", false],
+    ["Columns", true],
+    ["Measures", true],
+    ["Relationships", true],
+  ]);
+  // The Measures tab asks for each metric's trust state; a long-words route
+  // still answering one when the test ends writes to a closed response, which
+  // says nothing about the page, so those answers are dropped.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
   return found;
 }
 

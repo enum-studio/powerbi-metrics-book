@@ -26,8 +26,22 @@ function render(missing = false) {
   client.setQueryData(["catalog", "dataset", "d1", "table", "Sales"], {
     columns: missing ? [] : [{ id: "c1", name: "Year" }],
   });
+  client.setQueryData(["conventions"], {
+    rules: {
+      element_fields: {
+        custom: [{ key: "owner", label: "Owner", type: "text" }],
+      },
+    },
+  });
+  client.setQueryData(["catalog", "docs", "column", "c1"], {
+    description: "<b>Fiscal year</b>",
+    description_pbi: null,
+    described_at: null,
+    custom: { owner: "Finance team" },
+  });
   client.setQueryData(["catalog", "dataset", "d1", "column", "c1"], {
     column: {
+      id: "c1",
       name: "Year",
       data_type: "Int64",
       display_folder: "Dates\\Fiscal",
@@ -36,7 +50,6 @@ function render(missing = false) {
       pii: true,
       format_string: "0",
       expression: "YEAR([Date])",
-      description: "<b>Fiscal year</b>",
     },
     terms: [],
     relationships: [],
@@ -55,7 +68,7 @@ it("shows the folder trail, badges, properties and DAX, with descriptions as tex
   const html = render();
   expect(html).toMatch(/Commerce.*Sales model.*Dates.*Fiscal/s);
   expect(html).toMatch(
-    /Hidden.*Calculated.*PII.*&lt;b&gt;Fiscal year&lt;\/b&gt;.*Int64.*YEAR\(\[Date\]\)/s,
+    /Hidden.*Calculated.*PII.*&lt;b&gt;Fiscal year&lt;\/b&gt;.*Owner.*Finance team.*Int64.*YEAR\(\[Date\]\)/s,
   );
   expect(html).toMatch(
     /No terms linked.*No relationships name.*No measures name/s,

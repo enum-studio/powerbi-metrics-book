@@ -1,7 +1,13 @@
 import { createRoute } from "@tanstack/react-router";
 import { DatasetPage } from "../../catalog/datasets/page";
 import { catalogRoute } from "./index";
-const TABS = ["diagram", "tables", "measures", "relationships"] as const;
+const TABS = [
+  "diagram",
+  "documentation",
+  "tables",
+  "measures",
+  "relationships",
+] as const;
 /** The tab, the table whose panel is open, and the column or measure marked in it, which the tree's rows link to. */
 const validateSearch = (
   search: Record<string, unknown>,
