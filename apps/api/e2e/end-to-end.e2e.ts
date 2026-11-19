@@ -530,13 +530,20 @@ describe("Power BI Metrics Book end to end, on the mock", () => {
     });
     type Checked = {
       failing: number;
-      metrics: { name: string; checks: { check: string; passed: boolean }[] }[];
+      metrics: {
+        name: string;
+        checks: { check: string; rule: string; passed: boolean }[];
+      }[];
     };
     const checked = await curatorCli.json<Checked>(["metrics", "check", key]);
     expect(checked.failing, "failing checks").toBe(0);
     expect(checked.metrics.map((each) => each.name)).toEqual([key]);
     const checks = checked.metrics[0]?.checks ?? [];
     expect(checks.length, "the checks run").toBeGreaterThan(0);
+    expect(
+      checks.filter((each) => each.rule === ""),
+      "results without a rule",
+    ).toEqual([]);
     expect(checks.filter((each) => !each.passed)).toEqual([]);
     await curatorCli.json(["metrics", "verify", key]);
     changed("metric.verified", netSales.id, "verify");

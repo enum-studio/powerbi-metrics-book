@@ -1017,7 +1017,7 @@ async function promote(
     const before = await lockMetric(tx, found.id);
     const failures = await verificationFailures(change, before);
     if (failures.length > 0) {
-      const problems = failures.map((f) => `${f.check}: ${f.message}`);
+      const problems = failures.map((f) => `${f.rule}: ${f.message}`);
       throw invalid(
         `${before.name} cannot be ${action === "verify" ? "verified" : "approved"} while a check fails. ${problems.join(" ")}`,
         { failures },
@@ -1221,10 +1221,11 @@ export async function getMetric(context: ServiceContext, reference: string) {
     failing_checks: await Promise.all(
       checks
         .filter((check) => !check.passed)
-        .map(async ({ check, message, other_labels }) => {
+        .map(async ({ check, rule, message, other_labels }) => {
           const labels = other_labels?.slice(0, LABELS_NAMED) ?? [];
           return {
             check,
+            rule,
             message,
             // Agents read this page, so each label costs them: metricChecks lists them all.
             other_labels: other_labels === undefined ? undefined : labels,

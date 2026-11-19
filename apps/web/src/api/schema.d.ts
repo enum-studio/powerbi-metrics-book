@@ -2094,6 +2094,8 @@ export interface components {
       };
       failing_checks: {
         check: string;
+        /** @description The id of the rule the sentence is about. */
+        rule: string;
         message: string;
         /** @description The ten closest of the metrics the sentence counts, closest first. `GET /metrics/{name}/checks` lists them all. */
         other_labels?: string[];
@@ -4362,6 +4364,8 @@ export interface operations {
           "application/json": {
             checks: {
               check: string;
+              /** @description The id of the rule the result is about. */
+              rule: string;
               passed: boolean;
               message: string;
               /** @description The metrics the sentence counts, closest first. */

@@ -135,6 +135,7 @@ export const Metric = z
     failing_checks: z.array(
       z.object({
         check: z.string(),
+        rule: z.string().describe("The id of the rule the sentence is about."),
         message: z.string(),
         other_labels: z
           .array(z.string())

@@ -95,7 +95,7 @@ def _show_metric(console: Console, metric: dict[str, Json]) -> None:
         for failure in failing:
             line(
                 console,
-                f"  {one_line(failure.get('check'))}: {_check_sentence(failure)}",
+                f"  {one_line(failure.get('rule'))}: {_check_sentence(failure)}",
             )
     else:
         line(console, "\nNo failing checks.")
@@ -526,7 +526,7 @@ def check(
             failures += [
                 (
                     metric,
-                    one_line(result.get("check")),
+                    one_line(result.get("rule")),
                     _check_sentence(result),
                 )
                 for result in objects_in(answer, "checks")

@@ -51,13 +51,29 @@ const context = (
   ...overrides,
 });
 
-const failing = (
+const failingResults = (
   conventions: Conventions,
   overrides: Partial<CheckableMetric>,
 ) =>
-  checkMetric(metric(overrides), context(conventions))
-    .filter((result) => !result.passed)
-    .map((result) => result.check);
+  checkMetric(metric(overrides), context(conventions)).filter(
+    (result) => !result.passed,
+  );
+
+/** The checks with a failing result, once each: a check fails as a whole when any of its results does. */
+const failing = (
+  conventions: Conventions,
+  overrides: Partial<CheckableMetric>,
+) => [
+  ...new Set(failingResults(conventions, overrides).map(({ check }) => check)),
+];
+
+const failingRules = (
+  conventions: Conventions,
+  overrides: Partial<CheckableMetric>,
+) => failingResults(conventions, overrides).map(({ rule }) => rule);
+
+/** The sentence of the one finding a check made, or null when it passes. */
+const said = (found: { message: string }[]) => found[0]?.message ?? null;
 
 describe("metric_money_qualifier", () => {
   it("refuses total_net_sales in money under metrics_book and lets it pass under minimal", () => {
@@ -68,14 +84,14 @@ describe("metric_money_qualifier", () => {
     expect(failing(minimal, totalNetSales)).toEqual([]);
     // minimal turns the check off, and its rules ask for no qualifier either.
     const check = METRIC_CHECKS.metric_money_qualifier;
-    expect(check(metric(totalNetSales), context(minimal))).toBeNull();
+    expect(check(metric(totalNetSales), context(minimal))).toEqual([]);
   });
 });
 
 describe("every metric check under metrics_book", () => {
   it("passes the naming standard's example on every check", () => {
     const results = checkMetric(metric(), context(metricsBook));
-    expect(results.map((result) => result.check)).toHaveLength(8);
+    expect(new Set(results.map((result) => result.check)).size).toBe(8);
     expect(results.every((result) => result.passed)).toBe(true);
     expect(failing(metricsBook, { aliases: [] })).toEqual([]);
   });
@@ -125,10 +141,10 @@ describe("every metric check under metrics_book", () => {
   it("orders a rename of a generated key only when it advises", () => {
     const generated = metric({ name_is_generated: true });
     const check = METRIC_CHECKS.metric_name_generated;
-    expect(check(generated, context(metricsBook))).toContain("Rename");
-    expect(check(generated, context(metricsBook, { advise: false }))).toMatch(
-      /nobody has confirmed it\.$/,
-    );
+    expect(said(check(generated, context(metricsBook)))).toContain("Rename");
+    expect(
+      said(check(generated, context(metricsBook, { advise: false }))),
+    ).toMatch(/nobody has confirmed it\.$/);
   });
 
   it.each<[string, string, string]>([
@@ -141,11 +157,11 @@ describe("every metric check under metrics_book", () => {
     (check, name, unit) => {
       const row = metric({ name, unit });
       const run = METRIC_CHECKS[check as keyof typeof METRIC_CHECKS];
-      expect(run(row, context(metricsBook))).toContain("Rename");
-      const said = run(row, context(metricsBook, { advise: false }));
-      expect(said).not.toBeNull();
-      expect(said).not.toContain("Rename");
-      expect(said).toMatch(/\.$/);
+      expect(said(run(row, context(metricsBook)))).toContain("Rename");
+      const stated = said(run(row, context(metricsBook, { advise: false })));
+      expect(stated).not.toBeNull();
+      expect(stated).not.toContain("Rename");
+      expect(stated).toMatch(/\.$/);
     },
   );
 
@@ -154,7 +170,7 @@ describe("every metric check under metrics_book", () => {
     expect(generated).toEqual(["metric_name_generated"]);
     const check = METRIC_CHECKS.metric_base_variant;
     const noBase = context(metricsBook, { live_base_variants: 0 });
-    expect(check(metric(), noBase)).toContain("no live base variant");
+    expect(said(check(metric(), noBase))).toContain("no live base variant");
   });
 
   it("lets a metric holding only other pass the base check, as no measure computes it unshifted", () => {
@@ -163,12 +179,12 @@ describe("every metric check under metrics_book", () => {
       live_base_variants: 0,
       live_other_variants: 1,
     });
-    expect(check(metric(), onlyOther)).toBeNull();
+    expect(check(metric(), onlyOther)).toEqual([]);
     const onlyShifts = context(metricsBook, {
       live_base_variants: 0,
       live_other_variants: 0,
     });
-    expect(check(metric(), onlyShifts)).toContain("no live base variant");
+    expect(said(check(metric(), onlyShifts))).toContain("no live base variant");
   });
 
   it("asks for not_the_same_as when another label shares a content word", () => {
@@ -176,7 +192,7 @@ describe("every metric check under metrics_book", () => {
       METRIC_CHECKS.metric_not_the_same_as(
         metric({ not_the_same_as }),
         context(metricsBook, { other_labels: [other] }),
-      ) === null;
+      ).length === 0;
     const orderCosts = "Average order costs per order excl VAT";
     expect(passes(null, "Number of orders")).toBe(true);
     expect(passes(null, "Total net sales excl VAT")).toBe(true);
@@ -193,11 +209,14 @@ describe("every metric check under metrics_book", () => {
         other_labels: ["Order lines", "Order costs per region", "Order costs"],
       }),
     );
-    expect(failing).toEqual({
-      message:
-        '3 other metrics share a content word of the label "Average order costs". Say in not_the_same_as how this metric differs.',
-      other_labels: ["Order costs", "Order costs per region", "Order lines"],
-    });
+    expect(failing).toEqual([
+      {
+        rule: "metric_fields.not_the_same_as",
+        message:
+          '3 other metrics share a content word of the label "Average order costs". Say in not_the_same_as how this metric differs.',
+        other_labels: ["Order costs", "Order costs per region", "Order lines"],
+      },
+    ]);
   });
 
   it("puts the closest labels first and counts them when they are many", () => {
@@ -211,7 +230,7 @@ describe("every metric check under metrics_book", () => {
     const failing = METRIC_CHECKS.metric_not_the_same_as(
       metric({ label: "Average order costs", not_the_same_as: null }),
       context(metricsBook, { other_labels: [...far, ...others, ...close] }),
-    ) as { message: string; other_labels: string[] };
+    )[0] as { message: string; other_labels: string[] };
     expect(failing.message).toMatch(
       /^45 other metrics share a content word of the label "Average order costs"\. /,
     );
@@ -270,6 +289,7 @@ describe("every metric check under metrics_book", () => {
     const label = metric().label;
     expect(orders(["Average order costs per order excl VAT"])).toEqual({
       check: "metric_not_the_same_as",
+      rule: "metric_fields.not_the_same_as",
       passed: false,
       message: `Another metric shares a content word of the label "${label}". Say in not_the_same_as how this metric differs.`,
       other_labels: ["Average order costs per order excl VAT"],
@@ -293,12 +313,49 @@ describe("every metric check under metrics_book", () => {
       expect(failing(always, { not_the_same_as })).toEqual(["metric_fields"]);
     }
     expect(failing(always, {})).toEqual([]);
+    // metric_fields asks for it here, and names the rule the other check files it under.
+    expect(failingRules(always, { not_the_same_as: null })).toEqual([
+      "metric_fields.not_the_same_as",
+    ]);
+  });
+
+  it("names the rule of each finding, one result for each rule a check applies", () => {
+    const orders = metric({ name: "NumberOfOrders", unit: "count" });
+    const results = checkMetric(orders, context(metricsBook));
+    expect(
+      results.filter((result) => result.check === "metric_name_form"),
+    ).toMatchObject([
+      { rule: "naming.case", passed: false },
+      { rule: "naming.kinds", passed: false },
+    ]);
+    expect(failingRules(metricsBook, { definition: "", unit: null })).toEqual([
+      "metric_fields.definition",
+      "metric_fields.unit",
+    ]);
+    const fields = checkMetric(metric(), context(metricsBook)).filter(
+      (result) => result.check === "metric_fields",
+    );
+    expect(fields.map((result) => result.rule)).toEqual([
+      "metric_fields.definition",
+      "metric_fields.aliases",
+      "metric_fields.when_to_use",
+      "metric_fields.grain_and_filters",
+      "metric_fields.unit",
+      "metric_fields.category",
+      "metric_fields.custom",
+    ]);
+    expect(fields.every((result) => result.passed)).toBe(true);
   });
 
   it("says what to change, in the conventions' own words", () => {
     const orders = metric({ name: "orders", unit: "count" });
-    expect(checkMetric(orders, context(metricsBook))[0]).toEqual({
+    expect(
+      checkMetric(orders, context(metricsBook)).find(
+        (result) => !result.passed,
+      ),
+    ).toEqual({
       check: "metric_name_form",
+      rule: "naming.kinds",
       passed: false,
       message:
         "The key does not start or end with a kind the conventions name: number_of_, total_, average_, median_, percentile_, share_of_, _rate, _ratio, latest_, opening_ (naming.kinds). Rename it.",
@@ -307,7 +364,7 @@ describe("every metric check under metrics_book", () => {
       metric({ name: "average_order_costs_excl_vat_per_order" }),
       context(metricsBook),
     );
-    expect(order).toContain("Rename it with per before excl_vat.");
+    expect(said(order)).toContain("Rename it with per before excl_vat.");
   });
 });
 
@@ -326,7 +383,7 @@ describe("the same metrics under minimal", () => {
   it("asks only for a definition and a unit, and checks no name", () => {
     const generated = { ...asIs, name_is_generated: true };
     const results = checkMetric(metric(generated), context(minimal));
-    expect(results.map((result) => result.check)).toEqual([
+    expect([...new Set(results.map((result) => result.check))]).toEqual([
       "metric_fields",
       "metric_not_the_same_as",
       "metric_base_variant",
@@ -368,11 +425,11 @@ describe("a company's own conventions", () => {
       });
       const order = (name: string) =>
         METRIC_CHECKS.metric_qualifier_order(metric({ name }), context(own));
-      expect(order("average_order_costs_excl_vat_per_order")).toContain(
+      expect(said(order("average_order_costs_excl_vat_per_order"))).toContain(
         "puts per (per) after excl_vat (vat)",
       );
       // The preset's deduction stage is not placed, so after_returns is no qualifier here.
-      expect(order("total_net_sales_excl_vat_after_returns")).toBeNull();
+      expect(order("total_net_sales_excl_vat_after_returns")).toEqual([]);
     },
   );
 
@@ -384,25 +441,29 @@ describe("a company's own conventions", () => {
           other_labels: ["Number of orders before shipping"],
         }),
       );
-    expect(sharesBefore(metricsBook)).toBeNull();
+    expect(sharesBefore(metricsBook)).toEqual([]);
     const unplaced = resolve({ naming: { qualifier_order: ["vat"] } });
-    expect(sharesBefore(unplaced)).toMatchObject({
-      other_labels: ["Number of orders before shipping"],
-    });
+    expect(sharesBefore(unplaced)).toMatchObject([
+      { other_labels: ["Number of orders before shipping"] },
+    ]);
   });
 
   it("gives no result for a check it turns off", () => {
     const formOff = resolve({ checks: { off: ["metric_name_form"] } });
     const orders = metric({ name: "orders", unit: "count" });
-    expect(checkMetric(orders, context(formOff))).toHaveLength(7);
+    const results = checkMetric(orders, context(formOff));
+    expect(new Set(results.map((result) => result.check)).size).toBe(7);
     expect(failing(formOff, { name: "orders", unit: "count" })).toEqual([]);
   });
 
   it("requires its own custom fields on a metric", () => {
     const owned = resolve({ metric_fields: { custom: [OWNER_TEAM] } });
-    expect(METRIC_CHECKS.metric_fields(metric(), context(owned))).toBe(
-      "Owner team (owner_team) is required. (metric_fields)",
-    );
+    expect(METRIC_CHECKS.metric_fields(metric(), context(owned))).toEqual([
+      {
+        rule: "metric_fields.custom",
+        message: "Owner team (owner_team) is required.",
+      },
+    ]);
     expect(failing(owned, { custom: { owner_team: "Finance" } })).toEqual([]);
   });
 });
@@ -478,8 +539,21 @@ describe("term_fields", () => {
     ).toEqual([
       {
         check: "term_fields",
+        rule: "term_fields.definition",
         passed: false,
-        message: "Write its definition. (term_fields)",
+        message: "Write its definition.",
+      },
+      {
+        check: "term_fields",
+        rule: "term_fields.values",
+        passed: true,
+        message: "Passes.",
+      },
+      {
+        check: "term_fields",
+        rule: "term_fields.custom",
+        passed: true,
+        message: "Passes.",
       },
     ]);
     const owned = resolve({ term_fields: { custom: [OWNER_TEAM] } });
