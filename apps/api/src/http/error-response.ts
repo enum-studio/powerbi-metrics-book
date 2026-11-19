@@ -39,14 +39,21 @@ function saveAnyway(error: ServiceError) {
   };
 }
 
-/** A refusal a client tells apart by name says so in its detail. */
+/**
+ * The codes a client may branch on. A ServiceError's detail also holds
+ * upstream codes (Microsoft's own) that must not tell a missing element from
+ * a refused one, so only a code named here is sent.
+ */
+export const PUBLIC_ERROR_CODES: readonly string[] = ["docs.field_not_on_kind"];
+
 function codeOf(error: ServiceError) {
-  return typeof error.detail.code === "string"
-    ? { code: error.detail.code }
+  const { code } = error.detail;
+  return typeof code === "string" && PUBLIC_ERROR_CODES.includes(code)
+    ? { code }
     : {};
 }
 
-/** The REST answer to a ServiceError: its kind and its message, and the one machine-readable refusal above; never the rest of its detail. */
+/** The REST answer to a ServiceError: its kind and its message, a code on the public list, and the save-anyway refusal; never the rest of its detail. */
 export function errorResponse(c: Context, error: ServiceError): Response {
   return c.json(
     {

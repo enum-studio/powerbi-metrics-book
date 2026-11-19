@@ -22,7 +22,7 @@ const row = {
     name,
   ),
   ...filled(
-    "summary description description_pbi excerpt question missing purpose dax error",
+    "summary description description_pbi when_to_use blank_means excerpt question missing purpose dax error",
     long,
   ),
   ...filled("dataset measure table workspace metric", parent),
@@ -75,9 +75,9 @@ const row = {
 const cases = [
   ["metricAnchor", "id name label summary summary_truncated unit category trust_state dataset_count aliases aliases_truncated", 650],
   ["variantAnchor", "id dataset measure measure_reference", 700],
-  ["columnAnchor", "id name table data_type display_folder description description_truncated description_pbi description_pbi_truncated unit terms", 750],
+  ["columnAnchor", "id name table data_type display_folder description description_truncated description_pbi description_pbi_truncated unit blank_means blank_means_truncated terms", 1050],
   ["measureAnchor", "id name table display_folder description description_truncated description_pbi description_pbi_truncated metric", 1000],
-  ["datasetAnchor", "id name workspace reached_through description description_truncated", 450],
+  ["datasetAnchor", "id name workspace reached_through description description_truncated when_to_use when_to_use_truncated", 600],
   ["workspaceAnchor", "id name dataset_count description description_truncated", 300],
   ["appAnchor", "id name workspace description description_truncated datasets", 450],
   ["termAnchor", "id name type summary summary_truncated trust_state column_count aliases aliases_truncated", 550],
@@ -140,6 +140,9 @@ describe("connector anchors", () => {
         summary: "s".repeat(240),
         description: "d".repeat(key === "categoryAnchor" ? 240 : 160),
         description_pbi: "d".repeat(160),
+        unit: key === "columnAnchor" ? "u".repeat(160) : "money",
+        when_to_use: "w".repeat(160),
+        blank_means: "b".repeat(160),
         excerpt: "e".repeat(240),
         question: "q".repeat(240),
         missing: "m".repeat(240),
@@ -159,6 +162,18 @@ describe("connector anchors", () => {
       expect(Math.ceil(bytes / 50) * 50).toBe(target);
     },
   );
+  it("cuts a long unit, blank_means and when_to_use in list answers", () => {
+    const cut = anchors.columnAnchor({ unit: long, blank_means: long });
+    expect(cut).toMatchObject({
+      unit_truncated: true,
+      blank_means_truncated: true,
+    });
+    expect((cut.unit as string).length).toBeLessThan(200);
+    expect((cut.blank_means as string).length).toBeLessThan(200);
+    const dataset = anchors.datasetAnchor({ when_to_use: long });
+    expect(dataset.when_to_use_truncated).toBe(true);
+    expect((dataset.when_to_use as string).length).toBeLessThan(200);
+  });
   it("keeps the full category path on nested metric and category hits", () => {
     const sales = { kind: "category", key: "sales", name: "Sales" };
     const orders = { kind: "category", key: "orders", name: "Orders" };
@@ -292,7 +307,7 @@ describe("connector anchors", () => {
       custom: {},
     });
     expect(Object.keys(answer)).toEqual(
-      "id name workspace apps description description_pbi date_tables tables relationships".split(
+      "id name workspace apps description description_pbi when_to_use date_tables tables relationships".split(
         " ",
       ),
     );

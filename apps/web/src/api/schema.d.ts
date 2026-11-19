@@ -1936,6 +1936,7 @@ export interface components {
         | "upstream"
         | "unavailable";
       message: string;
+      code?: string;
     };
     Me: {
       id: string;

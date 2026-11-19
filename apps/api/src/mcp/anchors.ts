@@ -77,6 +77,8 @@ function keep(
   return answer;
 }
 const descriptions = { description: 160, description_pbi: 160 };
+const columnTexts = { ...descriptions, unit: 160, blank_means: 160 };
+const datasetTexts = { ...descriptions, when_to_use: 160 };
 const parents = (row: Row, input: Input = {}) => ({
   ...row,
   dataset: input.dataset === undefined ? dataset(row.dataset) : undefined,
@@ -123,7 +125,7 @@ export const columnAnchor = (row: Row, input: Input = {}): Row =>
   keep(
     parents(row, input),
     "id name table data_type column_type is_hidden display_folder description description_pbi unit blank_means terms pii",
-    descriptions,
+    columnTexts,
   );
 export const measureAnchor = (row: Row, input: Input = {}): Row =>
   keep(
@@ -135,7 +137,7 @@ export const datasetAnchor = (row: Row, input: Input = {}): Row =>
   keep(
     parents(row, input),
     "id name workspace reached_through has_row_level_security description when_to_use removed",
-    descriptions,
+    datasetTexts,
   );
 export const workspaceAnchor = (row: Row): Row =>
   keep(row, "id name dataset_count description", descriptions);

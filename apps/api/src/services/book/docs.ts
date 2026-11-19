@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
+import type { AnyPgColumn, PgColumn } from "drizzle-orm/pg-core";
 import type { Db, ServiceContext } from "../../context.js";
 import {
   powerbiApp,
@@ -42,17 +42,23 @@ const seen = (db: Db, allowed: SQL) =>
     .from(powerbiDataset)
     .where(and(allowed, isNull(powerbiDataset.removed_at)));
 
+/** A nullable text column of the mirror. */
+type TextColumn = AnyPgColumn<{ data: string; notNull: false }>;
+
 /** Where each kind is kept, Power BI's own description (a workspace has none) and how it is reached through a dataset. */
 export const KINDS: Record<
   string,
   {
     table: DocTable;
     pbi: PgColumn | null;
+    /** The built-in fields of the kind, each with its column; a kind without any has none. */
+    built: Record<string, TextColumn>;
     reach: (db: Db, allowed: SQL, apps: SQL | undefined) => SQL | undefined;
   }
 > = {
   workspace: {
     table: powerbiWorkspace,
+    built: {},
     pbi: null,
     reach: (db, allowed) =>
       inArray(
@@ -65,6 +71,7 @@ export const KINDS: Record<
   },
   app: {
     table: powerbiApp,
+    built: {},
     pbi: powerbiApp.description_pbi,
     // An app is seen as the app lists show it (appsSeen), and through a dataset the caller may describe.
     reach: (db, allowed, apps) =>
@@ -81,22 +88,34 @@ export const KINDS: Record<
   },
   dataset: {
     table: powerbiDataset,
+    built: {
+      when_to_use: powerbiDataset.when_to_use,
+      owner: powerbiDataset.owner,
+      freshness: powerbiDataset.freshness,
+      caveats: powerbiDataset.caveats,
+    },
     pbi: powerbiDataset.description_pbi,
     reach: (db, allowed) => inArray(powerbiDataset.id, seen(db, allowed)),
   },
   table: {
     table: powerbiTable,
+    built: {
+      grain_and_filters: powerbiTable.grain_and_filters,
+      caveats: powerbiTable.caveats,
+    },
     pbi: powerbiTable.description_pbi,
     reach: (db, allowed) => inArray(powerbiTable.dataset_id, seen(db, allowed)),
   },
   column: {
     table: powerbiColumn,
+    built: { unit: powerbiColumn.unit, blank_means: powerbiColumn.blank_means },
     pbi: powerbiColumn.description_pbi,
     reach: (db, allowed) =>
       inArray(powerbiColumn.dataset_id, seen(db, allowed)),
   },
   measure: {
     table: powerbiMeasure,
+    built: {},
     pbi: powerbiMeasure.description_pbi,
     reach: (db, allowed) =>
       inArray(powerbiMeasure.dataset_id, seen(db, allowed)),
@@ -105,28 +124,25 @@ export const KINDS: Record<
 
 const DOC_KINDS = Object.keys(KINDS);
 
-/** The built-in fields each kind carries beside the description; every other kind has none. */
-export const BUILT_IN_FIELDS = {
-  dataset: ["when_to_use", "owner", "freshness", "caveats"],
-  table: ["grain_and_filters", "caveats"],
-  column: ["unit", "blank_means"],
-} as const;
-export const ALL_BUILT_IN_FIELDS = [
-  "when_to_use",
-  "owner",
-  "freshness",
-  "caveats",
-  "grain_and_filters",
-  "unit",
-  "blank_means",
-] as const;
-export type BuiltInField = (typeof ALL_BUILT_IN_FIELDS)[number];
+export type BuiltInField =
+  | "when_to_use"
+  | "owner"
+  | "freshness"
+  | "caveats"
+  | "grain_and_filters"
+  | "unit"
+  | "blank_means";
 export type BuiltInValues = Partial<Record<BuiltInField, string | null>>;
 
-const fieldsOf = (kind: string): readonly BuiltInField[] =>
-  Object.hasOwn(BUILT_IN_FIELDS, kind)
-    ? BUILT_IN_FIELDS[kind as keyof typeof BUILT_IN_FIELDS]
-    : [];
+/** Every built-in field of any kind. */
+const ALL_FIELDS = [
+  ...new Set(Object.values(KINDS).flatMap((k) => Object.keys(k.built))),
+] as BuiltInField[];
+
+const fieldsOf = (kind: string): BuiltInField[] =>
+  Object.keys(
+    (Object.hasOwn(KINDS, kind) ? KINDS[kind]?.built : undefined) ?? {},
+  ) as BuiltInField[];
 
 export type DocElement = { kind: string; id: string };
 export type Docs = BuiltInValues & {
@@ -177,7 +193,7 @@ async function load(db: Db, context: ServiceContext, element: DocElement) {
   }
   const [row] = await db
     .select({
-      ...built,
+      built: kind.built,
       id: table.id,
       name: table.name,
       description: table.description,
@@ -206,7 +222,7 @@ async function load(db: Db, context: ServiceContext, element: DocElement) {
   }
   const fields: BuiltInValues = {};
   for (const field of fieldsOf(element.kind))
-    fields[field] = (row as BuiltInValues)[field] ?? null;
+    fields[field] = row.built[field] ?? null;
   return {
     table,
     docs: {
@@ -244,7 +260,7 @@ export async function setDocs(
 ): Promise<Docs> {
   await requireCurator(context);
   const own = fieldsOf(element.kind);
-  for (const field of ALL_BUILT_IN_FIELDS) {
+  for (const field of ALL_FIELDS) {
     if (input[field] === undefined || own.includes(field)) continue;
     throw new ServiceError(
       "invalid",

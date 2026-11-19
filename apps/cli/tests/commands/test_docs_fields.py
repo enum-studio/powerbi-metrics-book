@@ -1,6 +1,6 @@
 import json
 
-from cli_support import URL, Serve, json_response
+from cli_support import Serve, json_response
 from commands_support import run
 
 ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
@@ -82,4 +82,3 @@ def test_show_prints_the_fields_that_are_set_and_leaves_out_the_rest(
     assert result.exit_code == 0, result.stderr
     assert "Sales Operations" in result.stdout
     assert "freshness" not in result.stdout
-    assert URL

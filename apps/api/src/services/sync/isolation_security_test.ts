@@ -460,6 +460,10 @@ describe("our documentation fields", () => {
       });
       const before = await read();
       expect(before.dataset).toEqual(dataset);
+      expect(before.table).toEqual({
+        grain_and_filters: "One row per order line",
+        caveats: "No returns",
+      });
       expect(before.column).toEqual({ unit: "EUR", blank_means: "Not priced" });
       await sync();
       expect(await read()).toEqual(before);
