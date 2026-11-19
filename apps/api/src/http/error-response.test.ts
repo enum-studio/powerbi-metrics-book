@@ -1,15 +1,12 @@
-import type { Context } from "hono";
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { ServiceError } from "../errors.js";
 import { errorResponse } from "./error-response.js";
 
-const context = {
-  json: (body: unknown, status: number) =>
-    new Response(JSON.stringify(body), { status }),
-} as unknown as Context;
-
 async function answer(error: ServiceError) {
-  const response = errorResponse(context, error);
+  const app = new Hono();
+  app.get("/", (c) => errorResponse(c, error));
+  const response = await app.request("/");
   return { status: response.status, body: await response.json() };
 }
 

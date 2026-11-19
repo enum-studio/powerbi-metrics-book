@@ -279,7 +279,7 @@ describe("the routes", () => {
     ).toMatchObject({ column: { unit: "USD", blank_means: "Unknown" } });
   });
 
-  it("refuse a field the kind does not have with the code docs.field_not_on_kind, and send no code for an upstream refusal", async () => {
+  it("refuse a field the kind does not have with the code docs.field_not_on_kind", async () => {
     const curator = await person("curator");
     const agent = bearer((await oauth.login(curator.cookie)).access_token);
     const dataset = sample.tenant.datasets[0];

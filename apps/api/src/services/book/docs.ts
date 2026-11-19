@@ -45,17 +45,16 @@ const seen = (db: Db, allowed: SQL) =>
 /** A nullable text column of the mirror. */
 type TextColumn = AnyPgColumn<{ data: string; notNull: false }>;
 
+interface KindSpec {
+  table: DocTable;
+  pbi: PgColumn | null;
+  /** The built-in fields of the kind, each with its column; a kind without any has none. */
+  built: Record<string, TextColumn>;
+  reach: (db: Db, allowed: SQL, apps: SQL | undefined) => SQL | undefined;
+}
+
 /** Where each kind is kept, Power BI's own description (a workspace has none) and how it is reached through a dataset. */
-export const KINDS: Record<
-  string,
-  {
-    table: DocTable;
-    pbi: PgColumn | null;
-    /** The built-in fields of the kind, each with its column; a kind without any has none. */
-    built: Record<string, TextColumn>;
-    reach: (db: Db, allowed: SQL, apps: SQL | undefined) => SQL | undefined;
-  }
-> = {
+export const KINDS = {
   workspace: {
     table: powerbiWorkspace,
     built: {},
@@ -120,29 +119,31 @@ export const KINDS: Record<
     reach: (db, allowed) =>
       inArray(powerbiMeasure.dataset_id, seen(db, allowed)),
   },
-};
+} satisfies Record<string, KindSpec>;
 
+type DocKind = keyof typeof KINDS;
 const DOC_KINDS = Object.keys(KINDS);
+const isDocKind = (kind: string): kind is DocKind => Object.hasOwn(KINDS, kind);
 
-export type BuiltInField =
-  | "when_to_use"
-  | "owner"
-  | "freshness"
-  | "caveats"
-  | "grain_and_filters"
-  | "unit"
-  | "blank_means";
+/** The kind's spec, or undefined for a kind that has no documentation. */
+export function docKind(kind: string): KindSpec | undefined {
+  return isDocKind(kind) ? KINDS[kind] : undefined;
+}
+
+export type BuiltInField = {
+  [K in DocKind]: keyof (typeof KINDS)[K]["built"];
+}[DocKind];
 export type BuiltInValues = Partial<Record<BuiltInField, string | null>>;
 
 /** Every built-in field of any kind. */
-const ALL_FIELDS = [
-  ...new Set(Object.values(KINDS).flatMap((k) => Object.keys(k.built))),
-] as BuiltInField[];
+const ALL_FIELDS: ReadonlySet<string> = new Set(
+  Object.values(KINDS).flatMap((kind: KindSpec) => Object.keys(kind.built)),
+);
+const isBuiltInField = (field: string): field is BuiltInField =>
+  ALL_FIELDS.has(field);
 
 const fieldsOf = (kind: string): BuiltInField[] =>
-  Object.keys(
-    (Object.hasOwn(KINDS, kind) ? KINDS[kind]?.built : undefined) ?? {},
-  ) as BuiltInField[];
+  Object.keys(docKind(kind)?.built ?? {}).filter(isBuiltInField);
 
 export type DocElement = { kind: string; id: string };
 export type Docs = BuiltInValues & {
@@ -173,9 +174,7 @@ async function isPii(db: Db, element: DocElement): Promise<boolean> {
 }
 
 async function load(db: Db, context: ServiceContext, element: DocElement) {
-  const kind = Object.hasOwn(KINDS, element.kind)
-    ? KINDS[element.kind]
-    : undefined;
+  const kind = docKind(element.kind);
   if (kind === undefined) {
     throw new ServiceError(
       "invalid",
@@ -186,11 +185,6 @@ async function load(db: Db, context: ServiceContext, element: DocElement) {
   const allowed = await context.access.describableDatasets(context.principal);
   const apps = await appsSeen(context, allowed);
   // Only the kind's own built-in columns are selected, so the answer carries just those.
-  const built: Record<string, PgColumn> = {};
-  for (const field of fieldsOf(element.kind)) {
-    const column = (table as unknown as Record<string, PgColumn>)[field];
-    if (column !== undefined) built[field] = column;
-  }
   const [row] = await db
     .select({
       built: kind.built,
@@ -220,9 +214,7 @@ async function load(db: Db, context: ServiceContext, element: DocElement) {
       element.kind === "dataset" ? NO_SUCH_DATASET : `No such ${element.kind}.`,
     );
   }
-  const fields: BuiltInValues = {};
-  for (const field of fieldsOf(element.kind))
-    fields[field] = row.built[field] ?? null;
+  const fields: BuiltInValues = row.built;
   return {
     table,
     docs: {
@@ -260,7 +252,7 @@ export async function setDocs(
 ): Promise<Docs> {
   await requireCurator(context);
   const own = fieldsOf(element.kind);
-  for (const field of ALL_FIELDS) {
+  for (const field of [...ALL_FIELDS].filter(isBuiltInField)) {
     if (input[field] === undefined || own.includes(field)) continue;
     throw new ServiceError(
       "invalid",

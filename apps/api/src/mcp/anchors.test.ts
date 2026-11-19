@@ -301,13 +301,22 @@ describe("connector anchors", () => {
     const answer = anchors.datasetDetail({
       ...row,
       apps: [parent],
-      tables: [{ ...row, kind: "fact", column_names: [name] }],
+      freshness: name,
+      caveats: name,
+      tables: [
+        {
+          ...row,
+          kind: "fact",
+          grain_and_filters: name,
+          column_names: [name],
+        },
+      ],
       relationships: [row],
       date_tables: [{ table: name, column: name, joined_by: 1 }],
       custom: {},
     });
     expect(Object.keys(answer)).toEqual(
-      "id name workspace apps description description_pbi when_to_use date_tables tables relationships".split(
+      "id name workspace apps description description_pbi when_to_use freshness caveats date_tables tables relationships".split(
         " ",
       ),
     );
@@ -319,6 +328,7 @@ describe("connector anchors", () => {
           description_pbi: long,
         }),
         kind: "fact",
+        grain_and_filters: name,
         column_count: 1,
         column_names: [name],
       },
