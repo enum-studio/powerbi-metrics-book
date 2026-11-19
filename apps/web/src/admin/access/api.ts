@@ -95,11 +95,29 @@ export const conventionsQuery = queryOptions({
   queryFn: () => read(api.GET("/api/v1/conventions")),
 });
 
+export type ConventionVersion =
+  operations["getApiV1ConventionsVersions"]["responses"][200]["content"]["application/json"]["versions"][number];
 export const conventionVersionsQuery = queryOptions({
   retry,
   queryKey: ["conventions", "versions"],
   queryFn: async () =>
     (await read(api.GET("/api/v1/conventions/versions"))).versions,
+});
+
+export type ConventionRule =
+  operations["getApiV1ConventionsRules"]["responses"][200]["content"]["application/json"]["rules"][number];
+export const conventionRulesQuery = queryOptions({
+  retry,
+  queryKey: ["conventions", "rules"],
+  queryFn: async () => (await read(api.GET("/api/v1/conventions/rules"))).rules,
+});
+
+export type CompanyPart =
+  operations["getApiV1ConventionsCompany"]["responses"][200]["content"]["application/json"];
+export const conventionCompanyQuery = queryOptions({
+  retry,
+  queryKey: ["conventions", "company"],
+  queryFn: () => read(api.GET("/api/v1/conventions/company")),
 });
 
 export const assignRole = (body: NewAssignment) =>

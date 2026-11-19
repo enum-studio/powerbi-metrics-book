@@ -3,9 +3,16 @@ import { validator } from "hono-openapi";
 import { z } from "zod";
 import type { AppEnv } from "../../app.js";
 import type { AppDeps } from "../../context.js";
-import { conventionsSchema } from "../../services/conventions/schema.js";
+import { RULE_TARGETS } from "../../services/conventions/rules.js";
+import {
+  CHECK_NAMES,
+  conventionsSchema,
+  PRESET_NAMES,
+} from "../../services/conventions/schema.js";
 import {
   diffAsAdmin,
+  getCompanyPartAsAdmin,
+  listRules,
   listVersionsAsAdmin,
   setConventionsAsAdmin,
 } from "../../services/conventions/service.js";
@@ -27,11 +34,51 @@ const Change = z.object({
   before: z.unknown(),
   after: z.unknown(),
 });
+const Rules = z.object({
+  rules: z.array(
+    z.object({
+      id: z.string(),
+      check: z.enum(CHECK_NAMES),
+      target: z.enum(RULE_TARGETS),
+      value: z.unknown(),
+      source: z.enum(["preset", "company"]),
+      allowed: z.array(z.union([z.string(), z.boolean()])).nullable(),
+      off: z.boolean(),
+      exceptions: z.number().int(),
+    }),
+  ),
+  fixed: z.array(z.object({ id: z.string(), reason: z.string() })),
+});
+// What the company set, as stored: every key beside these is the company's.
+const CompanyPart = z.looseObject({
+  format: z.literal(1),
+  preset: z.enum(PRESET_NAMES).optional(),
+});
 
-/** PUT /api/v1/conventions, GET /conventions/versions and POST /conventions/diff: for `book:edit_conventions`. */
+/**
+ * GET /api/v1/conventions/rules for anyone signed in, as GET /conventions is;
+ * PUT /conventions, GET /conventions/company, /conventions/versions and POST
+ * /conventions/diff for `book:edit_conventions`.
+ */
 export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   const as = serviceContext(deps);
+
+  const rules = documented(
+    "Every rule by its id: its value, where the value comes from, and whether it is off",
+    Rules,
+  );
+  routes.get("/conventions/rules", rules.doc, credential, async (c) =>
+    rules.answer(c, await listRules(as(c))),
+  );
+
+  const company = documented(
+    "What the company set over its preset, in the version in force",
+    CompanyPart,
+  );
+  routes.get("/conventions/company", company.doc, credential, async (c) =>
+    company.answer(c, await getCompanyPartAsAdmin(as(c))),
+  );
 
   const save = documented(
     "Save the conventions as the next version",

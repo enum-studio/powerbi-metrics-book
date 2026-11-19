@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { asc, eq, TransactionRollbackError } from "drizzle-orm";
+import { asc, desc, eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals, testPool } from "../../../test/deps.js";
 import type { Db } from "../../context.js";
@@ -15,6 +15,7 @@ import {
   presetsFolder,
   resolve,
   setConventions,
+  toCompanyPart,
   validateConventions,
 } from "./store.js";
 
@@ -98,6 +99,57 @@ describe("resolve", () => {
     expect(validateConventions("naming: none")).toEqual([
       { path: "", message: "The conventions are a mapping of keys." },
     ]);
+  });
+
+  it("reads a company part as the document it overlays, and refuses a format other than 1", () => {
+    const part = { format: 1, naming: { kinds: ["total_"] } };
+    expect(resolve(part)).toEqual(resolve({ naming: { kinds: ["total_"] } }));
+    expect(resolve(part)).not.toHaveProperty("format");
+    expect(validateConventions({ format: 2 })).toEqual([
+      {
+        path: "format",
+        message: "This release reads format 1 of the conventions.",
+      },
+    ]);
+    expect(
+      validateConventions({ format: 1, namng: {}, naming: { case: "camel" } })
+        .map((problem) => problem.path)
+        .sort(),
+    ).toEqual(["naming.case", "namng"]);
+  });
+});
+
+describe("toCompanyPart", () => {
+  it("keeps the preset and only what differs from it, key by key and arrays whole", () => {
+    expect(toCompanyPart(resolve({}))).toEqual({
+      format: 1,
+      preset: "metrics_book",
+    });
+    expect(toCompanyPart(resolve({ preset: "minimal" }))).toEqual({
+      format: 1,
+      preset: "minimal",
+    });
+    const preset = resolve({});
+    const [group = "", words = []] =
+      Object.entries(preset.naming.qualifiers)[0] ?? [];
+    const changed = resolve({
+      naming: {
+        kinds: [...preset.naming.kinds, "_share"],
+        money_qualifier: { values: ["excl_vat"] },
+        qualifiers: { [group]: [...words, "extra_word"] },
+      },
+      metric_fields: { when_to_use: preset.metric_fields.when_to_use },
+    });
+    expect(toCompanyPart(changed)).toEqual({
+      format: 1,
+      preset: "metrics_book",
+      naming: {
+        kinds: [...preset.naming.kinds, "_share"],
+        money_qualifier: { values: ["excl_vat"] },
+        qualifiers: { [group]: [...words, "extra_word"] },
+      },
+    });
+    expect(resolve(toCompanyPart(changed))).toEqual(changed);
   });
 });
 
@@ -202,6 +254,38 @@ describe("setConventions", () => {
       await createDb(pool).delete(conventions);
     }
   });
+
+  it("stores the company's part: a complete document as what differs from its preset, a part as given", () =>
+    rolledBack(async (tx) => {
+      const stored = async () =>
+        (
+          await tx.select().from(conventions).orderBy(desc(conventions.version))
+        )[0]?.document;
+      const set = (document: unknown) =>
+        setConventions({ db: tx }, principals.admin, document);
+      const complete = resolve({
+        preset: "minimal",
+        naming: { case: "snake_case" },
+      });
+      await set(complete);
+      expect(await stored()).toEqual({
+        format: 1,
+        preset: "minimal",
+        naming: { case: "snake_case" },
+      });
+      expect(await currentConventions(tx)).toEqual(complete);
+      // A part may set a value equal to the preset's: the company holds it.
+      const part = { format: 1, naming: { case: "none", kinds: [] } };
+      const saved = await set(part);
+      expect(await stored()).toEqual(part);
+      expect(saved.conventions).toEqual(
+        resolve({
+          preset: "metrics_book",
+          naming: { case: "none", kinds: [] },
+        }),
+      );
+      expect((await listVersions(tx))[0]?.document).toEqual(saved.conventions);
+    }));
 
   it("keeps every version, records each change and announces it", () =>
     rolledBack(async (tx) => {

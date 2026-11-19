@@ -530,6 +530,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conventions/rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every rule by its id: its value, where the value comes from, and whether it is off */
+    get: operations["getApiV1ConventionsRules"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conventions/company": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What the company set over its preset, in the version in force */
+    get: operations["getApiV1ConventionsCompany"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/conventions": {
     parameters: {
       query?: never;
@@ -5665,6 +5699,116 @@ export interface operations {
       };
       /** @description No such thing, or none the caller may see. */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1ConventionsRules: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Every rule by its id: its value, where the value comes from, and whether it is off */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            rules: {
+              id: string;
+              /** @enum {string} */
+              check:
+                | "metric_name_form"
+                | "metric_name_generated"
+                | "metric_name_comparison"
+                | "metric_money_qualifier"
+                | "metric_qualifier_order"
+                | "metric_fields"
+                | "metric_not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields";
+              /** @enum {string} */
+              target: "metric" | "term" | "dataset" | "table" | "column";
+              value: unknown;
+              /** @enum {string} */
+              source: "preset" | "company";
+              allowed: (string | boolean)[] | null;
+              off: boolean;
+              exceptions: number;
+            }[];
+            fixed: {
+              id: string;
+              reason: string;
+            }[];
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1ConventionsCompany: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description What the company set over its preset, in the version in force */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            format: 1;
+            /** @enum {string} */
+            preset?: "metrics_book" | "minimal";
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
         headers: {
           [name: string]: unknown;
         };

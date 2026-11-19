@@ -1,6 +1,7 @@
 import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
 import { type Role, ROLES, roleUrl } from "../../test/database.js";
+import { resolve } from "../services/conventions/store.js";
 import { migrateDatabase } from "./migrate.js";
 
 const worker = new pg.Pool({ connectionString: roleUrl("worker_rw") });
@@ -116,6 +117,26 @@ describe("a start's migration", () => {
       "select to_regclass('metric_label_trgm_idx') as index",
     );
     expect(rows).toEqual([{ index: "metric_label_trgm_idx" }]);
+  });
+
+  it("turns a stored complete conventions document into the company's part", async () => {
+    await newSession("migrator", (migrator) =>
+      migrator.query(
+        "insert into conventions (version, document, set_by) values (1, $1, 'test-admin')",
+        [JSON.stringify(resolve({ preset: "minimal" }))],
+      ),
+    );
+    try {
+      await migrateDatabase(roleUrl("migrator"));
+      const { rows } = await worker.query(
+        "select document from conventions where version = 1",
+      );
+      expect(rows).toEqual([{ document: { format: 1, preset: "minimal" } }]);
+    } finally {
+      await newSession("migrator", (migrator) =>
+        migrator.query("delete from conventions"),
+      );
+    }
   });
 
   it("leaves JIT off for the next session of every role", async () => {

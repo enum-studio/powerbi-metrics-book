@@ -19,7 +19,7 @@ import {
 } from "../auth/service-accounts.js";
 import { BOOK } from "../book/changes.js";
 import {
-  currentConventions,
+  conventionsInForce,
   diffConventions,
   resolve,
   setConventions,
@@ -183,7 +183,8 @@ async function currentBook(context: ServiceContext) {
         .filter((s) => s.source === "database" && exported(s.key))
         .map((listing) => [listing.key, listing.value]),
     ),
-    conventions: await currentConventions(context.db),
+    // What the company set; resolving it over its preset gives the rules.
+    conventions: (await conventionsInForce(context.db)).company,
     role_assignments: (await listAssignments(context.db))
       .map(entryOf)
       .sort((a, b) => keyOf(a).localeCompare(keyOf(b))),
@@ -248,7 +249,9 @@ export type BookChange = {
  * `customer[email]` in the file is the held `Customer[Email]`; rules the
  * file lacks are kept, never removed.
  * Conventions in the file replace the deployment's whole: a key left out
- * falls back to the preset, and the changes show it.
+ * falls back to the preset, and the changes show it. A company part is
+ * stored as given; a complete document, from before the company's part was
+ * stored, as what differs from its preset.
  */
 export async function importBook(
   context: ServiceContext,
@@ -280,7 +283,7 @@ export async function importBook(
     settings.push({ ...setting, before: before?.value ?? null, check });
   }
   const conventions = diffConventions(
-    current.conventions,
+    resolve(current.conventions),
     resolve(file.conventions ?? current.conventions),
   );
   const inFile = new Set((file.role_assignments ?? []).map(keyOf));

@@ -1304,6 +1304,44 @@ Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's
 
 ## conventions
 
+### GET `/api/v1/conventions/rules`
+
+Every rule by its id: its value, where the value comes from, and whether it is off
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Every rule by its id: its value, where the value comes from, and whether it is off | an object with rules, fixed |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `rules` | a list of an object | yes |   |
+| `fixed` | a list of an object | yes |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### GET `/api/v1/conventions/company`
+
+What the company set over its preset, in the version in force
+
+Who may call it: An admin.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | What the company set over its preset, in the version in force | an object with format, preset |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `format` | 1 | yes |   |
+| `preset` | one of "metrics_book", "minimal" | no |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
+
 ### GET `/api/v1/conventions`
 
 The company's conventions: the guide in words and the rules as data

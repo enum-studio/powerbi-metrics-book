@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { TransactionRollbackError } from "drizzle-orm";
+import { desc, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
 import { z } from "zod";
 import {
   adminOnRecord,
@@ -14,9 +14,11 @@ import {
 import { MemorySettings } from "../../../test/doubles.js";
 import { publishedIdentities } from "../../../test/secrets-support.js";
 import { auditEvent } from "../../db/schema/audit.js";
+import { conventions } from "../../db/schema/book.js";
 import { createServiceAccount } from "../auth/service-accounts.js";
 import { signInConfigReader } from "../auth/sign-in-config.js";
 import { setConventionsAsAdmin } from "../conventions/service.js";
+import { resolve } from "../conventions/store.js";
 import { listRules, setRule } from "../pii/rules.js";
 import { createSettingsStore, inTransaction } from "../settings/store.js";
 import { registerCheck } from "./checks.js";
@@ -460,6 +462,48 @@ describe("book.yml pii_rules", () => {
     ).toEqual([]);
     expect(await exportBook(admin)).not.toContain("Audit Rolled Back");
   });
+});
+
+describe("book.yml conventions", () => {
+  const stored = async (deployment: typeof admin) =>
+    (
+      await deployment.db
+        .select()
+        .from(conventions)
+        .orderBy(desc(conventions.version))
+        .limit(1)
+    )[0]?.document;
+
+  it("exports the company's part, not the resolved conventions", () =>
+    inRolledBackBook(async (deployment) => {
+      await setConventionsAsAdmin(deployment, {
+        preset: "minimal",
+        naming: { kinds: ["total_"] },
+      });
+      const book = bookSchema.parse(parse(await exportBook(deployment)));
+      expect(book.conventions).toEqual({
+        format: 1,
+        preset: "minimal",
+        naming: { kinds: ["total_"] },
+      });
+    }));
+
+  it("stores a complete document from before the company's part as one", () =>
+    inRolledBackBook(async (deployment) => {
+      const complete = resolve({
+        preset: "minimal",
+        naming: { case: "snake_case" },
+      });
+      const file = stringify({ format: 1, conventions: complete });
+      expect(await importBook(deployment, file, { apply: true })).toMatchObject(
+        { applied: true },
+      );
+      expect(await stored(deployment)).toEqual({
+        format: 1,
+        preset: "minimal",
+        naming: { case: "snake_case" },
+      });
+    }));
 });
 
 it("refreshes the cached sign-in brand once an import commits", async () => {

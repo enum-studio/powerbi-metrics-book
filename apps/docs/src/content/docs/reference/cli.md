@@ -752,7 +752,10 @@ Show the conventions: the guide in the company's words, then the rules.
 
 Read this before you name, describe, group or verify anything. The checks
 (`pbmb metrics check`) read these rules, and the company's rules win over
-any general naming advice.
+any general naming advice. Each rule is listed by its id, with its value,
+whether the company set it (source company) or kept the preset's, and
+whether it is off. --json lists them under `rules`, and the rules no company
+can change, with why, under `fixed`.
 
 ```bash
 pbmb conventions show
