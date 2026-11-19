@@ -268,9 +268,9 @@ describe("every metric check under metrics_book", () => {
     expect(words(null)).toEqual(["order", "costs"]);
     expect(words(" ")).toEqual(["order", "costs"]);
     expect(words("Per item.")).toEqual([]);
-    expect(
-      words(null, resolve({ off: ["metric_not_the_same_as"] })),
-    ).toEqual([]);
+    expect(words(null, resolve({ off: ["metric_not_the_same_as"] }))).toEqual(
+      [],
+    );
     expect(
       words(null, resolve({ off: ["metric_fields.not_the_same_as"] })),
     ).toEqual([]);
@@ -543,9 +543,10 @@ describe("a company's own conventions", () => {
     expect(
       results("orders").find((result) => result.rule === "naming.kinds"),
     ).toMatchObject({ passed: true, exception: reason });
-    expect(
-      results("Orders").filter((result) => !result.passed),
-    ).toMatchObject([{ rule: "naming.case" }, { rule: "naming.kinds" }]);
+    expect(results("Orders").filter((result) => !result.passed)).toMatchObject([
+      { rule: "naming.case" },
+      { rule: "naming.kinds" },
+    ]);
     expect(
       results("total_orders").find((result) => result.rule === "naming.kinds"),
     ).not.toHaveProperty("exception");

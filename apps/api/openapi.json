@@ -9633,31 +9633,99 @@
                           ],
                           "additionalProperties": false
                         },
-                        "checks": {
-                          "type": "object",
-                          "properties": {
-                            "off": {
-                              "type": "array",
-                              "items": {
+                        "off": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "naming.case",
+                              "metric_name_form",
+                              "naming.kinds",
+                              "metric_name_generated",
+                              "naming.forbidden_words",
+                              "metric_name_comparison",
+                              "naming.money_qualifier",
+                              "metric_money_qualifier",
+                              "naming.qualifier_order",
+                              "metric_qualifier_order",
+                              "metric_fields.definition",
+                              "metric_fields",
+                              "metric_fields.aliases",
+                              "metric_fields.when_to_use",
+                              "metric_fields.grain_and_filters",
+                              "metric_fields.unit",
+                              "metric_fields.category",
+                              "metric_fields.custom",
+                              "metric_fields.not_the_same_as",
+                              "metric_not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields.definition",
+                              "term_fields",
+                              "term_fields.values",
+                              "term_fields.custom"
+                            ]
+                          }
+                        },
+                        "exceptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "metric_name_form",
+                                  "naming.case",
+                                  "naming.kinds",
                                   "metric_name_generated",
-                                  "metric_name_comparison",
-                                  "metric_money_qualifier",
-                                  "metric_qualifier_order",
-                                  "metric_fields",
-                                  "metric_not_the_same_as",
+                                  "naming.forbidden_words",
+                                  "naming.money_qualifier",
+                                  "naming.qualifier_order",
+                                  "metric_fields.definition",
+                                  "metric_fields.aliases",
+                                  "metric_fields.when_to_use",
+                                  "metric_fields.grain_and_filters",
+                                  "metric_fields.unit",
+                                  "metric_fields.category",
+                                  "metric_fields.custom",
+                                  "metric_fields.not_the_same_as",
                                   "metric_base_variant",
-                                  "term_fields"
+                                  "term_fields.definition",
+                                  "term_fields.values",
+                                  "term_fields.custom"
                                 ]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "metric": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "term": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "dataset": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "table": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "column": {
+                                "type": "string",
+                                "pattern": "^'.+'\\[.+\\]$"
                               }
-                            }
-                          },
-                          "required": [
-                            "off"
-                          ],
-                          "additionalProperties": false
+                            },
+                            "required": [
+                              "rule",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -9670,7 +9738,8 @@
                         "variants",
                         "drafting",
                         "trust",
-                        "checks"
+                        "off",
+                        "exceptions"
                       ],
                       "additionalProperties": false
                     },
@@ -10488,31 +10557,99 @@
                           ],
                           "additionalProperties": false
                         },
-                        "checks": {
-                          "type": "object",
-                          "properties": {
-                            "off": {
-                              "type": "array",
-                              "items": {
+                        "off": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "naming.case",
+                              "metric_name_form",
+                              "naming.kinds",
+                              "metric_name_generated",
+                              "naming.forbidden_words",
+                              "metric_name_comparison",
+                              "naming.money_qualifier",
+                              "metric_money_qualifier",
+                              "naming.qualifier_order",
+                              "metric_qualifier_order",
+                              "metric_fields.definition",
+                              "metric_fields",
+                              "metric_fields.aliases",
+                              "metric_fields.when_to_use",
+                              "metric_fields.grain_and_filters",
+                              "metric_fields.unit",
+                              "metric_fields.category",
+                              "metric_fields.custom",
+                              "metric_fields.not_the_same_as",
+                              "metric_not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields.definition",
+                              "term_fields",
+                              "term_fields.values",
+                              "term_fields.custom"
+                            ]
+                          }
+                        },
+                        "exceptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "metric_name_form",
+                                  "naming.case",
+                                  "naming.kinds",
                                   "metric_name_generated",
-                                  "metric_name_comparison",
-                                  "metric_money_qualifier",
-                                  "metric_qualifier_order",
-                                  "metric_fields",
-                                  "metric_not_the_same_as",
+                                  "naming.forbidden_words",
+                                  "naming.money_qualifier",
+                                  "naming.qualifier_order",
+                                  "metric_fields.definition",
+                                  "metric_fields.aliases",
+                                  "metric_fields.when_to_use",
+                                  "metric_fields.grain_and_filters",
+                                  "metric_fields.unit",
+                                  "metric_fields.category",
+                                  "metric_fields.custom",
+                                  "metric_fields.not_the_same_as",
                                   "metric_base_variant",
-                                  "term_fields"
+                                  "term_fields.definition",
+                                  "term_fields.values",
+                                  "term_fields.custom"
                                 ]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "metric": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "term": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "dataset": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "table": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "column": {
+                                "type": "string",
+                                "pattern": "^'.+'\\[.+\\]$"
                               }
-                            }
-                          },
-                          "required": [
-                            "off"
-                          ],
-                          "additionalProperties": false
+                            },
+                            "required": [
+                              "rule",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -10524,7 +10661,8 @@
                         "variants",
                         "drafting",
                         "trust",
-                        "checks"
+                        "off",
+                        "exceptions"
                       ],
                       "additionalProperties": false
                     }
@@ -10725,6 +10863,248 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/conventions/apply": {
+      "post": {
+        "operationId": "postApiV1ConventionsApply",
+        "summary": "Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run",
+        "responses": {
+          "200": {
+            "description": "Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed_rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "now_failing": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "exceptions_added": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "version": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "changed_rules",
+                    "now_failing",
+                    "exceptions_added",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conventions": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "additionalProperties": {}
+                  },
+                  "dry_run": {
+                    "type": "boolean"
+                  },
+                  "baseline_reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "conventions",
+                  "dry_run"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conventions/exceptions/unused": {
+      "get": {
+        "operationId": "getApiV1ConventionsExceptionsUnused",
+        "summary": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them",
+        "responses": {
+          "200": {
+            "description": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unused": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "metric",
+                                "term",
+                                "dataset",
+                                "table",
+                                "column"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "why": {
+                            "type": "string",
+                            "enum": [
+                              "no_such_target",
+                              "passes"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "target",
+                          "reason",
+                          "why"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "unused"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "metric",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        ]
       }
     },
     "/api/v1/queries": {

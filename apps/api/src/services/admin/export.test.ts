@@ -126,7 +126,6 @@ describe("book.yml", () => {
     expect(book).toMatchObject({
       format: 1,
       settings: { "results.ttl_hours": 48 },
-      conventions: { preset: "minimal" },
       service_accounts: [{ name: "sa_export", max_key_age_days: 90 }],
       pii_rules: [
         {
@@ -141,12 +140,13 @@ describe("book.yml", () => {
       ],
     });
     expect(exported).not.toContain("set_by");
+    // The conventions travel in conventions.yml.
+    expect(book).not.toHaveProperty("conventions");
     const shown = await importBook(admin, exported, { apply: false });
     expect(shown.applied).toBe(false);
     expect(shown.changes.map((change) => change.path)).toEqual(
       expect.arrayContaining([
         "settings.results.ttl_hours",
-        "conventions.preset",
         "role_assignments",
         "service_accounts.sa_export",
         "pii_rules.column:Customer[Email]",
@@ -181,7 +181,6 @@ describe("book.yml", () => {
         .sort(),
     ).toEqual([
       "admin.book.import",
-      "admin.conventions.set",
       ...Array<string>(3).fill("admin.pii_rule.set"),
       ...Array<string>(3).fill("admin.role.assign"),
       "admin.setting.set",
@@ -474,25 +473,24 @@ describe("book.yml conventions", () => {
         .limit(1)
     )[0]?.document;
 
-  it("exports the company's part, not the resolved conventions", () =>
+  it("leaves the conventions out, and an import still takes them", () =>
     inRolledBackBook(async (deployment) => {
-      await setConventionsAsAdmin(deployment, {
-        preset: "minimal",
-        naming: { kinds: ["total_"] },
-      });
-      const book = bookSchema.parse(parse(await exportBook(deployment)));
-      expect(book.conventions).toEqual({
-        format: 1,
-        preset: "minimal",
-        naming: { kinds: ["total_"] },
-      });
+      await setConventionsAsAdmin(deployment, { preset: "minimal" });
+      const exported = await exportBook(deployment);
+      expect(bookSchema.parse(parse(exported))).not.toHaveProperty(
+        "conventions",
+      );
+      const part = { format: 1, preset: "metrics_book", off: ["naming.case"] };
+      const file = stringify({ format: 1, conventions: part });
+      await importBook(deployment, file, { apply: true });
+      expect(await stored(deployment)).toEqual(part);
     }));
 
   it("stores a complete document from before the company's part as one", () =>
     inRolledBackBook(async (deployment) => {
       const complete = resolve({
         preset: "minimal",
-        naming: { case: "snake_case" },
+        metric_fields: { category: { required: true } },
       });
       const file = stringify({ format: 1, conventions: complete });
       expect(await importBook(deployment, file, { apply: true })).toMatchObject(
@@ -501,7 +499,7 @@ describe("book.yml conventions", () => {
       expect(await stored(deployment)).toEqual({
         format: 1,
         preset: "minimal",
-        naming: { case: "snake_case" },
+        metric_fields: { category: { required: true } },
       });
     }));
 });

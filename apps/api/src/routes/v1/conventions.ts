@@ -157,22 +157,17 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
       }),
       refuse,
     ),
-    async (c) => apply.answer(c, await applyAsAdmin(as(c), c.req.valid("json"))),
+    async (c) =>
+      apply.answer(c, await applyAsAdmin(as(c), c.req.valid("json"))),
   );
 
   const unused = documented(
-    "The exceptions nothing needs any more: their target is gone, or passes the rule without them",
+    "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them",
     z.object({
       unused: z.array(
         z.object({
           rule: z.string(),
-          target: z.object({
-            metric: z.string().optional(),
-            term: z.string().optional(),
-            dataset: z.string().optional(),
-            table: z.string().optional(),
-            column: z.string().optional(),
-          }),
+          target: z.partialRecord(z.enum(RULE_TARGETS), z.string()),
           reason: z.string(),
           why: z.enum(["no_such_target", "passes"]),
         }),

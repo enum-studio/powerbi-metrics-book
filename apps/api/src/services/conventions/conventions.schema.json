@@ -1,0 +1,648 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "number",
+      "const": 1
+    },
+    "preset": {
+      "type": "string",
+      "enum": ["metrics_book", "minimal"]
+    },
+    "guide": {
+      "type": "string"
+    },
+    "naming": {
+      "type": "object",
+      "properties": {
+        "case": {
+          "type": "string",
+          "enum": ["snake_case", "none"]
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_words": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "money_qualifier": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "qualifier_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "qualifiers": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "label": {
+          "type": "string",
+          "enum": ["sentence_case", "none"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "metric_fields": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "aliases": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "when_to_use": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "not_the_same_as": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "const": "when_label_shares_a_word"
+                }
+              ]
+            },
+            "ignore_words": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "grain_and_filters": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "unit": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "category": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": ["text", "number", "boolean", "date", "choice"]
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": ["key", "label", "type", "required"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "term_fields": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "values": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "const": "when_categorical"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": ["text", "number", "boolean", "date", "choice"]
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": ["key", "label", "type", "required"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "element_fields": {
+      "type": "object",
+      "properties": {
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": ["text", "number", "boolean", "date", "choice"]
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": ["key", "label", "type", "required"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "variants": {
+      "type": "object",
+      "properties": {
+        "axes": {
+          "type": "object",
+          "properties": {
+            "period": {
+              "type": "object",
+              "properties": {
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "comparison": {
+              "type": "object",
+              "properties": {
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["none", "difference", "growth_rate", "ratio"]
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "currency": {
+              "type": "object",
+              "properties": {
+                "values": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "iso_4217_or_local"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^(?:[A-Z]{3}|local)$"
+                      }
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "custom": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                  },
+                  "values": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$"
+                    }
+                  }
+                },
+                "required": ["key", "values"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "drafting": {
+      "type": "object",
+      "properties": {
+        "group_by_fingerprint": {
+          "type": "boolean"
+        },
+        "recognise_time_intelligence": {
+          "type": "boolean"
+        },
+        "recognise_blank_as_zero": {
+          "type": "boolean"
+        },
+        "period_words": {
+          "type": "object",
+          "properties": {
+            "previous_year": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "previous_quarter": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "previous_month": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "previous_week": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "previous_day": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "name_hints": {
+          "type": "object",
+          "properties": {
+            "period": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "currency": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "skip": {
+          "type": "object",
+          "properties": {
+            "hidden_measures": {
+              "type": "boolean"
+            },
+            "display_folders": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "name_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "dismiss": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name_pattern": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["name_pattern", "reason"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "trust": {
+      "type": "object",
+      "properties": {
+        "agent_verify_requires": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "all_checks"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "metric_name_form",
+                  "metric_name_generated",
+                  "metric_name_comparison",
+                  "metric_money_qualifier",
+                  "metric_qualifier_order",
+                  "metric_fields",
+                  "metric_not_the_same_as",
+                  "metric_base_variant",
+                  "term_fields"
+                ]
+              }
+            }
+          ]
+        },
+        "human_verify_from": {
+          "type": "string",
+          "enum": ["browser", "any"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "off": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "naming.case",
+          "metric_name_form",
+          "naming.kinds",
+          "metric_name_generated",
+          "naming.forbidden_words",
+          "metric_name_comparison",
+          "naming.money_qualifier",
+          "metric_money_qualifier",
+          "naming.qualifier_order",
+          "metric_qualifier_order",
+          "metric_fields.definition",
+          "metric_fields",
+          "metric_fields.aliases",
+          "metric_fields.when_to_use",
+          "metric_fields.grain_and_filters",
+          "metric_fields.unit",
+          "metric_fields.category",
+          "metric_fields.custom",
+          "metric_fields.not_the_same_as",
+          "metric_not_the_same_as",
+          "metric_base_variant",
+          "term_fields.definition",
+          "term_fields",
+          "term_fields.values",
+          "term_fields.custom"
+        ]
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "enum": [
+              "naming.case",
+              "naming.kinds",
+              "metric_name_generated",
+              "naming.forbidden_words",
+              "naming.money_qualifier",
+              "naming.qualifier_order",
+              "metric_fields.definition",
+              "metric_fields.aliases",
+              "metric_fields.when_to_use",
+              "metric_fields.grain_and_filters",
+              "metric_fields.unit",
+              "metric_fields.category",
+              "metric_fields.custom",
+              "metric_fields.not_the_same_as",
+              "metric_base_variant",
+              "term_fields.definition",
+              "term_fields.values",
+              "term_fields.custom"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "metric": {
+            "type": "string",
+            "minLength": 1
+          },
+          "term": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dataset": {
+            "type": "string",
+            "minLength": 1
+          },
+          "table": {
+            "type": "string",
+            "minLength": 1
+          },
+          "column": {
+            "type": "string",
+            "pattern": "^'.+'\\[.+\\]$"
+          }
+        },
+        "required": ["rule", "reason"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["format"],
+  "additionalProperties": false
+}

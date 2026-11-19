@@ -1,4 +1,4 @@
-import { and, type SQL, sql } from "drizzle-orm";
+import { and, inArray, not } from "drizzle-orm";
 import type { ServiceContext } from "../../context.js";
 import { metric } from "../../db/schema/book.js";
 import { BOOK, requireCurator } from "../book/changes.js";
@@ -122,10 +122,31 @@ export function summariseRules(rules: Rules): string[] {
     trust.human_verify_from === "browser"
       ? "Only a person in a browser session approves a metric."
       : "A person approves a metric from the browser, the CLI or the API.",
-    rules.off.length > 0 && `These rules and checks are off: ${words(rules.off)}.`,
+    rules.off.length > 0 &&
+      `These rules and checks are off: ${words(rules.off)}.`,
     rules.exceptions.length > 0 &&
       `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; get_conventions lists each with its reason.`,
   ].filter((line) => line !== false);
+}
+
+/** The metrics among `names` that exist and the caller may not see, whose names an answer leaves out. */
+async function hiddenMetrics(
+  context: ServiceContext,
+  names: string[],
+): Promise<Set<string>> {
+  if (names.length === 0) return new Set();
+  const allowed = await context.access.describableDatasets(context.principal);
+  const hidesPii = !(await readsPii(context));
+  const rows = await context.db
+    .select({ name: metric.name })
+    .from(metric)
+    .where(
+      and(
+        inArray(metric.name, names),
+        not(visibleMetric(context.db, allowed, hidesPii)),
+      ),
+    );
+  return new Set(rows.map((row) => row.name));
 }
 
 /** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. */
@@ -144,9 +165,6 @@ export async function getConventionsForAgents(
  */
 export async function listRules(context: Pick<ServiceContext, "db">) {
   const { conventions, company } = await conventionsInForce(context.db);
-  const exceptions = new Map<string, number>();
-  for (const { rule } of conventions.exceptions)
-    exceptions.set(rule, (exceptions.get(rule) ?? 0) + 1);
   return {
     rules: RULES.map((rule) => {
       const { id, check, target, path, allowed, reads } = rule;
@@ -156,12 +174,15 @@ export async function listRules(context: Pick<ServiceContext, "db">) {
         check,
         target,
         value: path === null ? null : valueAt(conventions, path),
-        source: keys.some((key) => valueAt(company, key.split(".")) !== undefined)
+        source: keys.some(
+          (key) => valueAt(company, key.split(".")) !== undefined,
+        )
           ? ("company" as const)
           : ("preset" as const),
         allowed: allowed === null ? null : [...allowed],
         off: isRuleOff(rule, conventions),
-        exceptions: exceptions.get(id) ?? 0,
+        exceptions: conventions.exceptions.filter((item) => item.rule === id)
+          .length,
       };
     }),
     fixed: [...FIXED_RULES],
@@ -198,56 +219,30 @@ export async function applyAsAdmin(context: ServiceContext, input: ApplyInput) {
   return applyConventions(context, context.principal, input);
 }
 
-async function visibleMetricNames(
-  { db }: ServiceContext,
-  allowed: SQL,
-  hidesPii: boolean,
-  names: string[],
-): Promise<Set<string>> {
-  if (names.length === 0) return new Set();
-  const rows = await db
-    .select({ name: metric.name })
-    .from(metric)
-    .where(
-      and(
-        sql`${metric.name} = any(${names}::text[])`,
-        visibleMetric(db, allowed, hidesPii),
-      ),
-    );
-  return new Set(rows.map((row) => row.name));
-}
-
 /**
  * The exceptions nothing needs any more, as GET /metrics/:name/checks is
- * answered: to a curator, for one metric they may see, or for the whole book.
- * The whole book leaves out a metric the caller cannot see.
+ * answered: to a curator, for one metric they may see, or for the whole book
+ * but a metric they cannot see.
  */
 export async function unusedExceptionsAsCurator(
   context: ServiceContext,
   reference?: string,
 ) {
   await requireCurator(context);
-  const allowed = await context.access.describableDatasets(context.principal);
-  const hides = !(await readsPii(context));
   const conventions = await currentConventions(context.db);
   if (reference !== undefined) {
+    const allowed = await context.access.describableDatasets(context.principal);
+    const hides = !(await readsPii(context));
     const found = await resolveMetric(context.db, allowed, hides, reference);
     return unusedExceptions(context, conventions, { metric: found.name });
   }
   const unused = await unusedExceptions(context, conventions);
-  const seen = await visibleMetricNames(
+  const hidden = await hiddenMetrics(
     context,
-    allowed,
-    hides,
-    unused.flatMap(({ target, why }) =>
-      why === "passes" && target.metric !== undefined ? [target.metric] : [],
-    ),
+    unused.flatMap(({ target }) => target.metric ?? []),
   );
   return unused.filter(
-    ({ target, why }) =>
-      why === "no_such_target" ||
-      target.metric === undefined ||
-      seen.has(target.metric),
+    ({ target }) => target.metric === undefined || !hidden.has(target.metric),
   );
 }
 

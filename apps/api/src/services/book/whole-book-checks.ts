@@ -1,6 +1,11 @@
-import { and, count, eq, isNull, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { AppDeps } from "../../context.js";
-import { metric, metricVariant, term, termColumn } from "../../db/schema/book.js";
+import {
+  metric,
+  metricVariant,
+  term,
+  termColumn,
+} from "../../db/schema/book.js";
 import {
   powerbiColumn,
   powerbiDataset,
@@ -19,10 +24,8 @@ import { baseVariant } from "./drafter.js";
 import { liveMeasure, toDataset, toMeasure } from "./metrics.js";
 
 /*
- * The checks run over the whole book, as the system: every metric that is not
- * dismissed and every term, read in a few queries, so a book of thousands of
- * drafts is checked in one pass. Metrics and terms here; the element checks
- * add datasets, tables and columns.
+ * The checks over the whole book, as the system: every metric not dismissed
+ * and every term, read in a few queries, as a book holds thousands of drafts.
  */
 
 export type { CheckTarget };
@@ -85,7 +88,7 @@ async function checkedMetrics(
 ): Promise<Checked[]> {
   const { db } = deps;
   const named =
-    names === undefined ? undefined : sql`${metric.name} = any(${names}::text[])`;
+    names === undefined ? undefined : inArray(metric.name, [...names]);
   const rows = await db
     .select()
     .from(metric)
@@ -145,7 +148,7 @@ async function checkedTerms(
   names?: readonly string[],
 ): Promise<Checked[]> {
   const named =
-    names === undefined ? undefined : sql`${term.name} = any(${names}::text[])`;
+    names === undefined ? undefined : inArray(term.name, [...names]);
   const rows = await db.select().from(term).where(named);
   if (rows.length === 0) return [];
   const backing = await db
@@ -177,7 +180,8 @@ async function checkedTerms(
 
 const targetsOf = (kind: "metric" | "term", rules?: ReadonlySet<string>) =>
   RULES.some(
-    (rule) => rule.target === kind && (rules === undefined || rules.has(rule.id)),
+    (rule) =>
+      rule.target === kind && (rules === undefined || rules.has(rule.id)),
   );
 
 /** Every failing result in the book under `conventions`, exceptions applied, optionally only for `rules`. Metrics and terms here; the element checks issue adds datasets, tables and columns. */
@@ -205,10 +209,10 @@ export async function failuresInBook(
 const keyOf = (target: CheckTarget): string =>
   JSON.stringify(RULE_TARGETS.map((key) => target[key] ?? null));
 
-/** Whether every key `only` gives holds the same value in `target`. */
+/** Whether `target` holds every value `only` gives. */
 const within = (target: CheckTarget, only: CheckTarget): boolean =>
-  Object.entries(only).every(
-    ([key, value]) => value === undefined || target[key as keyof CheckTarget] === value,
+  RULE_TARGETS.every(
+    (key) => only[key] === undefined || target[key] === only[key],
   );
 
 /** An exception is unused when its target does not exist, or its target passes the rule without it. */

@@ -158,21 +158,19 @@ const off = z.array(
   }),
 );
 
-/** One line, so a reason reads as text where it is shown and cannot pass for an instruction of its own. */
+/**
+ * One line, so a reason reads as text where it is shown and cannot pass for
+ * an instruction of its own. A refinement, not a pattern: Python's re, which
+ * reads conventions.schema.json offline, has no \p{Cc}.
+ */
 export const exceptionReason = z
   .string()
   .min(1)
   .max(200)
-  .regex(/^[^\p{Cc}\u2028\u2029]*$/u, "A reason is one line.");
-
-/** The keys an exception names its element by, for each kind of target. */
-const TARGET_KEYS: Record<RuleTarget, readonly RuleTarget[]> = {
-  metric: ["metric"],
-  term: ["term"],
-  dataset: ["dataset"],
-  table: ["dataset", "table"],
-  column: ["dataset", "column"],
-};
+  .refine(
+    (reason) => !/[\p{Cc}\u2028\u2029]/u.test(reason),
+    "A reason is one line.",
+  );
 
 const exception = z
   .strictObject({
@@ -193,12 +191,13 @@ const exception = z
   .superRefine((item, context) => {
     const target = ruleById(item.rule)?.target;
     if (target === undefined) return;
-    const wanted = TARGET_KEYS[target];
+    // A table or a column is named within its dataset.
+    const wanted =
+      target === "table" || target === "column"
+        ? ["dataset", target]
+        : [target];
     const given = RULE_TARGETS.filter((key) => item[key] !== undefined);
-    if (
-      given.length !== wanted.length ||
-      !given.every((key) => wanted.includes(key))
-    )
+    if (given.join() !== wanted.join())
       context.addIssue({
         code: "custom",
         message: `An exception to ${item.rule} names exactly one ${target}: ${wanted.join(" and ")}.`,
@@ -210,10 +209,7 @@ export type ConventionsException = z.infer<typeof exception>;
 export const exceptionKey = (
   item: Pick<ConventionsException, "rule" | RuleTarget>,
 ): string =>
-  JSON.stringify([
-    item.rule,
-    ...RULE_TARGETS.map((key) => item[key] ?? null),
-  ]);
+  JSON.stringify([item.rule, ...RULE_TARGETS.map((key) => item[key] ?? null)]);
 
 const exceptions = z
   .array(exception)

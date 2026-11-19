@@ -17,6 +17,7 @@ const rule = (
   id: string,
   value: unknown,
   source: ConventionRule["source"],
+  more: Partial<ConventionRule> = {},
 ): ConventionRule => ({
   id,
   check: "metric_name_form",
@@ -26,10 +27,13 @@ const rule = (
   allowed: null,
   off: false,
   exceptions: 0,
+  ...more,
 });
 const RULES = [
-  rule("naming.case", "snake_case", "preset"),
-  rule("naming.kinds", ["total_", "_rate"], "company"),
+  rule("naming.case", "snake_case", "preset", { off: true }),
+  rule("naming.kinds", ["total_", "_rate"], "company", { exceptions: 2 }),
+  rule("metric_fields.not_the_same_as", { required: true }, "company"),
+  rule("metric_base_variant", null, "preset", { off: true, exceptions: 1 }),
 ];
 const VERSION: ConventionVersion = {
   version: 3,
@@ -69,22 +73,38 @@ async function mount(answers: {
   };
 }
 
-it("lists the rules the company sets, by id, with their values", async () => {
+it("lists every value the company sets, by rule id where one holds it, and what is off and excepted", async () => {
   const view = await mount({
     versions: [VERSION],
-    company: { format: 1, guide: "Our own words." },
+    company: {
+      format: 1,
+      preset: "minimal",
+      guide: "Our own words.",
+      naming: { kinds: ["total_", "_rate"], qualifiers: { per: ["per"] } },
+      metric_fields: { not_the_same_as: { required: true } },
+      trust: { human_verify_from: "browser" },
+      drafting: { skip: { hidden_measures: false } },
+      off: ["naming.case", "metric_base_variant"],
+      exceptions: [],
+    },
   });
   try {
     const rows = [...view.host.querySelectorAll("tbody tr")].map((row) =>
       [...row.querySelectorAll("td")].map((cell) => cell.textContent),
     );
-    expect(rows).toEqual([["naming.kinds", '["total_","_rate"]']]);
+    expect(rows).toEqual([
+      ["naming.kinds", '["total_","_rate"]'],
+      ["naming.qualifiers.per", '["per"]'],
+      ["metric_fields.not_the_same_as", '{"required":true}'],
+      ["trust.human_verify_from", '"browser"'],
+      ["drafting.skip.hidden_measures", "false"],
+    ]);
     expect(view.host.textContent).toContain("The minimal preset");
     expect(view.host.textContent).toContain(
       "Version 3 was saved by Sample Admin",
     );
     expect(view.host.textContent).toContain(
-      "The company sets 1 rule itself, and its own guide.",
+      "The company sets 5 rules itself, and its own guide. 2 rules are off: naming.case, metric_base_variant. 3 exceptions let elements keep failing a rule.",
     );
   } finally {
     view.close();

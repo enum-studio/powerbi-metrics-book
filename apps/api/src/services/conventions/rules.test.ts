@@ -80,16 +80,25 @@ describe("the rule registry", () => {
     const always = { metric_fields: { not_the_same_as: { required: true } } };
     expect(checkApplying(rule, resolve({}))).toBe("metric_not_the_same_as");
     expect(checkApplying(rule, resolve(always))).toBe("metric_fields");
+    expect(checkApplying(rule, resolve({ preset: "minimal" }))).toBe(
+      "metric_fields",
+    );
     expect(isRuleOff(rule, resolve({ off: ["metric_fields"] }))).toBe(false);
-    expect(isRuleOff(rule, resolve({ ...always, off: ["metric_fields"] }))).toBe(
+    expect(
+      isRuleOff(rule, resolve({ ...always, off: ["metric_fields"] })),
+    ).toBe(true);
+    expect(
+      isRuleOff(
+        rule,
+        resolve({ ...always, off: ["metric_fields.not_the_same_as"] }),
+      ),
+    ).toBe(true);
+    expect(isRuleOff(rule, resolve({ off: ["metric_not_the_same_as"] }))).toBe(
       true,
     );
-    expect(
-      isRuleOff(rule, resolve({ ...always, off: ["metric_fields.not_the_same_as"] })),
-    ).toBe(true);
-    expect(
-      isRuleOff(rule, resolve({ off: ["metric_not_the_same_as"] })),
-    ).toBe(true);
+    const minimal = (off: string[]) => resolve({ preset: "minimal", off });
+    expect(isRuleOff(rule, minimal(["metric_fields"]))).toBe(true);
+    expect(isRuleOff(rule, minimal(["metric_not_the_same_as"]))).toBe(false);
   });
 
   it("lists the rules that stay fixed, each with its reason", () => {

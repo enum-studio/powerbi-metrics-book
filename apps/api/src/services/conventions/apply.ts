@@ -5,16 +5,12 @@ import type { Principal } from "../../principal.js";
 import { failuresInBook } from "../book/whole-book-checks.js";
 import { withEvents } from "../events/feed.js";
 import { isRuleOff, RULES, valueAt } from "./rules.js";
-import {
-  type Conventions,
-  exceptionKey,
-  exceptionReason,
-} from "./schema.js";
+import { type Conventions, exceptionKey, exceptionReason } from "./schema.js";
 import {
   checkSave,
+  conventionsInForce,
   isCompanyPart,
   lockConventions,
-  readInForce,
   resolve,
   saveVersion,
 } from "./store.js";
@@ -25,13 +21,6 @@ export type ApplyInput = {
   baseline_reason?: string | undefined;
 };
 
-export type Applied = {
-  changed_rules: string[];
-  now_failing: Record<string, number>;
-  exceptions_added: number;
-  version: number | null;
-};
-
 const exceptionsTo = (conventions: Conventions, rule: string): string[] =>
   conventions.exceptions
     .filter((item) => item.rule === rule)
@@ -39,7 +28,10 @@ const exceptionsTo = (conventions: Conventions, rule: string): string[] =>
     .sort();
 
 /** The ids of the rules whose value, the values it reads, off state or exceptions differ, sorted. */
-export function changedRules(before: Conventions, after: Conventions): string[] {
+export function changedRules(
+  before: Conventions,
+  after: Conventions,
+): string[] {
   return RULES.filter((rule) => {
     const paths = [
       ...(rule.path === null ? [] : [rule.path]),
@@ -47,7 +39,8 @@ export function changedRules(before: Conventions, after: Conventions): string[] 
     ];
     return (
       paths.some(
-        (path) => !isDeepStrictEqual(valueAt(before, path), valueAt(after, path)),
+        (path) =>
+          !isDeepStrictEqual(valueAt(before, path), valueAt(after, path)),
       ) ||
       isRuleOff(rule, before) !== isRuleOff(rule, after) ||
       !isDeepStrictEqual(
@@ -71,7 +64,7 @@ export async function applyConventions(
   deps: Pick<AppDeps, "db">,
   principal: Principal,
   { conventions: document, dry_run, baseline_reason }: ApplyInput,
-): Promise<Applied> {
+) {
   const proposed = resolve(document);
   if (!isCompanyPart(document))
     throw new ServiceError(
@@ -89,7 +82,7 @@ export async function applyConventions(
     );
   return withEvents(deps.db, async (tx, emit) => {
     const current = dry_run
-      ? await readInForce(tx)
+      ? await conventionsInForce(tx)
       : await lockConventions(tx);
     // Refused before the whole book is read, when it would be refused anyway.
     checkSave(principal, current, document);

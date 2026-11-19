@@ -174,18 +174,18 @@ describe("listRules, off and source", () => {
   it("turns not_the_same_as off by the check that applies it under its required", () =>
     rolledBack(async (tx) => {
       const rule = "metric_fields.not_the_same_as";
-      const asked = { metric_fields: { not_the_same_as: { required: true } } };
+      const offUnder = async (part: object) =>
+        (await rulesUnder(tx, part)).get(rule)?.off;
+      // metrics_book asks for it when a label shares a word, minimal never.
+      expect(await offUnder({ off: ["metric_fields"] })).toBe(false);
+      expect(await offUnder({ off: ["metric_not_the_same_as"] })).toBe(true);
       expect(
-        (await rulesUnder(tx, { off: ["metric_fields"] })).get(rule)?.off,
+        await offUnder({ preset: "minimal", off: ["metric_fields"] }),
+      ).toBe(true);
+      expect(
+        await offUnder({ preset: "minimal", off: ["metric_not_the_same_as"] }),
       ).toBe(false);
-      expect(
-        (await rulesUnder(tx, { ...asked, off: ["metric_fields"] })).get(rule)
-          ?.off,
-      ).toBe(true);
-      expect(
-        (await rulesUnder(tx, { off: ["metric_not_the_same_as"] })).get(rule)
-          ?.off,
-      ).toBe(true);
+      expect(await offUnder({ preset: "minimal", off: [rule] })).toBe(true);
       expect(
         (await rulesUnder(tx, { off: [rule] })).get("metric_fields.definition")
           ?.off,
@@ -202,7 +202,11 @@ describe("weakenedBy", () => {
         format: 1,
         off: ["metric_name_form", "metric_base_variant"],
         exceptions: [
-          { rule: "naming.forbidden_words", metric: "sales_ly", reason: "Kept." },
+          {
+            rule: "naming.forbidden_words",
+            metric: "sales_ly",
+            reason: "Kept.",
+          },
         ],
       });
       expect(await weakenedBy(viewer)).toEqual({ rules_off: 3, exceptions: 1 });
@@ -219,12 +223,12 @@ describe("getCompanyPartAsAdmin", () => {
       });
       await setConventionsAsAdmin(admin, {
         preset: "minimal",
-        naming: { kinds: ["total_"] },
+        metric_fields: { category: { required: true } },
       });
       expect(await getCompanyPartAsAdmin(admin)).toEqual({
         format: 1,
         preset: "minimal",
-        naming: { kinds: ["total_"] },
+        metric_fields: { category: { required: true } },
       });
       await expect(
         getCompanyPartAsAdmin(asPerson(principals.curator, { db: tx })),

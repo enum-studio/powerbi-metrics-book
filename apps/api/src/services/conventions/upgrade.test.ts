@@ -76,7 +76,11 @@ describe("upgradeStoredConventions", () => {
   });
 
   it("moves a pre-format document's checks.off to off", async () => {
-    const { off: _off, exceptions: _exceptions, ...rest } = resolve({});
+    const rest = Object.fromEntries(
+      Object.entries(resolve({})).filter(
+        ([key]) => key !== "off" && key !== "exceptions",
+      ),
+    );
     await store(1, { ...rest, checks: { off: ["metric_base_variant"] } });
     expect(await upgradeStoredConventions(migrator)).toBe(1);
     const [row] = await stored();

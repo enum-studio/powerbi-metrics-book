@@ -480,7 +480,7 @@ describe("the routes", () => {
     const admin = browser((await person("admin")).cookie);
     const name = `approved_${randomUUID().slice(0, 8)}`;
     await send(agent, "POST", "/metrics", { name, label: "Approved" });
-    const off = { checks: { off: [...METRIC_CHECK_NAMES] } };
+    const off = { off: [...METRIC_CHECK_NAMES] };
     const saved = await send(admin, "PUT", "/conventions", off);
     expect(saved.status, JSON.stringify(saved.body)).toBe(200);
     const url = `/metrics/${name}/approve`;

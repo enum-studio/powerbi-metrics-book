@@ -122,51 +122,46 @@ export const isCompanyPart = (document: unknown): document is CompanyPart =>
   isDocument(document) && document.format === CONVENTIONS_FORMAT;
 
 /**
- * The fixed rule a document tries to change: one it holds as a key, a format
- * other than this release's, or one named in `off` or as an exception's rule.
+ * The fixed rule a document tries to change: a format other than this
+ * release's, a key it holds, or one named in `off` or as an exception's rule.
  */
-function fixedRuleIn(document: Document): Refusal | undefined {
+function fixedRuleIn(format: unknown, rules: Document): Refusal | undefined {
+  const { off, exceptions } = rules;
   const named = (id: string): string | undefined => {
     if (id === "format")
-      return document.format === undefined ||
-        document.format === CONVENTIONS_FORMAT
+      return format === undefined || format === CONVENTIONS_FORMAT
         ? undefined
         : "format";
-    if (valueAt(document, id.split(".")) !== undefined) return id;
-    const { off, exceptions } = document;
+    if (valueAt(rules, id.split(".")) !== undefined) return id;
     if (Array.isArray(off) && off.includes(id)) return "off";
-    if (
+    const excepted =
       Array.isArray(exceptions) &&
-      exceptions.some((item) => isDocument(item) && item.rule === id)
-    )
-      return "exceptions";
-    return undefined;
+      exceptions.some((item) => isDocument(item) && item.rule === id);
+    return excepted ? "exceptions" : undefined;
   };
   for (const { id, reason } of FIXED_RULES) {
     const path = named(id);
+    if (path === undefined) continue;
     const fixed =
       id === "format"
         ? `This release reads format ${String(CONVENTIONS_FORMAT)} of the conventions.`
         : `${id} stays fixed.`;
-    if (path !== undefined)
-      return {
-        problems: [{ path, message: `${fixed} ${reason}` }],
-        code: "conventions.fixed",
-        rule: id,
-      };
+    return {
+      problems: [{ path, message: `${fixed} ${reason}` }],
+      code: "conventions.fixed",
+      rule: id,
+    };
   }
   return undefined;
 }
 
-function tryResolve(
-  document: unknown,
-): { conventions: Conventions } | Refusal {
+function tryResolve(document: unknown): { conventions: Conventions } | Refusal {
   if (!isDocument(document)) {
     return refused("", "The conventions are a mapping of keys.");
   }
-  const fixed = fixedRuleIn(document);
+  const { format, ...rules } = document;
+  const fixed = fixedRuleIn(format, rules);
   if (fixed !== undefined) return fixed;
-  const { format: _format, ...rules } = document;
   const named = rules.preset ?? "metrics_book";
   if (!isPresetName(named)) {
     return refused("preset", `Name a preset: ${PRESET_NAMES.join(" or ")}.`);
@@ -290,7 +285,7 @@ export type InForce = {
 };
 
 /** The version in force, read without the lock: for an answer that saves nothing. */
-export async function readInForce(db: Db): Promise<InForce> {
+export async function conventionsInForce(db: Db): Promise<InForce> {
   const version = await newest(db);
   const resolved = inForce(version);
   const stored = version?.document;
@@ -306,31 +301,21 @@ export async function currentConventions(db: Db): Promise<Conventions> {
   return inForce(await newest(db));
 }
 
-/** The newest version resolved, and the company's part of it as stored. */
-export async function conventionsInForce(
-  db: Db,
-): Promise<{ conventions: Conventions; company: CompanyPart }> {
-  const { conventions: resolved, company } = await readInForce(db);
-  return { conventions: resolved, company };
-}
-
 /**
  * Every version, newest first, each resolved as it is read in force. An older
- * complete document the upgrade left as it was, since it no longer resolves,
- * is listed as stored.
+ * one that no longer resolves, which nothing reads in force, is listed as
+ * stored.
  */
 export async function listVersions(db: Db): Promise<ConventionsVersion[]> {
   const versions = await db
     .select()
     .from(conventions)
     .orderBy(desc(conventions.version));
-  return versions.map((version) => {
+  return versions.map((version, at) => {
     const resolved = tryResolve(version.document);
     if ("conventions" in resolved)
       return { ...version, document: resolved.conventions };
-    if (version !== versions[0] && !isCompanyPart(version.document))
-      return version;
-    return { ...version, document: inForce(version) };
+    return at === 0 ? { ...version, document: inForce(version) } : version;
   });
 }
 
@@ -388,14 +373,6 @@ function refuseTrustChangeUnlessBrowser(
   }
 }
 
-/** The part with `trust` as `trust` is; a part without one leaves trust to the preset. */
-function withTrust(part: CompanyPart, trust: unknown): CompanyPart {
-  const { trust: _trust, ...rest } = part;
-  return trust === undefined
-    ? { ...rest, format: CONVENTIONS_FORMAT }
-    : { ...rest, format: CONVENTIONS_FORMAT, trust };
-}
-
 /**
  * The company's part a document makes: a part as given; a complete document
  * as what differs from its preset. A complete document holds every trust key,
@@ -408,10 +385,11 @@ function partOf(
   current: InForce,
 ): CompanyPart {
   if (isCompanyPart(document)) return document;
-  const part = toCompanyPart(proposed);
-  return isDeepStrictEqual(proposed.trust, current.conventions.trust)
-    ? withTrust(part, current.company.trust)
-    : part;
+  const { trust, ...part } = toCompanyPart(proposed);
+  const kept = isDeepStrictEqual(proposed.trust, current.conventions.trust)
+    ? current.company.trust
+    : trust;
+  return kept === undefined ? part : { ...part, trust: kept };
 }
 
 /** Takes the save lock for the rest of the transaction, so versions are numbered in order and two admins take turns. */
@@ -419,7 +397,7 @@ export async function lockConventions(tx: Db): Promise<InForce> {
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${CONVENTIONS_LOCK}, 0))`,
   );
-  return readInForce(tx);
+  return conventionsInForce(tx);
 }
 
 /**

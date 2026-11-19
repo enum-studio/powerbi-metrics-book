@@ -100,7 +100,7 @@ export const RULES: readonly Rule[] = [
         "naming.qualifiers",
         "naming.money_qualifier",
       ],
-      shared: { check: "metric_fields", when: [true] },
+      shared: { check: "metric_fields", when: REQUIRED },
     },
   ),
   keyless("metric_base_variant", "metric"),

@@ -427,7 +427,7 @@ const exceptionIndexes = new WeakMap<
 >();
 
 /** The reason of the exception the conventions make to `rule` for `target`; undefined when they make none. */
-export function exceptionTo(
+function exceptionTo(
   conventions: Conventions,
   rule: string,
   target: CheckTarget,
@@ -435,7 +435,9 @@ export function exceptionTo(
   const { exceptions } = conventions;
   let index = exceptionIndexes.get(exceptions);
   if (index === undefined) {
-    index = new Map(exceptions.map((item) => [exceptionKey(item), item.reason]));
+    index = new Map(
+      exceptions.map((item) => [exceptionKey(item), item.reason]),
+    );
     exceptionIndexes.set(exceptions, index);
   }
   return index.get(exceptionKey({ rule, ...target }));

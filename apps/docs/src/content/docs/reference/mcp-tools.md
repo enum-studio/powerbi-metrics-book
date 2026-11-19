@@ -418,7 +418,7 @@ Who may call it: A curator; an admin; a curator outside the data's audience.
 
 ### `whoami`
 
-Who you are acting for: the person or service account, their roles, whether their Power BI connection is ready, with the page where they connect it, and sample_data, true when this deployment runs on the invented sample tenant, whose names and numbers are not the company's, and usage, whether searches and requests are captured and how many days they are kept, and book_metrics, how many of the metrics you may see are draft, agent_verified and human_verified. Use it when a query is refused for want of a connection.
+Who you are acting for: the person or service account, their roles, whether their Power BI connection is ready, with the page where they connect it, and sample_data, true when this deployment runs on the invented sample tenant, whose names and numbers are not the company's, and usage, whether searches and requests are captured and how many days they are kept, and book_metrics, how many of the metrics you may see are draft, agent_verified and human_verified, and conventions, how many rules are off and how many exceptions let an element keep failing a rule. Use it when a query is refused for want of a connection.
 
 Who may call it: Any signed-in person, through an MCP client.
 

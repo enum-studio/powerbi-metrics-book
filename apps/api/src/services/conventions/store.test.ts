@@ -1,6 +1,7 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { asc, desc, eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { closeTestPools, principals, testPool } from "../../../test/deps.js";
 import type { Db } from "../../context.js";
 import { createDb } from "../../db/client.js";
@@ -18,6 +19,8 @@ import {
   toCompanyPart,
   validateConventions,
 } from "./store.js";
+
+import { companyPartSchema, PRESET_NAMES } from "./schema.js";
 
 afterAll(closeTestPools);
 
@@ -75,14 +78,68 @@ describe("resolve", () => {
     [{ preset: "strict" }, "preset"],
     [JSON.parse('{"__proto__": {"checks": {"off": []}}}'), "__proto__"],
     [{ off: ["metric_name_shape"] }, "off.0"],
-    [{ exceptions: [{ rule: "metric_name_form", metric: "orders", reason: "A check." }] }, "exceptions.0.rule"],
-    [{ exceptions: [{ rule: "naming.kinds", term: "channel", reason: "A term." }] }, "exceptions.0"],
-    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", term: "channel", reason: "Two." }] }, "exceptions.0"],
-    [{ exceptions: [{ rule: "naming.kinds", reason: "None." }] }, "exceptions.0"],
-    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "" }] }, "exceptions.0.reason"],
-    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "x".repeat(201) }] }, "exceptions.0.reason"],
-    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "One.\nTwo." }] }, "exceptions.0.reason"],
-    [{ exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "One." }, { rule: "naming.kinds", metric: "orders", reason: "Two." }] }, "exceptions"],
+    [
+      {
+        exceptions: [
+          { rule: "metric_name_form", metric: "orders", reason: "A check." },
+        ],
+      },
+      "exceptions.0.rule",
+    ],
+    [
+      {
+        exceptions: [
+          { rule: "naming.kinds", term: "channel", reason: "A term." },
+        ],
+      },
+      "exceptions.0",
+    ],
+    [
+      {
+        exceptions: [
+          {
+            rule: "naming.kinds",
+            metric: "orders",
+            term: "channel",
+            reason: "Two.",
+          },
+        ],
+      },
+      "exceptions.0",
+    ],
+    [
+      { exceptions: [{ rule: "naming.kinds", reason: "None." }] },
+      "exceptions.0",
+    ],
+    [
+      { exceptions: [{ rule: "naming.kinds", metric: "orders", reason: "" }] },
+      "exceptions.0.reason",
+    ],
+    [
+      {
+        exceptions: [
+          { rule: "naming.kinds", metric: "orders", reason: "x".repeat(201) },
+        ],
+      },
+      "exceptions.0.reason",
+    ],
+    [
+      {
+        exceptions: [
+          { rule: "naming.kinds", metric: "orders", reason: "One.\nTwo." },
+        ],
+      },
+      "exceptions.0.reason",
+    ],
+    [
+      {
+        exceptions: [
+          { rule: "naming.kinds", metric: "orders", reason: "One." },
+          { rule: "naming.kinds", metric: "orders", reason: "Two." },
+        ],
+      },
+      "exceptions",
+    ],
     [{ naming: { kinds: ["total"] } }, "naming.kinds.0"],
     [{ naming: { qualifier_order: ["vat", "channel"] } }, "naming.qualifiers"],
     [
@@ -360,7 +417,9 @@ describe("what a company part may say", () => {
     [
       {
         format: 1,
-        exceptions: [{ rule: "variants.base", metric: "orders", reason: "No." }],
+        exceptions: [
+          { rule: "variants.base", metric: "orders", reason: "No." },
+        ],
       },
       "variants.base",
     ],
@@ -368,7 +427,10 @@ describe("what a company part may say", () => {
     expect(() => resolve(document)).toThrow(
       expect.objectContaining({
         kind: "invalid",
-        detail: expect.objectContaining({ code: "conventions.fixed", rule }),
+        detail: expect.objectContaining({
+          code: "conventions.fixed",
+          rule,
+        }) as unknown,
       }),
     );
   });
@@ -457,15 +519,37 @@ describe("the trust part a token sends", () => {
 });
 
 describe("listVersions", () => {
-  it("lists an older complete document that no longer resolves as it was stored", () =>
+  it("lists an older version that no longer resolves as it was stored, and diffs against the newest", () =>
     rolledBack(async (tx) => {
       const old = { preset: "strict", naming: { case: "none" } };
+      const part = { format: 1, naming: { shape: "none" } };
       await tx.insert(conventions).values([
         { version: 1, document: old, set_by: "test-admin" },
-        { version: 2, document: { format: 1 }, set_by: "test-admin" },
+        { version: 2, document: part, set_by: "test-admin" },
+        { version: 3, document: { format: 1 }, set_by: "test-admin" },
       ]);
       expect(
         (await listVersions(tx)).map((version) => version.document),
-      ).toEqual([resolve({}), old]);
+      ).toEqual([resolve({}), part, old]);
+      expect(
+        diffConventions(
+          await currentConventions(tx),
+          resolve({ off: ["naming.case"] }),
+        ),
+      ).toEqual([{ path: "off", before: [], after: ["naming.case"] }]);
     }));
+});
+
+describe("conventions.schema.json", () => {
+  it("ships the company part's schema as JSON Schema, which takes each preset whole", () => {
+    const file = new URL("conventions.schema.json", import.meta.url);
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(
+      z.toJSONSchema(companyPartSchema),
+    );
+    for (const name of PRESET_NAMES)
+      expect(
+        companyPartSchema.safeParse({ format: 1, ...resolve({ preset: name }) })
+          .error,
+      ).toBeUndefined();
+  });
 });

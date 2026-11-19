@@ -34,10 +34,26 @@ const metricsBook = resolve({});
 /** The sample company's metrics and terms, as curated, none filed under a measure. */
 async function sampleBook(tx: Db): Promise<void> {
   await tx.insert(metric).values(
-    METRICS.map(({ category: _category, from: _from, ...fields }) => ({
-      ...fields,
-      origin: "curator" as const,
-    })),
+    METRICS.map(
+      ({
+        name,
+        label,
+        definition,
+        when_to_use,
+        not_the_same_as,
+        aliases,
+        unit,
+      }) => ({
+        name,
+        label,
+        definition,
+        when_to_use,
+        not_the_same_as,
+        aliases,
+        unit,
+        origin: "curator" as const,
+      }),
+    ),
   );
   await tx.insert(term).values(
     TERMS.map(({ name, definition, not_the_same_as }) => ({

@@ -44,7 +44,7 @@ const ALLOWED: Record<string, readonly string[]> = {
   "http/error-log.ts": ["logError"],
   "services/auth/principal.ts": ["requirePrincipal"],
   "services/auth/sign-in-config.ts": ["onTheMock"],
-  "services/conventions/service.ts": ["getConventionsForAgents"],
+  "services/conventions/service.ts": ["getConventionsForAgents", "weakenedBy"],
   "services/connection/store.ts": ["connectionState"],
   "services/audit/connector.ts": ["recordConnectorReached"],
   "db/schema/book.ts": ["COMPARISONS", "TRUST_STATES"],
@@ -109,7 +109,7 @@ const BOOK_READS: Record<string, readonly string[]> = {
   "services/book/categories.ts": ["categoryTree"],
   "services/book/terms.ts": ["getTerm", "listTerms"],
   "services/book/docs.ts": ["getDocs"],
-  "services/conventions/service.ts": ["getConventionsForAgents"],
+  "services/conventions/service.ts": ["getConventionsForAgents", "weakenedBy"],
 };
 const BOOK_FOLDERS = /^services\/(book|conventions)\//;
 
