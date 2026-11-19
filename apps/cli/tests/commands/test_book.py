@@ -28,12 +28,18 @@ def routes(answers: Answers) -> Callable[[httpx.Request], httpx.Response]:
 
 
 def checks_answer(*results: tuple[str, bool, str]) -> httpx.Response:
+    """Each result is (rule, passed, message); its check is the rule's first part."""
     return json_response(
         200,
         {
             "checks": [
-                {"check": check, "passed": passed, "message": message}
-                for check, passed, message in results
+                {
+                    "check": rule.split(".")[0],
+                    "rule": rule,
+                    "passed": passed,
+                    "message": message,
+                }
+                for rule, passed, message in results
             ]
         },
     )
@@ -117,7 +123,7 @@ def test_check_all_exits_1_and_lists_each_failing_check_with_its_sentence(
             {
                 ("GET", "/metrics"): json_response(200, page),
                 ("GET", "/metrics/total_net_sales_excl_vat/checks"): checks_answer(
-                    ("metric_fields", False, "when_to_use is empty."),
+                    ("metric_fields.when_to_use", False, "when_to_use is empty."),
                     ("metric_name_form", True, "ok"),
                     ("metric_base_variant", False, "No live base variant."),
                 ),
@@ -134,19 +140,22 @@ def test_check_all_exits_1_and_lists_each_failing_check_with_its_sentence(
     document = json.loads(result.stdout)
     assert document["failing"] == 2
     failed = {
-        (metric["name"], check["check"]): check["message"]
+        (metric["name"], check["rule"]): check["message"]
         for metric in document["metrics"]
         for check in metric["checks"]
         if not check["passed"]
     }
     assert failed == {
-        ("total_net_sales_excl_vat", "metric_fields"): "when_to_use is empty.",
+        ("total_net_sales_excl_vat", "metric_fields.when_to_use"): (
+            "when_to_use is empty."
+        ),
         ("total_net_sales_excl_vat", "metric_base_variant"): "No live base variant.",
     }
     human = run("metrics", "check", "--all")
-    assert "total_net_sales_excl_vat: metric_fields: when_to_use is empty." in (
-        human.stdout
+    sentence = (
+        "total_net_sales_excl_vat: metric_fields.when_to_use: when_to_use is empty."
     )
+    assert sentence in human.stdout
     assert "number_of_orders" not in human.stdout
 
 
@@ -180,6 +189,7 @@ def test_check_wants_a_name_or_all_not_both(serve: Serve) -> None:
 def test_show_and_check_print_the_labels_a_check_counts(serve: Serve) -> None:
     failing = {
         "check": "metric_not_the_same_as",
+        "rule": "metric_fields.not_the_same_as",
         "message": "2 other metrics share a content word.",
         "other_labels": ["Number of returns", "Number of visits"],
     }
@@ -197,7 +207,7 @@ def test_show_and_check_print_the_labels_a_check_counts(serve: Serve) -> None:
     )
 
     sentence = (
-        "metric_not_the_same_as: 2 other metrics share a content word. "
+        "metric_fields.not_the_same_as: 2 other metrics share a content word. "
         "Closest first: Number of returns; Number of visits."
     )
     for command in ("show", "check"):
@@ -208,7 +218,13 @@ def test_show_and_check_print_the_labels_a_check_counts(serve: Serve) -> None:
 def test_show_prints_the_failing_checks_before_the_fields_and_the_dax_reference(
     serve: Serve,
 ) -> None:
-    failing = [{"check": "metric_fields", "message": "when_to_use is empty."}]
+    failing = [
+        {
+            "check": "metric_fields",
+            "rule": "metric_fields.when_to_use",
+            "message": "when_to_use is empty.",
+        }
+    ]
     serve(
         routes(
             {
@@ -222,7 +238,9 @@ def test_show_prints_the_failing_checks_before_the_fields_and_the_dax_reference(
     result = run("metrics", "show", "number_of_orders")
 
     text = result.stdout
-    assert text.index("metric_fields: when_to_use is empty.") < text.index("definition")
+    assert text.index("metric_fields.when_to_use: when_to_use is empty.") < text.index(
+        "definition"
+    )
     for expected in ("[Orders]", "Sample data sales", "previous_year", "sales/orders"):
         assert expected in text
 
@@ -1271,6 +1289,7 @@ def test_names_with_newlines_print_on_one_line(serve: Serve) -> None:
                         failing_checks=[
                             {
                                 "check": "metric_fields",
+                                "rule": "metric_fields.unit",
                                 "message": "Bad.\nAll checks pass.",
                             }
                         ],
@@ -1296,7 +1315,7 @@ def test_names_with_newlines_print_on_one_line(serve: Serve) -> None:
     tree = run("categories", "tree").stdout.splitlines()
 
     assert "number_of_orders: Orders Failing checks (9) (draft)" in shown
-    assert "  metric_fields: Bad. All checks pass." in shown
+    assert "  metric_fields.unit: Bad. All checks pass." in shown
     assert tree == ["sales  Sales fake/child Fake (1 metrics) (1 metrics)"]
 
 

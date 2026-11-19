@@ -446,7 +446,16 @@ describe("the routes", () => {
     const name = `number_of_checks_${randomUUID().slice(0, 8)}`;
     await send(agent, "POST", "/metrics", { name, label: "Number of checks" });
     const checked = await send(agent, "GET", `/metrics/${name}/checks`);
-    const results = (checked.body as { checks: { passed: boolean }[] }).checks;
+    const results = (
+      checked.body as {
+        checks: { check: string; rule: string; passed: boolean }[];
+      }
+    ).checks;
+    // One result for each rule, each naming its rule: a check with several rules answers several times.
+    expect(results.every((r) => r.rule.length > 0)).toBe(true);
+    expect(
+      results.find((r) => r.rule === "metric_fields.definition"),
+    ).toMatchObject({ check: "metric_fields", passed: false });
     expect(results.filter((r) => r.passed).length).toBeGreaterThan(0);
     expect(results.filter((r) => !r.passed).length).toBeGreaterThan(0);
     expect((await send(agent, "GET", "/metrics/sessions/checks")).status).toBe(

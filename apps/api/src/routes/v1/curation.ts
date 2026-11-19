@@ -178,6 +178,7 @@ const Checks = z.object({
   checks: z.array(
     z.object({
       check: z.string(),
+      rule: z.string().describe("The id of the rule the result is about."),
       passed: z.boolean(),
       message: z.string(),
       other_labels: z

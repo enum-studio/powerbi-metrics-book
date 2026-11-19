@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Me } from "../api/me";
-import { CheckMessage } from "./check-message";
+import { CheckMessage, RuleId } from "./check-message";
 import { humanize, mayCurate } from "./format";
 import { Approve } from "./trust";
 import { checksQuery, type Metric } from "./queries";
@@ -103,14 +103,20 @@ function Checks({ metric, me }: { metric: Metric; me: Me }) {
         <p className="text-ui text-ink-2">No check fails.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {ordered.map(({ check, message, passed, other_labels }) => (
-            <li key={check} className="text-ui">
+          {ordered.map(({ check, rule, message, passed, other_labels }) => (
+            <li key={`${check}:${rule}`} className="text-ui">
               <span className="font-medium text-ink">
                 {humanize(check)}: {passed ? "passes" : "fails"}
               </span>
-              {!passed && (
+              {passed ? (
+                <RuleId rule={rule} />
+              ) : (
                 <div className="mt-0.5 text-ink-2">
-                  <CheckMessage message={message} otherLabels={other_labels} />
+                  <CheckMessage
+                    message={message}
+                    rule={rule}
+                    otherLabels={other_labels}
+                  />
                 </div>
               )}
             </li>

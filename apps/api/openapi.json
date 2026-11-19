@@ -723,6 +723,10 @@
                 "check": {
                   "type": "string"
                 },
+                "rule": {
+                  "type": "string",
+                  "description": "The id of the rule the sentence is about."
+                },
                 "message": {
                   "type": "string"
                 },
@@ -763,6 +767,7 @@
               },
               "required": [
                 "check",
+                "rule",
                 "message"
               ],
               "additionalProperties": false
@@ -6320,6 +6325,10 @@
                           "check": {
                             "type": "string"
                           },
+                          "rule": {
+                            "type": "string",
+                            "description": "The id of the rule the result is about."
+                          },
                           "passed": {
                             "type": "boolean"
                           },
@@ -6336,6 +6345,7 @@
                         },
                         "required": [
                           "check",
+                          "rule",
                           "passed",
                           "message"
                         ],
