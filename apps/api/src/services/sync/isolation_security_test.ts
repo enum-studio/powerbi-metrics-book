@@ -424,7 +424,7 @@ describe("our documentation fields", () => {
       await setDocs(
         context,
         { kind: "column", id: column.id },
-        { unit: "EUR", blank_means: "Not priced" },
+        { unit: "money", blank_means: "Not priced" },
       );
       await setRole(tx, "worker_rw");
       const read = async () => ({
@@ -464,7 +464,10 @@ describe("our documentation fields", () => {
         grain_and_filters: "One row per order line",
         caveats: "No returns",
       });
-      expect(before.column).toEqual({ unit: "EUR", blank_means: "Not priced" });
+      expect(before.column).toEqual({
+        unit: "money",
+        blank_means: "Not priced",
+      });
       await sync();
       expect(await read()).toEqual(before);
     });
