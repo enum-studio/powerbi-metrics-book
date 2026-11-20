@@ -1,10 +1,10 @@
-import { TransactionRollbackError } from "drizzle-orm";
+import { eq, TransactionRollbackError } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals, testPool } from "../../../test/deps.js";
 import { asPerson } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
-import { metric, term } from "../../db/schema/book.js";
+import { metric, term, termColumn } from "../../db/schema/book.js";
 import * as schema from "../../db/schema/index.js";
 import { id, useMirror } from "../../../test/mirror-fixtures.js";
 import { applyConventions } from "../conventions/apply.js";
@@ -12,13 +12,22 @@ import { exceptionKey } from "../conventions/schema.js";
 import { resolve } from "../conventions/store.js";
 import { METRICS, TERMS } from "../sample/book.js";
 import { metricChecks } from "./metrics.js";
-import { failuresInBook, unusedExceptions } from "./whole-book-checks.js";
+import {
+  checkedElements,
+  failuresInBook,
+  unusedExceptions,
+} from "./whole-book-checks.js";
+
+import { TEST_RUNNER } from "../../../test/database.js";
+import { exceptionIndex } from "./checks.js";
+import { setRole } from "../../../test/sample-mirror.js";
+import { piiRule } from "../../db/schema/pii.js";
 
 afterAll(closeTestPools);
 
 const statements: string[] = [];
 const logged = drizzle({
-  client: testPool("api_rw"),
+  client: testPool(TEST_RUNNER),
   schema,
   logger: { logQuery: (query) => statements.push(query) },
 });
@@ -27,6 +36,7 @@ const logged = drizzle({
 const rolledBack = (work: (tx: Db) => Promise<void>) =>
   expect(
     logged.transaction(async (tx) => {
+      await setRole(tx, "api_rw");
       await work(tx);
       tx.rollback();
     }),
@@ -209,6 +219,92 @@ describe("unusedExceptions", () => {
 
 describe("whole-book element checks", () => {
   useMirror();
+  it("derives term backing, numeric keys, date and fact kinds from the mirror", () =>
+    rolledBack(async (tx) => {
+      const [linked] = await tx
+        .insert(term)
+        .values({ name: "Channel meaning" })
+        .returning();
+      if (linked === undefined) throw new Error("Term was not inserted.");
+      await tx
+        .insert(termColumn)
+        .values({ term_id: linked.id, column_id: id.channel });
+      await setRole(tx, "worker_rw");
+      await tx
+        .update(schema.powerbiRelationship)
+        .set({ cardinality: "many_to_one" })
+        .where(eq(schema.powerbiRelationship.dataset_id, id.sales));
+      await tx
+        .update(schema.powerbiColumn)
+        .set({ data_type: "Int64" })
+        .where(eq(schema.powerbiColumn.id, id.order_date));
+      await tx.insert(schema.powerbiColumn).values({
+        dataset_id: id.sales,
+        table_id: id.date_table,
+        name: "Date",
+        data_type: "DateTime",
+        column_type: "data",
+      });
+      await setRole(tx, "api_rw");
+      const run = {
+        conventions: metricsBook,
+        exceptions: exceptionIndex(metricsBook),
+      };
+      const rows = await checkedElements({ db: tx }, run);
+      const passes = (id: string, rule: string) =>
+        rows
+          .find((row) => row.id === id)
+          ?.results.find((result) => result.rule === rule)?.passed;
+      expect(passes(id.channel, "column_fields.definition")).toBe(true);
+      expect(passes(id.order_date, "column_fields.unit")).toBe(true);
+      expect(
+        rows
+          .find((row) => row.id === id.date_table)
+          ?.results.every((result) => result.passed),
+      ).toBe(true);
+      expect(passes(id.sales_table, "table_fields.grain_and_filters")).toBe(
+        false,
+      );
+      await tx.insert(piiRule).values({
+        kind: "column",
+        table_name: "Date",
+        name: "Date",
+        set_by_kind: "person",
+        set_by_id: principals.admin.id,
+        set_via: "browser",
+        pii: true,
+      });
+      const viewer = await checkedElements({ db: tx }, run, undefined, true);
+      expect(viewer).toEqual(
+        rows.filter((row) => !(row.kind === "column" && row.table === "Date")),
+      );
+    }));
+
+  it("asks nothing of hidden tables or their visible numeric columns", () =>
+    rolledBack(async (tx) => {
+      await setRole(tx, "worker_rw");
+      await tx
+        .update(schema.powerbiTable)
+        .set({ is_hidden: true })
+        .where(eq(schema.powerbiTable.id, id.sales_table));
+      await tx
+        .update(schema.powerbiColumn)
+        .set({ data_type: "Double" })
+        .where(eq(schema.powerbiColumn.id, id.channel));
+      await setRole(tx, "api_rw");
+      const rows = await checkedElements(
+        { db: tx },
+        { conventions: metricsBook, exceptions: exceptionIndex(metricsBook) },
+      );
+      const hidden = rows.filter(
+        (row) => row.id === id.sales_table || row.table === "Sales",
+      );
+      expect(hidden.length).toBeGreaterThan(1);
+      expect(
+        hidden.every((row) => row.results.every((result) => result.passed)),
+      ).toBe(true);
+    }));
+
   it("includes element failures and unused exceptions, with a constant number of reads", () =>
     rolledBack(async (tx) => {
       const conventions = resolve({
@@ -255,7 +351,19 @@ describe("whole-book element checks", () => {
         rule: "column_fields.definition",
         target: { dataset: "Sales", column: "'Sales'[Channel]" },
       });
-      expect(await unusedExceptions({ db: tx }, conventions)).toEqual([
+      const checked = await checkedElements(
+        { db: tx },
+        { conventions, exceptions: exceptionIndex(conventions) },
+      );
+      const reads = statements.length;
+      const unused = await unusedExceptions(
+        { db: tx },
+        conventions,
+        undefined,
+        checked,
+      );
+      expect(statements).toHaveLength(reads);
+      expect(unused).toEqual([
         {
           rule: "dataset_fields.definition",
           target: { dataset: "Sales" },

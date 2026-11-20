@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { visibleExceptions } from "../conventions/service.js";
 import {
   checkedElements,
@@ -21,7 +20,7 @@ import {
 import { NO_SUCH_DATASET, ServiceError } from "../../errors.js";
 import { currentConventions } from "../conventions/store.js";
 import { withEvents } from "../events/feed.js";
-import { appsSeen, pageBy, sizeOf } from "../mirror/read.js";
+import { appsSeen, decodeCursor, pageBy, sizeOf } from "../mirror/read.js";
 import { piiColumn, piiMeasure, readsPii } from "../pii/rules.js";
 import { recordBookChange, requireCurator } from "./changes.js";
 import { checkCustom, exceptionIndex } from "./checks.js";
@@ -271,20 +270,17 @@ export async function setDocs(
       { code: "docs.field_not_on_kind", field, kind: element.kind },
     );
   }
+  const rules = await currentConventions(context.db);
   if (input.custom !== undefined) {
-    const rules = await currentConventions(context.db);
+    const kind = element.kind;
     const fields =
-      element.kind === "dataset"
-        ? rules.dataset_fields.custom
-        : element.kind === "table"
-          ? rules.table_fields.custom
-          : element.kind === "column"
-            ? rules.column_fields.custom
-            : [];
+      kind === "dataset" || kind === "table" || kind === "column"
+        ? rules[`${kind}_fields`].custom
+        : [];
     checkCustom(fields, input.custom);
   }
   if (input.unit?.trim()) {
-    const { column_fields } = await currentConventions(context.db);
+    const { column_fields } = rules;
     if (!column_fields.unit.values.includes(input.unit.trim()))
       throw new ServiceError(
         "invalid",
@@ -349,58 +345,55 @@ export async function docsChecks(
     allowed,
     !(await readsPii(context)),
   );
-  let dataset: string | undefined;
-  if (filters.dataset !== undefined) {
-    const found = rows.find(
-      (row) =>
-        row.kind === "dataset" &&
-        (row.name === filters.dataset || row.id === filters.dataset),
-    );
-    if (found === undefined)
-      throw new ServiceError("not_found", NO_SUCH_DATASET);
-    dataset = found.name;
-  }
+  const dataset =
+    filters.dataset === undefined
+      ? undefined
+      : rows.find(
+          (row) =>
+            row.kind === "dataset" &&
+            (row.name === filters.dataset || row.id === filters.dataset),
+        );
+  if (filters.dataset !== undefined && dataset === undefined)
+    throw new ServiceError("not_found", NO_SUCH_DATASET);
   const failures = rows.filter(
     (row) =>
-      (dataset === undefined || row.dataset === dataset) &&
+      (dataset === undefined || row.dataset_id === dataset.id) &&
       row.results.some((result) => !result.passed),
   );
   const nameOf = (row: CheckedElement) =>
-    JSON.stringify([row.dataset, row.kind, row.table ?? "", row.name]);
+    JSON.stringify([
+      row.dataset,
+      row.dataset_id,
+      row.kind === "dataset" ? "" : (row.table ?? row.name),
+      row.kind === "column" ? 1 : 0,
+      row.name,
+    ]);
   const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
   failures.sort((a, b) => compare(nameOf(a), nameOf(b)) || compare(a.id, b.id));
-  let after: [string, string] | undefined;
-  if (filters.cursor !== undefined) {
-    let decoded: unknown;
-    try {
-      decoded = JSON.parse(
-        Buffer.from(filters.cursor, "base64url").toString("utf8"),
-      );
-    } catch (error) {
-      if (!(error instanceof SyntaxError)) throw error;
-    }
-    const parsed = z
-      .tuple([z.string().refine((value) => !value.includes("\0")), z.guid()])
-      .safeParse(decoded);
-    if (!parsed.success)
-      throw new ServiceError(
-        "invalid",
-        "That cursor is not one a list gave. Ask again without it.",
-      );
-    after = parsed.data;
-  }
+  const after =
+    filters.cursor === undefined ? undefined : decodeCursor(filters.cursor);
   const remaining =
     after === undefined
       ? failures
       : failures.filter((row) => {
-          const order = compare(nameOf(row), after[0]);
-          return order > 0 || (order === 0 && compare(row.id, after[1]) > 0);
+          const order = compare(nameOf(row), after.names[0] ?? "");
+          return order > 0 || (order === 0 && compare(row.id, after.id) > 0);
         });
-  const exceptions = await visibleExceptions(context, conventions.exceptions);
+  const exceptions = await visibleExceptions(
+    context,
+    conventions.exceptions.filter(
+      (item) =>
+        item.dataset !== undefined &&
+        (dataset === undefined ||
+          item.dataset === dataset.id ||
+          item.dataset === dataset.name),
+    ),
+  );
   const unused = await unusedExceptions(
     context,
     { ...conventions, exceptions },
-    dataset === undefined ? undefined : { dataset },
+    undefined,
+    rows,
   );
   const page = pageBy(remaining, sizeOf(filters.limit), nameOf);
   return {

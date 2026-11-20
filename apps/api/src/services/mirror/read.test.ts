@@ -724,27 +724,47 @@ describe("what a person without pii_reader does not get", () => {
     }));
 
   it("hides a relationship with a PII column and the counts, and leaves the reader's answer unchanged", () =>
-    rolledBack(async (tx) => {
-      await withRules(tx);
-      const viewer = await getDataset(asPerson(appReader, { db: tx }), dataset);
-      expect(viewer.relationships).toEqual([]);
-      expect(
-        viewer.tables.map(({ name, column_count, measure_count }) => [
-          name,
-          column_count,
-          measure_count,
-        ]),
-      ).toEqual([
-        ["Date", 0, 1],
-        ["Sales", 1, 1],
-      ]);
-      expect(viewer.pii_hidden).toBe(1);
-      const seeing = await getDataset(asPerson(reader, { db: tx }), dataset);
-      expect("pii_hidden" in seeing).toBe(false);
-      expect(seeing.relationships).toHaveLength(1);
-      expect(seeing.tables.map((table) => table.column_count)).toEqual([0, 2]);
-      expect(seeing.tables.map((table) => table.measure_count)).toEqual([1, 2]);
-    }));
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        await setRole(tx, "api_rw");
+        await withRules(tx);
+        await setRole(tx, "worker_rw");
+        await tx
+          .update(powerbiRelationship)
+          .set({ cardinality: "many_to_one" })
+          .where(eq(powerbiRelationship.dataset_id, id.sales));
+        await setRole(tx, "api_rw");
+        const viewer = await getDataset(
+          asPerson(appReader, { db: tx }),
+          dataset,
+        );
+        expect(viewer.relationships).toEqual([]);
+        expect(
+          viewer.tables.map(({ name, column_count, measure_count }) => [
+            name,
+            column_count,
+            measure_count,
+          ]),
+        ).toEqual([
+          ["Date", 0, 1],
+          ["Sales", 1, 1],
+        ]);
+        expect(viewer.pii_hidden).toBe(1);
+        const seeing = await getDataset(asPerson(reader, { db: tx }), dataset);
+        expect("pii_hidden" in seeing).toBe(false);
+        expect(seeing.relationships).toHaveLength(1);
+        expect(viewer.tables.map(({ name, kind }) => [name, kind])).toEqual(
+          seeing.tables.map(({ name, kind }) => [name, kind]),
+        );
+        expect(seeing.tables.map((table) => table.column_count)).toEqual([
+          0, 2,
+        ]);
+        expect(seeing.tables.map((table) => table.measure_count)).toEqual([
+          1, 2,
+        ]);
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
 
   it("hides a relationship by its rules alone, at either end, even for a column the mirror lacks", () =>
     rolledBack(async (tx) => {

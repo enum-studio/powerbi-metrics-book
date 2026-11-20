@@ -1,3 +1,4 @@
+import { modelKinds } from "../mirror/read.js";
 import {
   and,
   count,
@@ -17,7 +18,7 @@ import {
   powerbiMeasure,
   powerbiRelationship,
 } from "../../db/schema/mirror.js";
-import { piiColumn, piiColumnNamed, piiMeasure } from "../pii/rules.js";
+import { piiColumn } from "../pii/rules.js";
 import { RULE_TARGETS, RULES } from "../conventions/rules.js";
 import { type Conventions, exceptionKey } from "../conventions/schema.js";
 import {
@@ -25,6 +26,7 @@ import {
   type CheckTarget,
   checkMetric,
   checkElement,
+  elementTarget,
   type CheckableElement,
   checkTerm,
   type ExceptionIndex,
@@ -191,11 +193,8 @@ export async function failuresInBook(
   const checked = [
     ...(targetsOf("metric", rules) ? await checkedMetrics(deps, run) : []),
     ...(targetsOf("term", rules) ? await checkedTerms(deps, run) : []),
-    ...(["dataset", "table", "column"].some((kind) =>
-      RULES.some(
-        (rule) =>
-          rule.target === kind && (rules === undefined || rules.has(rule.id)),
-      ),
+    ...((["dataset", "table", "column"] as const).some((kind) =>
+      targetsOf(kind, rules),
     )
       ? await checkedElements(deps, run)
       : []),
@@ -221,6 +220,7 @@ export async function unusedExceptions(
   deps: Deps,
   conventions: Conventions,
   only?: CheckTarget,
+  checkedElementsInRun?: CheckedElement[],
 ): Promise<UnusedException[]> {
   const run: Run = { conventions, exceptions: exceptionIndex(conventions) };
   const exceptions = conventions.exceptions
@@ -232,7 +232,7 @@ export async function unusedExceptions(
   const metrics = namesOf("metric");
   const terms = namesOf("term");
   const elements = exceptions.some(({ target }) => target.dataset !== undefined)
-    ? await checkedElements(deps, run)
+    ? (checkedElementsInRun ?? (await checkedElements(deps, run)))
     : [];
   const checked = [
     ...(metrics.length > 0 ? await checkedMetrics(deps, run, metrics) : []),
@@ -266,6 +266,7 @@ export type CheckedElement = Checked & {
   id: string;
   name: string;
   dataset: string;
+  dataset_id: string;
   table?: string;
 };
 
@@ -314,7 +315,9 @@ export async function checkedElements(
     db
       .select({
         row: powerbiColumn,
-        pii: piiColumn(powerbiColumn, powerbiTable),
+        visible: hidesPii
+          ? not(piiColumn(powerbiColumn, powerbiTable))
+          : sql<boolean>`true`,
       })
       .from(powerbiColumn)
       .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
@@ -323,7 +326,6 @@ export async function checkedElements(
           inArray(powerbiColumn.dataset_id, ids),
           isNull(powerbiColumn.removed_at),
           isNull(powerbiTable.removed_at),
-          hidesPii ? not(piiColumn(powerbiColumn, powerbiTable)) : undefined,
         ),
       ),
     db
@@ -333,22 +335,6 @@ export async function checkedElements(
         and(
           inArray(powerbiRelationship.dataset_id, ids),
           isNull(powerbiRelationship.removed_at),
-          hidesPii
-            ? and(
-                not(
-                  piiColumnNamed(
-                    powerbiRelationship.from_table,
-                    powerbiRelationship.from_column,
-                  ),
-                ),
-                not(
-                  piiColumnNamed(
-                    powerbiRelationship.to_table,
-                    powerbiRelationship.to_column,
-                  ),
-                ),
-              )
-            : undefined,
         ),
       ),
     db
@@ -358,7 +344,6 @@ export async function checkedElements(
         and(
           inArray(powerbiMeasure.dataset_id, ids),
           isNull(powerbiMeasure.removed_at),
-          hidesPii ? not(piiMeasure(powerbiMeasure)) : undefined,
         ),
       ),
     db
@@ -367,27 +352,34 @@ export async function checkedElements(
       .innerJoin(powerbiColumn, eq(powerbiColumn.id, termColumn.column_id))
       .where(inArray(powerbiColumn.dataset_id, ids)),
   ]);
+  const group = <T>(rows: T[], key: (row: T) => string) => {
+    const grouped = new Map<string, T[]>();
+    for (const row of rows) {
+      const own = grouped.get(key(row)) ?? [];
+      own.push(row);
+      grouped.set(key(row), own);
+    }
+    return grouped;
+  };
+  const tablesByDataset = group(tables, (row) => row.dataset_id);
+  const columnsByTable = group(columns, ({ row }) => row.table_id);
+  const relationshipsByDataset = group(relationships, (row) => row.dataset_id);
+  const measuresByTable = group(measures, (row) => row.table_id);
   const backed = new Set(links.map((row) => row.column_id));
   const result: CheckedElement[] = [];
   const add = (id: string, datasetId: string, element: CheckableElement) => {
     const dataset = targets.get(datasetId) ?? datasetId;
-    const target =
-      element.kind === "column"
-        ? {
-            dataset,
-            column: `'${element.table}'[${element.name}]`,
-          }
-        : element.kind === "table"
-          ? { dataset, table: element.name }
-          : { dataset };
+    const named = { ...element, dataset };
+    const target = elementTarget(named);
     result.push({
       kind: element.kind,
       id,
       name: element.name,
       dataset: element.dataset,
+      dataset_id: datasetId,
       ...(element.kind === "column" ? { table: element.table } : {}),
       target,
-      results: checkElement({ ...element, dataset }, { ...run, exceptions }),
+      results: checkElement(named, { ...run, exceptions }, target),
     });
   };
   for (const dataset of datasets) {
@@ -396,76 +388,39 @@ export async function checkedElements(
       kind: "dataset",
       dataset: dataset.name,
     });
-    const related = relationships.filter(
-      (row) => row.dataset_id === dataset.id,
+    const ownTables = tablesByDataset.get(dataset.id) ?? [];
+    const modelColumns = ownTables.flatMap((table) =>
+      (columnsByTable.get(table.id) ?? []).map(({ row }) => ({
+        ...row,
+        table: table.name,
+      })),
     );
-    const ends = new Set<string>();
-    const many = new Set<string>();
-    const one = new Set<string>();
-    const dates = new Set<string>();
-    const key = (table: string, column: string) =>
-      JSON.stringify([table, column]);
-    const dateColumns = new Set(
-      columns
-        .filter(
-          ({ row }) =>
-            row.dataset_id === dataset.id &&
-            ["Date", "DateTime"].includes(row.data_type ?? ""),
-        )
-        .map(({ row }) =>
-          key(
-            tables.find((table) => table.id === row.table_id)?.name ?? "",
-            row.name,
-          ),
-        ),
+    const { tableKind, ends, columnKey } = modelKinds(
+      modelColumns,
+      relationshipsByDataset.get(dataset.id) ?? [],
     );
-    for (const relationship of related) {
-      for (const side of ["from", "to"] as const) {
-        const table = relationship[`${side}_table`];
-        const column = relationship[`${side}_column`];
-        ends.add(key(table, column));
-        const isOne =
-          relationship.cardinality === "one_to_one" ||
-          relationship.cardinality ===
-            (side === "from" ? "one_to_many" : "many_to_one");
-        const isMany =
-          relationship.cardinality === "many_to_many" ||
-          relationship.cardinality ===
-            (side === "from" ? "many_to_one" : "one_to_many");
-        if (isMany) many.add(table);
-        if (isOne) {
-          one.add(table);
-          if (relationship.is_active && dateColumns.has(key(table, column)))
-            dates.add(table);
-        }
-      }
-    }
-    for (const table of tables.filter((row) => row.dataset_id === dataset.id)) {
-      const own = columns.filter(({ row }) => row.table_id === table.id);
-      const table_kind =
-        own.length === 0 && measures.some((row) => row.table_id === table.id)
-          ? "measures"
-          : dates.has(table.name)
-            ? "date"
-            : many.has(table.name)
-              ? "fact"
-              : one.has(table.name)
-                ? "dimension"
-                : "standalone";
+    for (const table of ownTables) {
+      const own = columnsByTable.get(table.id) ?? [];
+      const table_kind = tableKind({
+        name: table.name,
+        column_count: own.length,
+        measure_count: measuresByTable.get(table.id)?.length ?? 0,
+      });
       add(table.id, dataset.id, {
         ...table,
         kind: "table",
         dataset: dataset.name,
         table_kind,
       });
-      for (const { row, pii } of own) {
-        if (hidesPii && pii) continue;
+      for (const { row, visible } of own) {
+        if (!visible) continue;
         add(row.id, dataset.id, {
           ...row,
           kind: "column",
           dataset: dataset.name,
           table: table.name,
-          is_key: ends.has(key(table.name, row.name)),
+          is_key: ends.has(columnKey(table.name, row.name)),
+          is_hidden: table.is_hidden || row.is_hidden,
           has_term: backed.has(row.id),
         });
       }

@@ -768,6 +768,22 @@ describe("element checks", () => {
       results({ data_type: "String", has_term: true }).every((r) => r.passed),
     ).toBe(true);
   });
+  it("asks nothing of a hidden fact table", () => {
+    expect(
+      checkElement(
+        {
+          kind: "table",
+          name: "Helper",
+          dataset: "Retail",
+          table_kind: "fact",
+          is_hidden: true,
+          description: null,
+          custom: {},
+        },
+        context(metricsBook),
+      ).every((result) => result.passed),
+    ).toBe(true);
+  });
   it("asks nothing of hidden columns, date tables or measures tables", () => {
     expect(results({ is_hidden: true }).every((r) => r.passed)).toBe(true);
     for (const table_kind of ["date", "measures"] as const)

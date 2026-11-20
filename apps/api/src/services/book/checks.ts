@@ -1,3 +1,4 @@
+import { columnTarget } from "../mirror/read.js";
 import { ServiceError } from "../../errors.js";
 import {
   type Conventions,
@@ -584,6 +585,7 @@ export type CheckableElement = {
     }
   | {
       kind: "table";
+      is_hidden?: boolean;
       table_kind: "fact" | "dimension" | "date" | "measures" | "standalone";
       grain_and_filters?: string | null;
       caveats?: string | null;
@@ -603,12 +605,15 @@ export type CheckableElement = {
 export function checkElement(
   element: CheckableElement,
   context: Pick<MetricCheckContext, "conventions" | "exceptions">,
+  target = elementTarget(element),
 ): CheckResult[] {
   const check = `${element.kind}_fields` as const;
   const rules = context.conventions[check];
   const eligible =
     element.kind === "table"
-      ? element.table_kind !== "date" && element.table_kind !== "measures"
+      ? !element.is_hidden &&
+        element.table_kind !== "date" &&
+        element.table_kind !== "measures"
       : element.kind !== "column" || !element.is_hidden;
   const needs = (required: boolean | string): boolean =>
     eligible &&
@@ -714,14 +719,16 @@ export function checkElement(
     : [];
   if (custom.length > 0)
     found.push({ rule: `${check}.custom`, message: custom.join(" ") });
-  const target =
-    element.kind === "column"
-      ? {
-          dataset: element.dataset,
-          column: `'${element.table}'[${element.name}]`,
-        }
-      : element.kind === "table"
-        ? { dataset: element.dataset, table: element.name }
-        : { dataset: element.dataset };
   return underConventions(resultsOf(check, found), context, target);
+}
+
+export function elementTarget(element: CheckableElement): CheckTarget {
+  return element.kind === "column"
+    ? {
+        dataset: element.dataset,
+        column: columnTarget(element.table, element.name),
+      }
+    : element.kind === "table"
+      ? { dataset: element.dataset, table: element.name }
+      : { dataset: element.dataset };
 }

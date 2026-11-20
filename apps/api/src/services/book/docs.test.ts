@@ -17,7 +17,7 @@ import { powerbiDataset } from "../../db/schema/mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
 import type { Principal } from "../../principal.js";
 import { setConventionsAsAdmin } from "../conventions/service.js";
-import { getDocs, setDocs } from "./docs.js";
+import { docsChecks, getDocs, setDocs } from "./docs.js";
 
 useMirror();
 
@@ -388,3 +388,53 @@ it("validates column units against their own convention and gives the allowed un
       ).unit,
     ).toBe("count");
   }));
+
+describe("documentation checks", () => {
+  it("lists only element exceptions from the checked rows and orders parents first", () =>
+    rolledBack(async (tx) => {
+      await setConventionsAsAdmin(as(tx, reaching({}, "admin")), {
+        format: 1,
+        exceptions: [
+          {
+            rule: "term_fields.definition",
+            term: "Absent",
+            reason: "Not an element.",
+          },
+          {
+            rule: "dataset_fields.owner",
+            dataset: "Sales",
+            reason: "Optional.",
+          },
+        ],
+      });
+      const page = await docsChecks(as(tx), { limit: 500 });
+      expect(page.unused_exceptions).toEqual([
+        {
+          rule: "dataset_fields.owner",
+          target: { dataset: "Sales" },
+          reason: "Optional.",
+          why: "passes",
+        },
+      ]);
+      const sales = page.items.filter((row) => row.dataset === "Sales");
+      expect(sales[0]?.kind).toBe("dataset");
+      const table = sales.findIndex(
+        (row) => row.kind === "table" && row.name === "Sales",
+      );
+      const column = sales.findIndex(
+        (row) => row.kind === "column" && row.table === "Sales",
+      );
+      expect(table).toBeGreaterThan(0);
+      expect(column).toBeGreaterThan(table);
+    }));
+
+  it("filters a dataset id independently of another dataset with the same name", () =>
+    rolledBack(async (tx) => {
+      const context = asPerson(reaching({}, "admin"), {
+        db: tx,
+        mode: "everyone",
+      });
+      const page = await docsChecks(context, { dataset: id.twin_a });
+      expect(page.items.map((row) => row.id)).toEqual([id.twin_a]);
+    }));
+});

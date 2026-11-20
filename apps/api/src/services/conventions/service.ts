@@ -7,7 +7,7 @@ import {
 } from "../../db/schema/mirror.js";
 import { metric } from "../../db/schema/book.js";
 import { BOOK, requireCurator } from "../book/changes.js";
-import { visibleMetric } from "../mirror/read.js";
+import { columnTarget, visibleMetric } from "../mirror/read.js";
 import { resolveMetric } from "../book/metrics.js";
 import { unusedExceptions } from "../book/whole-book-checks.js";
 import { piiColumn, readsPii } from "../pii/rules.js";
@@ -216,7 +216,7 @@ export async function visibleExceptions(
         visible.add(
           exceptionKey({
             dataset: names.get(row.dataset_id),
-            column: `'${row.table}'[${row.name}]`,
+            column: columnTarget(row.table, row.name),
           }),
         );
     }
