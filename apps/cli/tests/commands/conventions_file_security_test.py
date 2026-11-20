@@ -55,7 +55,7 @@ CASES = [
     (
         "format: 1\nguide: guide.md\n",
         _write("guide.md", ENV_LINE + "\n" + "x" * 256 * 1024),
-        "over 256 KiB",
+        "larger than 262144 bytes",
     ),
     (None, lambda folder: (folder / "conventions.yml").symlink_to(".env"), LINK_RULE),
 ]
@@ -125,3 +125,79 @@ def test_a_symlinked_book_yml_is_refused_unread(serve: Serve, tmp_path: Path) ->
     assert result.exit_code == 2
     assert seen == []
     assert "not-a-real-secret" not in result.output
+
+
+@pytest.mark.parametrize("name", ["old", "arbitrary"])
+def test_replace_leaves_planted_hard_links_untouched(tmp_path: Path, name: str) -> None:
+    from powerbi_metrics_book.conventions_file import replace_file
+
+    folder = tmp_path / "deployment"
+    folder.mkdir()
+    target = tmp_path / "outside"
+    target.write_text(ENV_LINE)
+    path = folder / "conventions.yml"
+    planted = folder / (
+        f".conventions.yml.pbmb-{os.getpid()}" if name == "old" else "another-file"
+    )
+    planted.hardlink_to(target)
+    replace_file(path, "format: 1\n")
+    assert target.read_text() == ENV_LINE
+    assert planted.read_text() == ENV_LINE
+    assert planted.stat().st_ino == target.stat().st_ino
+    assert path.read_text() == "format: 1\n"
+
+
+def test_failed_replace_removes_temporary_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import typer
+
+    from powerbi_metrics_book.conventions_file import replace_file
+
+    path = tmp_path / "conventions.yml"
+    path.write_text("format: 1\n")
+
+    def refuse(source: object, destination: object) -> None:
+        raise OSError("rename failed")
+
+    monkeypatch.setattr(os, "replace", refuse)
+    with pytest.raises(typer.BadParameter, match="Cannot write"):
+        replace_file(path, "format: 1 # changed\n")
+    assert list(tmp_path.iterdir()) == [path]
+    assert path.read_text() == "format: 1\n"
+
+
+def test_replace_keeps_original_mode(tmp_path: Path) -> None:
+    import stat
+
+    from powerbi_metrics_book.conventions_file import replace_file
+
+    path = tmp_path / "conventions.yml"
+    path.write_text("format: 1\n")
+    path.chmod(0o640)
+    replace_file(path, "format: 1 # changed\n")
+    assert stat.S_IMODE(path.stat().st_mode) == 0o640
+
+
+@pytest.mark.parametrize("name", ["guide.md", "conventions.yml", "book.yml"])
+def test_hard_linked_deployment_files_are_refused_unread(
+    serve: Serve, tmp_path: Path, name: str
+) -> None:
+    (tmp_path / ".env").write_text(ENV_LINE)
+    path = tmp_path / name
+    path.hardlink_to(tmp_path / ".env")
+    conventions = tmp_path / "conventions.yml"
+    if name == "guide.md":
+        conventions.write_text("format: 1\nguide: guide.md\n")
+    problems = (
+        _check_book(path) if name == "book.yml" else _check_conventions(conventions)
+    )
+    assert len(problems) == 1
+    assert "hard link" in problems[0]
+    assert "not-a-real-secret" not in problems[0]
+    seen = serve(lambda request: json_response(200, {}))
+    args = ("admin", "import") if name == "book.yml" else ("conventions", "apply")
+    result = run(*args, str(path if name == "book.yml" else conventions), "--yes")
+    assert result.exit_code == 2
+    assert "not-a-real-secret" not in result.output
+    assert seen == []
