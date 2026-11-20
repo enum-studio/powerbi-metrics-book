@@ -140,6 +140,15 @@ describe("applyConventions", () => {
           exceptions_added: [],
           version: 1,
         });
+      // A file without them, given the baseline again, ends equal: nothing changes, and the file is handed them.
+      expect(
+        await apply(tx, { dry_run: false, baseline_reason: BASELINE }),
+      ).toEqual({
+        changed_rules: [],
+        now_failing: {},
+        exceptions_added: exceptions,
+        version: 1,
+      });
       expect(await listVersions(tx)).toHaveLength(1);
     }));
 

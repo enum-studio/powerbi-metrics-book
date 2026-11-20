@@ -113,14 +113,15 @@ export async function applyConventions(
             ...document,
             exceptions: [...proposed.exceptions, ...added],
           });
+    // Equal once the baseline is added, as when a file without it is applied again.
+    const unchanged = isDeepStrictEqual(save.part, current.company);
     const answer = {
-      changed_rules: changed,
-      now_failing,
+      changed_rules: unchanged ? [] : changed,
+      now_failing: unchanged ? {} : now_failing,
       exceptions_added: added,
     };
     if (dry_run) return { ...answer, version: null };
-    if (isDeepStrictEqual(save.part, current.company))
-      return { ...answer, version: current.version };
+    if (unchanged) return { ...answer, version: current.version };
     const { version } = await saveVersion(tx, emit, save);
     return { ...answer, version };
   });
