@@ -2,13 +2,14 @@ import { ServiceError } from "../../errors.js";
 import {
   type Conventions,
   type CustomFieldSpec,
+  exceptionKey,
   METRIC_CHECK_NAMES,
   type MetricCheckName,
   TERM_CHECK_NAMES,
   type CheckName,
   type TermCheckName,
 } from "../conventions/schema.js";
-import { rulesOfCheck } from "../conventions/rules.js";
+import { isRuleOff, rulesOfCheck } from "../conventions/rules.js";
 
 /*
  * The checks the conventions turn on, off or configure. Each reads its rule
@@ -34,6 +35,7 @@ export type CheckableMetric = {
 };
 
 export type CheckableTerm = {
+  name: string;
   definition: string | null;
   values: unknown;
   /** A backing column holds categories (text), so the term lists what each value means. */
@@ -49,9 +51,29 @@ export type CheckResult = {
   message: string;
   /** The metrics a failing metric_not_the_same_as is about, closest first: a common word can match hundreds, so the message counts them and this lists them. */
   other_labels?: string[];
+  /** The reason of the exception the conventions make for this element: it fails the rule, and passes by the exception. */
+  exception?: string;
 };
+
+/** The element a result or an exception is about: a metric by its key, a term by its name, an element of a dataset by its names. */
+export interface CheckTarget {
+  metric?: string;
+  term?: string;
+  dataset?: string;
+  table?: string;
+  column?: string;
+}
+
+/** The reason of each of the conventions' exceptions, by exceptionKey: built once for a run of the checks, and given to each. */
+export type ExceptionIndex = ReadonlyMap<string, string>;
+export const exceptionIndex = (conventions: Conventions): ExceptionIndex =>
+  new Map(
+    conventions.exceptions.map((item) => [exceptionKey(item), item.reason]),
+  );
+
 export type MetricCheckContext = {
   conventions: Conventions;
+  exceptions: ExceptionIndex;
   /** The labels of the other metrics that may share a word of this one's; see wordsComparedWithOtherLabels. */
   other_labels: string[];
   live_base_variants: number;
@@ -62,6 +84,7 @@ export type MetricCheckContext = {
 };
 export type TermCheckContext = {
   conventions: Conventions;
+  exceptions: ExceptionIndex;
   backed_by_columns: number;
 };
 
@@ -275,10 +298,12 @@ export function wordsComparedWithOtherLabels(
   conventions: Conventions,
 ): string[] {
   if (
-    conventions.checks.off.includes("metric_not_the_same_as") ||
     conventions.metric_fields.not_the_same_as.required !==
       "when_label_shares_a_word" ||
-    !blank(metric.not_the_same_as)
+    !blank(metric.not_the_same_as) ||
+    rulesOfCheck("metric_not_the_same_as").some((rule) =>
+      isRuleOff(rule, conventions),
+    )
   )
     return [];
   return contentWordsUnder(conventions)(metric.label);
@@ -406,29 +431,62 @@ function resultsOf(check: CheckName, found: Finding[]): CheckResult[] {
   return results;
 }
 
-/** Every metric check the conventions leave on; one in checks.off gives no result. */
+/**
+ * The results `off` leaves, by the rule's id or by the check that gave it,
+ * each failure an exception covers passing under that exception.
+ */
+function underConventions(
+  results: CheckResult[],
+  context: Pick<MetricCheckContext, "conventions" | "exceptions">,
+  target: CheckTarget,
+): CheckResult[] {
+  const { conventions, exceptions } = context;
+  const off = new Set<string>(conventions.off);
+  return results
+    .filter(({ check, rule }) => !off.has(check) && !off.has(rule))
+    .map((result) => {
+      const reason = result.passed
+        ? undefined
+        : exceptions.get(exceptionKey({ rule: result.rule, ...target }));
+      return reason === undefined
+        ? result
+        : { ...result, passed: true, exception: reason };
+    });
+}
+
+/** Every metric check the conventions leave on; a check or a rule in `off` gives no result. */
 export function checkMetric(
   metric: CheckableMetric,
   context: MetricCheckContext,
 ): CheckResult[] {
-  const off = new Set<string>(context.conventions.checks.off);
+  const off = new Set<string>(context.conventions.off);
   // Under any other setting metric_fields owns the rule, so it is told once.
   const sharesAWord =
     context.conventions.metric_fields.not_the_same_as.required ===
     "when_label_shares_a_word";
-  return METRIC_CHECK_NAMES.filter(
-    (check) =>
-      !off.has(check) && (sharesAWord || check !== "metric_not_the_same_as"),
-  ).flatMap((check) => resultsOf(check, METRIC_CHECKS[check](metric, context)));
+  return underConventions(
+    METRIC_CHECK_NAMES.filter(
+      (check) =>
+        !off.has(check) && (sharesAWord || check !== "metric_not_the_same_as"),
+    ).flatMap((check) =>
+      resultsOf(check, METRIC_CHECKS[check](metric, context)),
+    ),
+    context,
+    { metric: metric.name },
+  );
 }
 
 export function checkTerm(
   term: CheckableTerm,
   context: TermCheckContext,
 ): CheckResult[] {
-  const off = new Set<string>(context.conventions.checks.off);
-  return TERM_CHECK_NAMES.filter((check) => !off.has(check)).flatMap((check) =>
-    resultsOf(check, TERM_CHECKS[check](term, context)),
+  const off = new Set<string>(context.conventions.off);
+  return underConventions(
+    TERM_CHECK_NAMES.filter((check) => !off.has(check)).flatMap((check) =>
+      resultsOf(check, TERM_CHECKS[check](term, context)),
+    ),
+    context,
+    { term: term.name },
   );
 }
 

@@ -227,6 +227,9 @@ export const ROUTE_MATRIX = {
   "GET /api/v1/conventions/company": ADMINS,
   "GET /api/v1/conventions/versions": ADMINS,
   "POST /api/v1/conventions/diff": ADMINS,
+  "POST /api/v1/conventions/apply": ADMINS,
+  // As GET /api/v1/metrics/:name/checks, asked for one metric in Sales.
+  "GET /api/v1/conventions/exceptions/unused": CURATES_SALES,
   // As GET /api/v1/conventions: the rules' values are the conventions'.
   "GET /api/v1/conventions/rules": SIGNED_IN,
   // powerbi.service_account_queries is off by default.

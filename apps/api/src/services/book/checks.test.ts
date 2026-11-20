@@ -7,7 +7,9 @@ import {
   type CheckableTerm,
   checkMetric,
   checkTerm,
+  exceptionIndex,
   METRIC_CHECKS,
+  type TermCheckContext,
   wordsComparedWithOtherLabels,
   type MetricCheckContext,
   validateCustomFields,
@@ -45,11 +47,21 @@ const context = (
   overrides: Partial<MetricCheckContext> = {},
 ): MetricCheckContext => ({
   conventions,
+  exceptions: exceptionIndex(conventions),
   other_labels: [],
   live_base_variants: 1,
   advise: true,
   live_other_variants: 0,
   ...overrides,
+});
+
+const termContext = (
+  conventions: Conventions,
+  backed_by_columns: number,
+): TermCheckContext => ({
+  conventions,
+  exceptions: exceptionIndex(conventions),
+  backed_by_columns,
 });
 
 const failingResults = (
@@ -268,8 +280,11 @@ describe("every metric check under metrics_book", () => {
     expect(words(null)).toEqual(["order", "costs"]);
     expect(words(" ")).toEqual(["order", "costs"]);
     expect(words("Per item.")).toEqual([]);
+    expect(words(null, resolve({ off: ["metric_not_the_same_as"] }))).toEqual(
+      [],
+    );
     expect(
-      words(null, resolve({ checks: { off: ["metric_not_the_same_as"] } })),
+      words(null, resolve({ off: ["metric_fields.not_the_same_as"] })),
     ).toEqual([]);
     expect(
       words(
@@ -327,6 +342,7 @@ describe("every metric check under metrics_book", () => {
 
   it("gives every result a registered rule, and no rule twice for one metric", () => {
     const term: CheckableTerm = {
+      name: "channel",
       definition: "",
       values: {},
       categorical: true,
@@ -345,10 +361,7 @@ describe("every metric check under metrics_book", () => {
         ),
       ),
     ];
-    const terms = checkTerm(term, {
-      conventions: metricsBook,
-      backed_by_columns: 1,
-    });
+    const terms = checkTerm(term, termContext(metricsBook, 1));
     for (const results of [...metrics, terms]) {
       for (const result of results)
         expect(ruleById(result.rule), result.rule).toBeDefined();
@@ -435,7 +448,7 @@ describe("the same metrics under minimal", () => {
   });
 
   it("asks nothing of names in its rules either, with every check on", () => {
-    const allOn = resolve({ preset: "minimal", checks: { off: [] } });
+    const allOn = resolve({ preset: "minimal", off: [] });
     for (const name of ["orders", "total_net_sales", "NumberOfOrders"]) {
       expect(failing(allOn, { ...asIs, name })).toEqual([]);
     }
@@ -486,11 +499,90 @@ describe("a company's own conventions", () => {
   });
 
   it("gives no result for a check it turns off", () => {
-    const formOff = resolve({ checks: { off: ["metric_name_form"] } });
+    const formOff = resolve({ off: ["metric_name_form"] });
     const orders = metric({ name: "orders", unit: "count" });
     const results = checkMetric(orders, context(formOff));
     expect(new Set(results.map((result) => result.check)).size).toBe(7);
     expect(failing(formOff, { name: "orders", unit: "count" })).toEqual([]);
+  });
+
+  it("turns off one rule by its id and leaves the rest of its check on", () => {
+    const kindsOff = resolve({ off: ["naming.kinds"] });
+    const rules = (overrides: Partial<CheckableMetric>) =>
+      checkMetric(metric(overrides), context(kindsOff))
+        .filter(({ check }) => check === "metric_name_form")
+        .map(({ rule, passed }) => ({ rule, passed }));
+    expect(rules({ name: "Orders", unit: "count" })).toEqual([
+      { rule: "naming.case", passed: false },
+    ]);
+  });
+
+  it("turns off not_the_same_as by its id whichever check asks for it, and by a check only where that check asks", () => {
+    const rule = "metric_fields.not_the_same_as";
+    const asked = (conventions: Conventions) =>
+      checkMetric(
+        metric({ not_the_same_as: null }),
+        context(conventions, { other_labels: ["Average order costs"] }),
+      ).filter((result) => result.rule === rule);
+    const always = { metric_fields: { not_the_same_as: { required: true } } };
+    expect(asked(metricsBook)).toMatchObject([
+      { check: "metric_not_the_same_as", passed: false },
+    ]);
+    expect(asked(resolve({ ...always }))).toMatchObject([
+      { check: "metric_fields", passed: false },
+    ]);
+    expect(asked(resolve({ off: [rule] }))).toEqual([]);
+    expect(asked(resolve({ ...always, off: [rule] }))).toEqual([]);
+    expect(asked(resolve({ ...always, off: ["metric_fields"] }))).toEqual([]);
+    expect(asked(resolve({ off: ["metric_fields"] }))).toMatchObject([
+      { passed: false },
+    ]);
+    expect(
+      asked(resolve({ ...always, off: ["metric_not_the_same_as"] })),
+    ).toMatchObject([{ passed: false }]);
+  });
+
+  it("passes a failure an exception covers, with its reason, for that metric and rule alone", () => {
+    const reason = "The board reads this name in every report.";
+    const excepted = resolve({
+      exceptions: [{ rule: "naming.kinds", metric: "orders", reason }],
+    });
+    const results = (name: string) =>
+      checkMetric(metric({ name, unit: "count" }), context(excepted));
+    expect(
+      results("orders").find((result) => result.rule === "naming.kinds"),
+    ).toMatchObject({ passed: true, exception: reason });
+    expect(results("Orders").filter((result) => !result.passed)).toMatchObject([
+      { rule: "naming.case" },
+      { rule: "naming.kinds" },
+    ]);
+    expect(
+      results("total_orders").find((result) => result.rule === "naming.kinds"),
+    ).not.toHaveProperty("exception");
+  });
+
+  it("passes a term's failure an exception covers", () => {
+    const excepted = resolve({
+      exceptions: [
+        { rule: "term_fields.definition", term: "channel", reason: "Plain." },
+      ],
+    });
+    const blank = (name: string): CheckableTerm => ({
+      name,
+      definition: "",
+      values: null,
+      categorical: false,
+      custom: {},
+    });
+    const definition = (name: string) =>
+      checkTerm(blank(name), termContext(excepted, 0)).find(
+        (result) => result.rule === "term_fields.definition",
+      );
+    expect(definition("channel")).toMatchObject({
+      passed: true,
+      exception: "Plain.",
+    });
+    expect(definition("region")).toMatchObject({ passed: false });
   });
 
   it("requires its own custom fields on a metric", () => {
@@ -545,6 +637,7 @@ describe("validateCustomFields", () => {
 
 describe("term_fields", () => {
   const channel: CheckableTerm = {
+    name: "channel",
     definition: "The way the customer reached the shop for this order.",
     values: [{ value: "email", meaning: "Newsletters" }],
     categorical: true,
@@ -555,10 +648,9 @@ describe("term_fields", () => {
     columns = 1,
     rules = metricsBook,
   ) =>
-    checkTerm(
-      { ...channel, ...term },
-      { conventions: rules, backed_by_columns: columns },
-    ).every((result) => result.passed);
+    checkTerm({ ...channel, ...term }, termContext(rules, columns)).every(
+      (result) => result.passed,
+    );
 
   it("asks a categorical dimension term for its values, and a concept term for none", () => {
     expect(passes({})).toBe(true);
@@ -571,9 +663,7 @@ describe("term_fields", () => {
 
   it("asks every term for its definition and its required custom fields", () => {
     const blank = { ...channel, definition: "" };
-    expect(
-      checkTerm(blank, { conventions: minimal, backed_by_columns: 1 }),
-    ).toEqual([
+    expect(checkTerm(blank, termContext(minimal, 1))).toEqual([
       {
         check: "term_fields",
         rule: "term_fields.definition",

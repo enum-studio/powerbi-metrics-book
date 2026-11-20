@@ -54,9 +54,7 @@ const TOOL_CALL = z.object({
  * Said once, at initialize, and read from the conventions in force, so a
  * change to the guide reaches the next connection.
  */
-async function instructions(
-  context: Pick<ServiceContext, "db" | "settings">,
-): Promise<string> {
+async function instructions(context: ServiceContext): Promise<string> {
   const { guide } = await getConventionsForAgents(context);
   const sample = onTheMock(await context.settings.get("powerbi.authority"));
   return instructionsFor(

@@ -1359,7 +1359,7 @@ Fields of the first answer:
 | `preset` | one of "metrics_book", "minimal" | yes |   |
 | `guide` | text | yes |   |
 | `summary` | a list of text | yes |   |
-| `rules` | an object with preset, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, checks | yes |   |
+| `rules` | an object with preset, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, off, exceptions | yes |   |
 
 Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
 
@@ -1380,7 +1380,7 @@ Fields of the first answer:
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `version` | a number | yes |   |
-| `conventions` | an object with preset, guide, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, checks | yes |   |
+| `conventions` | an object with preset, guide, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, off, exceptions | yes |   |
 | `changes` | a list of an object | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
@@ -1422,6 +1422,57 @@ Fields of the first answer:
 | `changes` | a list of an object | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### POST `/api/v1/conventions/apply`
+
+Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run
+
+Who may call it: An admin.
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `conventions` | an object | yes |   |
+| `dry_run` | true or false | yes |   |
+| `baseline_reason` | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run | an object with changed_rules, now_failing, exceptions_added, version |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `changed_rules` | a list of text | yes |   |
+| `now_failing` | an object | yes |   |
+| `exceptions_added` | a list of an object | yes |   |
+| `version` | a whole number, at least -9007199254740991 and at most 9007199254740991 or null | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### GET `/api/v1/conventions/exceptions/unused`
+
+The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `metric` | query | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them | an object with unused |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `unused` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
 ## datasets
 

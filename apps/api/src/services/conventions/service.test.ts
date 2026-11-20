@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals } from "../../../test/deps.js";
 import { asPerson, rolledBack } from "../../../test/mirror-fixtures.js";
+import type { Db } from "../../context.js";
 import { event } from "../../db/schema/events.js";
 import { FIXED_RULES, RULES } from "./rules.js";
 import {
@@ -10,6 +11,7 @@ import {
   listRules,
   setConventionsAsAdmin,
   summariseRules,
+  weakenedBy,
 } from "./service.js";
 import { listVersions, resolve } from "./store.js";
 
@@ -55,7 +57,10 @@ describe("getConventionsForAgents", () => {
           ],
         },
         term_fields: { values: { required: true } },
-        checks: { off: ["metric_base_variant"] },
+        off: ["metric_base_variant"],
+        exceptions: [
+          { rule: "naming.kinds", metric: "orders", reason: "Kept." },
+        ],
         trust: { human_verify_from: "any" },
         drafting: { skip: { tables: ["Staging"] } },
       });
@@ -68,7 +73,8 @@ describe("getConventionsForAgents", () => {
           "A term lists its values, each with what it means.",
           "The sync drafts nothing from: measures in the tables Staging.",
           "A person approves a metric from the browser, the CLI or the API.",
-          "These checks are off: metric_base_variant.",
+          "These rules and checks are off: metric_base_variant.",
+          "1 exception lets an element keep failing a rule; get_conventions lists each with its reason.",
         ]),
       );
       expect(summary.join(" ")).not.toContain("snake_case");
@@ -103,7 +109,11 @@ describe("listRules", () => {
         format: 1,
         naming: { kinds: ["total_"] },
         metric_fields: { not_the_same_as: { ignore_words: ["net"] } },
-        checks: { off: ["metric_base_variant"] },
+        off: ["metric_base_variant", "naming.case"],
+        exceptions: [
+          { rule: "naming.kinds", metric: "orders", reason: "Kept." },
+          { rule: "naming.kinds", metric: "sales", reason: "Kept too." },
+        ],
       });
       const after = await listRules(viewer);
       const byId = new Map(after.rules.map((rule) => [rule.id, rule]));
@@ -115,7 +125,7 @@ describe("listRules", () => {
         source: "company",
         allowed: null,
         off: false,
-        exceptions: 0,
+        exceptions: 2,
       });
       expect(byId.get("metric_fields.not_the_same_as")).toMatchObject({
         source: "company",
@@ -128,12 +138,77 @@ describe("listRules", () => {
       expect(byId.get("naming.case")).toMatchObject({
         value: preset.naming.case,
         source: "preset",
+        off: true,
       });
+      expect(byId.get("naming.money_qualifier")?.allowed).toEqual([
+        true,
+        false,
+      ]);
       expect(byId.get("metric_base_variant")).toMatchObject({
         value: null,
         source: "preset",
         off: true,
       });
+    }));
+});
+
+describe("listRules, off and source", () => {
+  const rulesUnder = async (tx: Db, part: object) => {
+    await setConventionsAsAdmin(asPerson(principals.admin, { db: tx }), {
+      format: 1,
+      ...part,
+    });
+    const { rules } = await listRules(asPerson(principals.viewer, { db: tx }));
+    return new Map(rules.map((rule) => [rule.id, rule]));
+  };
+
+  it("gives a rule the company's source only when the company sets its own key", () =>
+    rolledBack(async (tx) => {
+      const byId = await rulesUnder(tx, {
+        naming: { qualifiers: { per: ["per", "each"] } },
+      });
+      expect(byId.get("naming.qualifier_order")?.source).toBe("preset");
+    }));
+
+  it("turns not_the_same_as off by the check that applies it under its required", () =>
+    rolledBack(async (tx) => {
+      const rule = "metric_fields.not_the_same_as";
+      const offUnder = async (part: object) =>
+        (await rulesUnder(tx, part)).get(rule)?.off;
+      // metrics_book asks for it when a label shares a word, minimal never.
+      expect(await offUnder({ off: ["metric_fields"] })).toBe(false);
+      expect(await offUnder({ off: ["metric_not_the_same_as"] })).toBe(true);
+      expect(
+        await offUnder({ preset: "minimal", off: ["metric_fields"] }),
+      ).toBe(true);
+      expect(
+        await offUnder({ preset: "minimal", off: ["metric_not_the_same_as"] }),
+      ).toBe(false);
+      expect(await offUnder({ preset: "minimal", off: [rule] })).toBe(true);
+      expect(
+        (await rulesUnder(tx, { off: [rule] })).get("metric_fields.definition")
+          ?.off,
+      ).toBe(false);
+    }));
+});
+
+describe("weakenedBy", () => {
+  it("counts each rule of a check in off, and every exception", () =>
+    rolledBack(async (tx) => {
+      const viewer = asPerson(principals.viewer, { db: tx });
+      expect(await weakenedBy(viewer)).toEqual({ rules_off: 0, exceptions: 0 });
+      await setConventionsAsAdmin(asPerson(principals.admin, { db: tx }), {
+        format: 1,
+        off: ["metric_name_form", "metric_base_variant"],
+        exceptions: [
+          {
+            rule: "naming.forbidden_words",
+            metric: "sales_ly",
+            reason: "Kept.",
+          },
+        ],
+      });
+      expect(await weakenedBy(viewer)).toEqual({ rules_off: 3, exceptions: 1 });
     }));
 });
 
@@ -147,12 +222,12 @@ describe("getCompanyPartAsAdmin", () => {
       });
       await setConventionsAsAdmin(admin, {
         preset: "minimal",
-        naming: { kinds: ["total_"] },
+        metric_fields: { category: { required: true } },
       });
       expect(await getCompanyPartAsAdmin(admin)).toEqual({
         format: 1,
         preset: "minimal",
-        naming: { kinds: ["total_"] },
+        metric_fields: { category: { required: true } },
       });
       await expect(
         getCompanyPartAsAdmin(asPerson(principals.curator, { db: tx })),

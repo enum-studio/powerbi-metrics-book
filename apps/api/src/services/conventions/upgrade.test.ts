@@ -1,13 +1,16 @@
 import pg from "pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { roleUrl } from "../../../test/database.js";
-import { resolve } from "./store.js";
+import { closeTestPools, principals } from "../../../test/deps.js";
+import { rolledBack } from "../../../test/mirror-fixtures.js";
+import { resolve, setConventions } from "./store.js";
 import { upgradeStoredConventions } from "./upgrade.js";
 
 // The upgrade runs as the migrator, inside the start's migration.
 const migrator = new pg.Client({ connectionString: roleUrl("migrator") });
 await migrator.connect();
 afterAll(() => migrator.end());
+afterAll(closeTestPools);
 beforeEach(() => migrator.query("delete from conventions"));
 
 const store = (version: number, document: object) =>
@@ -75,13 +78,86 @@ describe("upgradeStoredConventions", () => {
     expect(after).toEqual(before);
   });
 
+  it("moves a pre-format document's checks.off to off", async () => {
+    const rest = Object.fromEntries(
+      Object.entries(resolve({})).filter(
+        ([key]) => key !== "off" && key !== "exceptions",
+      ),
+    );
+    await store(1, { ...rest, checks: { off: ["metric_base_variant"] } });
+    expect(await upgradeStoredConventions(migrator)).toBe(1);
+    const [row] = await stored();
+    expect(row?.document).toEqual({
+      format: 1,
+      preset: "metrics_book",
+      off: ["metric_base_variant"],
+    });
+  });
+
+  it("drops a value set under a rule the document turns off, with a warning, so the part saves", async () => {
+    const preset = resolve({});
+    const unit = { ...preset.metric_fields.unit, values: ["money", "count"] };
+    await store(1, {
+      ...Object.fromEntries(
+        Object.entries(preset).filter(
+          ([key]) => key !== "off" && key !== "exceptions",
+        ),
+      ),
+      checks: { off: ["metric_fields"] },
+      metric_fields: { ...preset.metric_fields, unit },
+      naming: { ...preset.naming, kinds: ["total_"] },
+    });
+    const warnings: { message: string; fields: unknown }[] = [];
+    const logger = {
+      warn: (message: string, fields: Record<string, unknown> = {}) =>
+        warnings.push({ message, fields }),
+    };
+    expect(await upgradeStoredConventions(migrator, logger)).toBe(1);
+    const [row] = await stored();
+    const part = {
+      format: 1,
+      preset: "metrics_book",
+      naming: { kinds: ["total_"] },
+      off: ["metric_fields"],
+    };
+    expect(row?.document).toEqual(part);
+    expect(warnings).toEqual([
+      {
+        message: expect.any(String) as unknown,
+        fields: { version: 1, keys: "metric_fields.unit" },
+      },
+    ]);
+    await rolledBack(async (tx) => {
+      await setConventions({ db: tx }, principals.admin, part);
+    });
+  });
+
+  it("leaves an older version it cannot resolve as it was, with one warning naming its version", async () => {
+    const old = { preset: "strict", naming: { case: "none" } };
+    await store(1, old);
+    await store(2, resolve({}));
+    const warnings: { message: string; version: unknown }[] = [];
+    const logger = {
+      warn: (message: string, fields: Record<string, unknown> = {}) =>
+        warnings.push({ message, version: fields.version }),
+    };
+    expect(await upgradeStoredConventions(migrator, logger)).toBe(1);
+    expect((await stored()).map((row) => row.document)).toEqual([
+      old,
+      { format: 1, preset: "metrics_book" },
+    ]);
+    expect(warnings).toEqual([
+      { message: expect.any(String) as unknown, version: 1 },
+    ]);
+  });
+
   it("stops at a document it cannot read, naming its version, and changes nothing", async () => {
     await store(1, resolve({}));
     await store(2, { naming: { case: "camel_case" } });
     await migrator.query("begin");
     try {
       await expect(upgradeStoredConventions(migrator)).rejects.toThrow(
-        /^Version 2 of the conventions cannot be upgraded: .*naming\.case/,
+        /^Version 2 of the conventions cannot be upgraded: .*naming\.case.*\. The api will not start until it can\. Go back to the previous release, save the conventions again with a valid value, then deploy this release\.$/,
       );
     } finally {
       await migrator.query("rollback");

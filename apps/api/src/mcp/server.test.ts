@@ -56,7 +56,8 @@ const call = (id: number, method: string, parameters?: unknown) => ({
   ...(parameters === undefined ? {} : { params: parameters }),
 });
 
-const conventions = () => getConventionsForAgents(f.deps);
+const conventions = () =>
+  getConventionsForAgents({ ...f.deps, principal: principals.viewer });
 
 /** Runs `check` with the stack pointed at the mock, as the sample deployment is, and puts the authority back. */
 async function onTheMockAuthority(
@@ -321,6 +322,7 @@ describe("the first tools", () => {
       questions: false,
       usage: { capture: true, retention_days: 180 },
       book_metrics: { draft: 0, agent_verified: 0, human_verified: 0 },
+      conventions: { rules_off: 0, exceptions: 0 },
     });
   });
 

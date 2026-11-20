@@ -616,6 +616,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conventions/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run */
+    post: operations["postApiV1ConventionsApply"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conventions/exceptions/unused": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them */
+    get: operations["getApiV1ConventionsExceptionsUnused"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/queries": {
     parameters: {
       query?: never;
@@ -4370,6 +4404,8 @@ export interface operations {
               message: string;
               /** @description The metrics the sentence counts, closest first. */
               other_labels?: string[];
+              /** @description Failing, it passes by an exception with this reason. */
+              exception?: string;
             }[];
           };
         };
@@ -6006,19 +6042,61 @@ export interface operations {
                 /** @enum {string} */
                 human_verify_from: "browser" | "any";
               };
-              checks: {
-                off: (
-                  | "metric_name_form"
+              off: (
+                | "naming.case"
+                | "metric_name_form"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "metric_name_comparison"
+                | "naming.money_qualifier"
+                | "metric_money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields"
+                | "term_fields.values"
+                | "term_fields.custom"
+              )[];
+              exceptions: {
+                /** @enum {string} */
+                rule:
+                  | "naming.case"
+                  | "naming.kinds"
                   | "metric_name_generated"
-                  | "metric_name_comparison"
-                  | "metric_money_qualifier"
-                  | "metric_qualifier_order"
-                  | "metric_fields"
-                  | "metric_not_the_same_as"
+                  | "naming.forbidden_words"
+                  | "naming.money_qualifier"
+                  | "naming.qualifier_order"
+                  | "metric_fields.definition"
+                  | "metric_fields.aliases"
+                  | "metric_fields.when_to_use"
+                  | "metric_fields.grain_and_filters"
+                  | "metric_fields.unit"
+                  | "metric_fields.category"
+                  | "metric_fields.custom"
+                  | "metric_fields.not_the_same_as"
                   | "metric_base_variant"
-                  | "term_fields"
-                )[];
-              };
+                  | "term_fields.definition"
+                  | "term_fields.values"
+                  | "term_fields.custom";
+                reason: string;
+                metric?: string;
+                term?: string;
+                dataset?: string;
+                table?: string;
+                column?: string;
+              }[];
             };
           };
         };
@@ -6209,19 +6287,61 @@ export interface operations {
                 /** @enum {string} */
                 human_verify_from: "browser" | "any";
               };
-              checks: {
-                off: (
-                  | "metric_name_form"
+              off: (
+                | "naming.case"
+                | "metric_name_form"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "metric_name_comparison"
+                | "naming.money_qualifier"
+                | "metric_money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields"
+                | "term_fields.values"
+                | "term_fields.custom"
+              )[];
+              exceptions: {
+                /** @enum {string} */
+                rule:
+                  | "naming.case"
+                  | "naming.kinds"
                   | "metric_name_generated"
-                  | "metric_name_comparison"
-                  | "metric_money_qualifier"
-                  | "metric_qualifier_order"
-                  | "metric_fields"
-                  | "metric_not_the_same_as"
+                  | "naming.forbidden_words"
+                  | "naming.money_qualifier"
+                  | "naming.qualifier_order"
+                  | "metric_fields.definition"
+                  | "metric_fields.aliases"
+                  | "metric_fields.when_to_use"
+                  | "metric_fields.grain_and_filters"
+                  | "metric_fields.unit"
+                  | "metric_fields.category"
+                  | "metric_fields.custom"
+                  | "metric_fields.not_the_same_as"
                   | "metric_base_variant"
-                  | "term_fields"
-                )[];
-              };
+                  | "term_fields.definition"
+                  | "term_fields.values"
+                  | "term_fields.custom";
+                reason: string;
+                metric?: string;
+                term?: string;
+                dataset?: string;
+                table?: string;
+                column?: string;
+              }[];
             };
             changes: {
               path: string;
@@ -6358,6 +6478,165 @@ export interface operations {
       };
       /** @description The caller's role or credential does not allow it. */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  postApiV1ConventionsApply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          conventions: {
+            [key: string]: unknown;
+          };
+          dry_run: boolean;
+          baseline_reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            changed_rules: string[];
+            now_failing: {
+              [key: string]: number;
+            };
+            exceptions_added: {
+              /** @enum {string} */
+              rule:
+                | "naming.case"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "naming.money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields.values"
+                | "term_fields.custom";
+              reason: string;
+              metric?: string;
+              term?: string;
+              dataset?: string;
+              table?: string;
+              column?: string;
+            }[];
+            version: number | null;
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1ConventionsExceptionsUnused: {
+    parameters: {
+      query?: {
+        metric?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            unused: {
+              rule: string;
+              target: {
+                [key: string]: string;
+              };
+              reason: string;
+              /** @enum {string} */
+              why: "no_such_target" | "passes";
+            }[];
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
         headers: {
           [name: string]: unknown;
         };

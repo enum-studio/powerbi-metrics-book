@@ -175,5 +175,7 @@ drafting:
 trust:
   agent_verify_requires: all_checks
   human_verify_from: browser
-checks:
-  off: []
+# Rule ids, or check names for every rule of a check.
+off: []
+# Each lets one element keep failing one rule: { rule, reason, and its metric, term, dataset, table or column }.
+exceptions: []

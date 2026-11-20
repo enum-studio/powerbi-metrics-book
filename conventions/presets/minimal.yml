@@ -82,10 +82,10 @@ drafting:
 trust:
   agent_verify_requires: all_checks
   human_verify_from: browser
-checks:
-  off:
-    - metric_name_form
-    - metric_name_generated
-    - metric_name_comparison
-    - metric_money_qualifier
-    - metric_qualifier_order
+off:
+  - metric_name_form
+  - metric_name_generated
+  - metric_name_comparison
+  - metric_money_qualifier
+  - metric_qualifier_order
+exceptions: []

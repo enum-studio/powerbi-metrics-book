@@ -1,6 +1,13 @@
+import { and, inArray, not } from "drizzle-orm";
 import type { ServiceContext } from "../../context.js";
-import { BOOK } from "../book/changes.js";
-import { FIXED_RULES, RULES } from "./rules.js";
+import { metric } from "../../db/schema/book.js";
+import { BOOK, requireCurator } from "../book/changes.js";
+import { visibleMetric } from "../mirror/read.js";
+import { resolveMetric } from "../book/metrics.js";
+import { unusedExceptions } from "../book/whole-book-checks.js";
+import { readsPii } from "../pii/rules.js";
+import { type ApplyInput, applyConventions } from "./apply.js";
+import { FIXED_RULES, isRuleOff, RULES, valueAt } from "./rules.js";
 import type { Conventions, CustomFieldSpec } from "./schema.js";
 import {
   conventionsInForce,
@@ -9,7 +16,6 @@ import {
   listVersions,
   resolve,
   setConventions,
-  valueAt,
 } from "./store.js";
 
 /** The rules as agents get them: everything in the conventions but the guide. */
@@ -116,27 +122,74 @@ export function summariseRules(rules: Rules): string[] {
     trust.human_verify_from === "browser"
       ? "Only a person in a browser session approves a metric."
       : "A person approves a metric from the browser, the CLI or the API.",
-    rules.checks.off.length > 0 &&
-      `These checks are off: ${words(rules.checks.off)}.`,
+    rules.off.length > 0 &&
+      `These rules and checks are off: ${words(rules.off)}.`,
+    rules.exceptions.length > 0 &&
+      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; get_conventions lists each with its reason.`,
   ].filter((line) => line !== false);
 }
 
-/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. */
-export async function getConventionsForAgents(
-  context: Pick<ServiceContext, "db">,
-) {
+/** The metrics among `names` that exist and the caller may not see, whose names an answer leaves out. */
+async function hiddenMetrics(
+  context: ServiceContext,
+  names: string[],
+): Promise<Set<string>> {
+  if (names.length === 0) return new Set();
+  const allowed = await context.access.describableDatasets(context.principal);
+  const hidesPii = !(await readsPii(context));
+  const rows = await context.db
+    .select({ name: metric.name })
+    .from(metric)
+    .where(
+      and(
+        inArray(metric.name, names),
+        not(visibleMetric(context.db, allowed, hidesPii)),
+      ),
+    );
+  return new Set(rows.map((row) => row.name));
+}
+
+/**
+ * The exceptions whose element the caller may see: a metric's to whoever sees
+ * the metric, a term's to anyone signed in, as term names are. No rule targets
+ * a dataset, table or column yet, so one is hidden; the element checks show a
+ * dataset's by describableDatasets, a table's or column's through its dataset,
+ * and a PII column's only to a caller who readsPii.
+ */
+async function visibleExceptions(
+  context: ServiceContext,
+  exceptions: Conventions["exceptions"],
+): Promise<Conventions["exceptions"]> {
+  const metrics = new Set(exceptions.flatMap((item) => item.metric ?? []));
+  const hidden = await hiddenMetrics(context, [...metrics]);
+  return exceptions.filter(({ metric, term }) =>
+    metric === undefined ? term !== undefined : !hidden.has(metric),
+  );
+}
+
+/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. The summary counts every exception; the list holds those the caller may see. */
+export async function getConventionsForAgents(context: ServiceContext) {
   const { guide, ...rules } = await currentConventions(context.db);
-  return { preset: rules.preset, guide, summary: summariseRules(rules), rules };
+  const exceptions = await visibleExceptions(context, rules.exceptions);
+  return {
+    preset: rules.preset,
+    guide,
+    summary: summariseRules(rules),
+    rules: { ...rules, exceptions },
+  };
 }
 
 /**
  * Every rule with its value in force, and `company` as its source when the
  * company's part holds its key or anything under it. Anyone signed in may read
- * them, as they may the conventions.
+ * them, as they may the conventions. A rule is off when `off` names it or the
+ * check that applies it.
  */
 export async function listRules(context: Pick<ServiceContext, "db">) {
   const { conventions, company } = await conventionsInForce(context.db);
-  const off = new Set<string>(conventions.checks.off);
+  const off = new Set(
+    RULES.filter((rule) => isRuleOff(rule, conventions)).map(({ id }) => id),
+  );
   return {
     rules: RULES.map(({ id, check, target, path, allowed }) => ({
       id,
@@ -148,10 +201,20 @@ export async function listRules(context: Pick<ServiceContext, "db">) {
           ? ("company" as const)
           : ("preset" as const),
       allowed: allowed === null ? null : [...allowed],
-      off: off.has(check),
-      exceptions: 0,
+      off: off.has(id),
+      exceptions: conventions.exceptions.filter((item) => item.rule === id)
+        .length,
     })),
     fixed: [...FIXED_RULES],
+  };
+}
+
+/** How many rules are off and how many exceptions the conventions in force make; a check in `off` counts each of its rules. */
+export async function weakenedBy(context: Pick<ServiceContext, "db">) {
+  const conventions = await currentConventions(context.db);
+  return {
+    rules_off: RULES.filter((rule) => isRuleOff(rule, conventions)).length,
+    exceptions: conventions.exceptions.length,
   };
 }
 
@@ -168,6 +231,33 @@ export async function setConventionsAsAdmin(
 ) {
   await context.access.require(context.principal, BOOK, "edit_conventions");
   return setConventions(context, context.principal, document);
+}
+
+/** Applies a company part, or only says what it would change; see applyConventions. */
+export async function applyAsAdmin(context: ServiceContext, input: ApplyInput) {
+  await context.access.require(context.principal, BOOK, "edit_conventions");
+  return applyConventions(context, context.principal, input);
+}
+
+/**
+ * The exceptions nothing needs any more, as GET /metrics/:name/checks is
+ * answered: to a curator, for one metric they may see, or for the whole book
+ * among the exceptions whose element they may see.
+ */
+export async function unusedExceptionsAsCurator(
+  context: ServiceContext,
+  reference?: string,
+) {
+  await requireCurator(context);
+  const conventions = await currentConventions(context.db);
+  if (reference !== undefined) {
+    const allowed = await context.access.describableDatasets(context.principal);
+    const hides = !(await readsPii(context));
+    const found = await resolveMetric(context.db, allowed, hides, reference);
+    return unusedExceptions(context, conventions, { metric: found.name });
+  }
+  const exceptions = await visibleExceptions(context, conventions.exceptions);
+  return unusedExceptions(context, { ...conventions, exceptions });
 }
 
 /** Every saved version, newest first, for whoever may edit the conventions. */

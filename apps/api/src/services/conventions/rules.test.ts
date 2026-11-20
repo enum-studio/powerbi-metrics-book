@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { FIXED_RULES, RULES, ruleById, rulesOfCheck } from "./rules.js";
+import {
+  checkApplying,
+  FIXED_RULES,
+  isRuleOff,
+  OFF_NAMES,
+  RULES,
+  ruleById,
+  rulesOfCheck,
+  valueAt,
+} from "./rules.js";
 import { CHECK_NAMES, PRESET_NAMES } from "./schema.js";
-import { resolve, validateConventions, valueAt } from "./store.js";
+import { resolve, validateConventions } from "./store.js";
 
 /** A document setting one path, the rest left to the preset. */
 const setting = (path: readonly string[], value: unknown): unknown =>
@@ -50,6 +59,46 @@ describe("the rule registry", () => {
         rule.id,
       ).not.toEqual([]);
     }
+  });
+
+  it("finds every key a rule reads in the presets", () => {
+    const document = resolve({});
+    for (const rule of RULES)
+      for (const id of rule.reads)
+        expect(valueAt(document, id.split(".")), rule.id).toBeDefined();
+  });
+
+  it("takes in off every rule id and every check name, and nothing else", () => {
+    for (const name of [...RULES.map((rule) => rule.id), ...CHECK_NAMES])
+      expect(OFF_NAMES).toContain(name);
+    expect(OFF_NAMES).toHaveLength(new Set(OFF_NAMES).size);
+  });
+
+  it("says which check applies not_the_same_as under its required, and what turns it off", () => {
+    const rule = ruleById("metric_fields.not_the_same_as");
+    if (rule === undefined) throw new Error("No not_the_same_as rule.");
+    const always = { metric_fields: { not_the_same_as: { required: true } } };
+    expect(checkApplying(rule, resolve({}))).toBe("metric_not_the_same_as");
+    expect(checkApplying(rule, resolve(always))).toBe("metric_fields");
+    expect(checkApplying(rule, resolve({ preset: "minimal" }))).toBe(
+      "metric_fields",
+    );
+    expect(isRuleOff(rule, resolve({ off: ["metric_fields"] }))).toBe(false);
+    expect(
+      isRuleOff(rule, resolve({ ...always, off: ["metric_fields"] })),
+    ).toBe(true);
+    expect(
+      isRuleOff(
+        rule,
+        resolve({ ...always, off: ["metric_fields.not_the_same_as"] }),
+      ),
+    ).toBe(true);
+    expect(isRuleOff(rule, resolve({ off: ["metric_not_the_same_as"] }))).toBe(
+      true,
+    );
+    const minimal = (off: string[]) => resolve({ preset: "minimal", off });
+    expect(isRuleOff(rule, minimal(["metric_fields"]))).toBe(true);
+    expect(isRuleOff(rule, minimal(["metric_not_the_same_as"]))).toBe(false);
   });
 
   it("lists the rules that stay fixed, each with its reason", () => {
