@@ -1228,11 +1228,20 @@ Crossing: files an admin brings in, and ones they take out.
 
 - `conventions.yml` sits beside `book.yml`; book export leaves conventions
   out of its answer and the CLI writes the separate file and guide.
-  Import still accepts older inline conventions. A guide path must resolve
-  inside the deployment folder; a symlink pointing outside it is refused.
-  The CLI refuses to write the conventions or guide through a symlink.
-  Conventions YAML refuses anchors and aliases
-  (`apps/cli/tests/commands/test_conventions_file.py`).
+  Import still accepts older inline conventions. The guide is served to
+  everyone signed in and every MCP client, and `.env` sits in the same
+  folder, so a guide is a Markdown file inside the deployment folder: its
+  path ends in `.md`, no part of it starts with `.`, and neither it nor any
+  folder on the way is a symlink. The CLI opens each part without following
+  a link, refuses anything but a regular file, and reads at most 256 KiB;
+  the api's schema takes a guide of at most 262,144 characters. The CLI
+  reads `conventions.yml` and `book.yml` only from a regular file, never
+  through a symlink, so a YAML error never quotes another file. The apply
+  preview gives the guide's size before and after, never its text. The CLI
+  refuses to write the conventions or guide through a symlink. Conventions
+  YAML refuses anchors and aliases
+  (`apps/cli/tests/commands/conventions_file_security_test.py`,
+  `apps/cli/tests/commands/test_conventions_file.py`).
 - Saving, diffing, applying and exporting conventions need
   `book:edit_conventions`. The CLI's `set`, `edit` and `export --resolved`
   keep the whole company exception list; `presets` reads only the

@@ -8938,7 +8938,8 @@
                           ]
                         },
                         "guide": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 262144
                         },
                         "naming": {
                           "type": "object",

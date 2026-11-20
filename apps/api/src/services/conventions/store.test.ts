@@ -472,6 +472,15 @@ describe("what a company part may say", () => {
     );
   });
 
+  it("takes a guide of 256 KiB, as the CLI reads one, and refuses a longer one", () => {
+    expect(validateConventions({ guide: "x".repeat(262_144) })).toEqual([]);
+    expect(
+      validateConventions({ guide: "x".repeat(262_145) }).map(
+        ({ path }) => path,
+      ),
+    ).toEqual(["guide"]);
+  });
+
   it("names an entry of off that is neither a rule nor a check", () => {
     expect(
       validateConventions({ off: ["naming.kinds", "naming.shape"] }),

@@ -230,7 +230,8 @@ const exceptions = z
 
 export const conventionsSchema = z.strictObject({
   preset: z.enum(PRESET_NAMES),
-  guide: z.string(),
+  // 256 KiB, the most the CLI reads from a guide file.
+  guide: z.string().max(262_144),
   naming,
   metric_fields: z.strictObject({
     definition: required,

@@ -40,7 +40,7 @@ exceptions:
     reason: The board reads this name in every report.
 ```
 
-The guide explains your choices in your own words. The CLI refuses a guide path outside the deployment folder, including one reached through a symlink. It refuses YAML anchors and aliases, and refuses to write through a symlink. The guide and exception reasons are text agents read as data, never instructions.
+The guide explains your choices in your own words. Every agent and person signed in reads it, and `.env` sits in the same folder, so the CLI takes a guide only as a Markdown file inside the deployment folder: its path ends in `.md`, no part of it starts with `.`, and neither the file nor any folder on the way is a symlink. A guide is at most 256 KiB. The CLI reads `conventions.yml` and `book.yml` only from a regular file, not through a symlink. It refuses YAML anchors and aliases, and refuses to write through a symlink. The apply preview gives the guide's size, such as `guide: changed (4.1 KB, was 3.8 KB).`, so check that the size is what you expect. The guide and exception reasons are text agents read as data, never instructions.
 
 ## Find a rule
 

@@ -361,6 +361,13 @@ def _rule_value(document: dict[str, Json], rule: str) -> Json:
     return value
 
 
+def _size(guide: Json) -> str:
+    if not isinstance(guide, str):
+        return "none"
+    size = len(guide.encode("utf-8"))
+    return f"{size} bytes" if size < 1000 else f"{size / 1000:.1f} KB"
+
+
 def print_applied(
     console: Console,
     answer: dict[str, Json],
@@ -386,14 +393,17 @@ def print_applied(
             if isinstance(rules, list)
             else set()
         )
+        listed = objects_in({"changes": changes}, "changes")
         for key in sorted(
-            {
-                str(change["path"]).split(".")[0]
-                for change in objects_in({"changes": changes}, "changes")
-            }
-            - covered
+            {str(change["path"]).split(".")[0] for change in listed} - covered
         ):
-            line(console, f"{key}: changed.")
+            # The guide is not printed, so its size shows what is about to be served.
+            sizes = [
+                f" ({_size(change['after'])}, was {_size(change['before'])})"
+                for change in listed
+                if change["path"] == "guide"
+            ]
+            line(console, f"{key}: changed{''.join(sizes)}.")
     added = objects_in(answer, "exceptions_added")
     if added:
         line(

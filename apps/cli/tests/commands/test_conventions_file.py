@@ -319,7 +319,9 @@ def test_check_conventions_offline_uses_schema_and_safe_paths(tmp_path: Path) ->
     outside = tmp_path.parent / "guide.md"
     (tmp_path / "guide.md").symlink_to(outside)
     path.write_text("format: 1\nguide: guide.md\n")
-    assert any("outside" in problem for problem in _check_conventions(path))
+    assert any(
+        "no symbolic link on the way" in problem for problem in _check_conventions(path)
+    )
     path.write_text("format: 1\noff: &rules []\nexceptions: *rules\n")
     assert any("aliases" in problem for problem in _check_conventions(path))
 
@@ -414,6 +416,38 @@ def test_apply_non_rule_change_saves(
         request.method == "POST" and sent(request)["dry_run"] is False
         for request in seen
     )
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "said"),
+    [
+        ("a" * 3800, "b" * 4100, "guide: changed (4.1 KB, was 3.8 KB)."),
+        (None, "Short.", "guide: changed (6 bytes, was none)."),
+    ],
+)
+def test_apply_preview_says_the_guide_size_before_and_after(
+    serve: Serve, tmp_path: Path, before: str | None, after: str, said: str
+) -> None:
+    (tmp_path / "guide.md").write_text(after)
+    path = tmp_path / "conventions.yml"
+    path.write_text("format: 1\nguide: guide.md\n")
+    current = {"format": 1} if before is None else {"format": 1, "guide": before}
+    serve(
+        lambda request: json_response(
+            200,
+            current
+            if request.method == "GET"
+            else {
+                "changed_rules": [],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": None,
+            },
+        )
+    )
+    result = run("conventions", "apply", str(path), input="n\n")
+    assert said in result.output
+    assert after not in result.output
 
 
 def test_diff_exception_order_and_rule_reporting(serve: Serve, tmp_path: Path) -> None:

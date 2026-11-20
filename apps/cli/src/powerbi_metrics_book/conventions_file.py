@@ -1,6 +1,8 @@
+import errno
 import json
 import os
 import re
+import stat
 from pathlib import Path
 
 import typer
@@ -9,6 +11,12 @@ import yaml
 from powerbi_metrics_book.client import Json
 
 MAX_FILE_BYTES = 1024 * 1024
+MAX_GUIDE_BYTES = 256 * 1024
+# .env sits in the same folder, and the api serves the guide to everyone signed in.
+GUIDE_RULE = (
+    "the guide is a Markdown file (.md) in the deployment folder, with no part "
+    "of its path starting with a dot and no symbolic link on the way"
+)
 
 
 class YamlLoader(yaml.SafeLoader):
@@ -46,42 +54,83 @@ class _NoAliasLoader(YamlLoader):
         return super().compose_node(parent, index)
 
 
+def _read_open(descriptor: int, name: str, limit: int, size: str) -> str:
+    """An opened file's text: a regular file of at most `limit` bytes."""
+    if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+        os.close(descriptor)
+        raise typer.BadParameter(f"{name} is not a regular file.")
+    with os.fdopen(descriptor, "rb") as stream:
+        data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise typer.BadParameter(f"{name} is over {size}.")
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise typer.BadParameter(f"{name} is not UTF-8 text.") from None
+
+
+# Non-blocking, so a FIFO is refused rather than waited on.
+READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+
+
+def read_file(path: Path) -> str:
+    """A deployment file's text. A symbolic link is refused: it could name .env."""
+    try:
+        descriptor = os.open(path, READ_FLAGS)
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise typer.BadParameter(
+                f"{path} is a symbolic link; the CLI reads only a regular file."
+            ) from None
+        raise typer.BadParameter(f"{path}: {error.strerror}.") from None
+    return _read_open(descriptor, str(path), MAX_FILE_BYTES, "1 MiB")
+
+
+def _read_guide(folder: Path, guide: str) -> str:
+    """Opens each folder on the way without following a link, then the guide."""
+    parts = guide.split("/")
+    if not guide.endswith(".md") or any(
+        part == "" or part.startswith(".") or "\0" in part for part in parts
+    ):
+        raise typer.BadParameter(f"guide {guide}: {GUIDE_RULE}.")
+    directory = os.open(folder, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in parts[:-1]:
+            inner = os.open(
+                part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory
+            )
+            os.close(directory)
+            directory = inner
+        descriptor = os.open(parts[-1], READ_FLAGS, dir_fd=directory)
+    except OSError as error:
+        raise typer.BadParameter(
+            f"guide {guide}: {error.strerror}; {GUIDE_RULE}."
+        ) from None
+    finally:
+        os.close(directory)
+    return _read_open(descriptor, f"guide {guide}", MAX_GUIDE_BYTES, "256 KiB")
+
+
 def read_mapping(path: Path) -> dict[str, Json]:
     try:
-        if not path.is_file():
-            raise typer.BadParameter(f"{path} is not a regular file.")
-        if path.stat().st_size > MAX_FILE_BYTES:
-            raise typer.BadParameter(
-                f"{path} is over 1 MiB; it is not a conventions file."
-            )
-        document: Json = yaml.load(
-            path.read_text(encoding="utf-8"), Loader=_NoAliasLoader
-        )
+        document: Json = yaml.load(read_file(path), Loader=_NoAliasLoader)
         if not isinstance(document, dict):
             raise typer.BadParameter(f"{path} must hold one YAML mapping.")
         return document
-    except (OSError, UnicodeError, yaml.YAMLError) as error:
+    except yaml.YAMLError as error:
         raise typer.BadParameter(f"{path}: {error}") from error
 
 
 def read_conventions(path: Path) -> dict[str, Json]:
     document = read_mapping(path)
-    try:
-        if type(document.get("format")) is not int or document["format"] != 1:
-            raise typer.BadParameter(f"{path} requires format: 1.")
-        if "guide" in document:
-            guide = document["guide"]
-            if not isinstance(guide, str):
-                raise typer.BadParameter(f"{path}: guide must be a path.")
-            target = (path.parent / guide).resolve()
-            if not target.is_relative_to(path.parent.resolve()):
-                raise typer.BadParameter(
-                    f"{path}: guide {guide} resolves outside {path.parent}."
-                )
-            document["guide"] = target.read_text(encoding="utf-8")
-        return document
-    except (OSError, UnicodeError) as error:
-        raise typer.BadParameter(f"{path}: {error}") from error
+    if type(document.get("format")) is not int or document["format"] != 1:
+        raise typer.BadParameter(f"{path} requires format: 1.")
+    if "guide" in document:
+        guide = document["guide"]
+        if not isinstance(guide, str):
+            raise typer.BadParameter(f"{path}: guide must be a path.")
+        document["guide"] = _read_guide(path.parent, guide)
+    return document
 
 
 def check_output_paths(
