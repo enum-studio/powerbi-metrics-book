@@ -17,7 +17,7 @@ export function docsChecksRoutes(deps: AppDeps): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   const as = serviceContext(deps);
   const checks = documented(
-    "Missing required documentation on visible datasets, tables and columns",
+    "Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more",
     z.object({
       items: z.array(
         z.object({
@@ -38,14 +38,16 @@ export function docsChecksRoutes(deps: AppDeps): Hono<AppEnv> {
         }),
       ),
       failing: z.number().int(),
-      unused_exceptions: z.array(
-        z.object({
-          rule: z.string(),
-          target: z.partialRecord(z.enum(RULE_TARGETS), z.string()),
-          reason: z.string(),
-          why: z.enum(["no_such_target", "passes", "ambiguous"]),
-        }),
-      ),
+      unused_exceptions: z
+        .array(
+          z.object({
+            rule: z.string(),
+            target: z.partialRecord(z.enum(RULE_TARGETS), z.string()),
+            reason: z.string(),
+            why: z.enum(["no_such_target", "passes", "ambiguous"]),
+          }),
+        )
+        .optional(),
       next_cursor: z.string().nullable(),
     }),
     { errors: [400, 404] },

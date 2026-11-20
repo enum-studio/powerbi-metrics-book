@@ -65,8 +65,19 @@ const Page = z.object({
   ),
   failing: z.number(),
   next_cursor: z.string().nullable(),
-  unused_exceptions: z.array(z.unknown()),
+  unused_exceptions: z.array(z.unknown()).optional(),
 });
+
+/** A signed-in person who curates, as GET /conventions/exceptions/unused asks. */
+async function curatorPerson() {
+  const person = await oauth.person();
+  await assignRole(
+    oauth.deps.db,
+    { role: "curator", subject_kind: "person", subject: person.email },
+    principals.admin,
+  );
+  return person;
+}
 
 it("requires a credential and validates paging", async () => {
   expect((await oauth.request("/api/v1/docs/checks")).status).toBe(401);
@@ -91,6 +102,8 @@ it("paginates only failures, preserves totals and filters by dataset name or id"
     return Page.parse(await answer.json());
   };
   const all = await get("?limit=500");
+  // The unused list is a curator's.
+  expect(all).not.toHaveProperty("unused_exceptions");
   const hundred = await get("?limit=100");
   expect(hundred.items).toEqual(all.items.slice(0, 100));
   expect(hundred.failing).toBe(all.failing);
@@ -128,12 +141,7 @@ it("paginates only failures, preserves totals and filters by dataset name or id"
 });
 
 it("includes a visible element exception in the existing unused route", async () => {
-  const person = await oauth.person();
-  await assignRole(
-    oauth.deps.db,
-    { role: "curator", subject_kind: "person", subject: person.email },
-    principals.admin,
-  );
+  const person = await curatorPerson();
   const answer = await oauth.request("/api/v1/conventions/exceptions/unused", {
     headers: { cookie: person.cookie },
   });
@@ -157,7 +165,7 @@ it("includes a visible element exception in the existing unused route", async ()
 });
 
 it("filters unused table exceptions by dataset", async () => {
-  const person = await oauth.person();
+  const person = await curatorPerson();
   const get = async (dataset: string) => {
     const answer = await oauth.request(
       `/api/v1/docs/checks?dataset=${encodeURIComponent(dataset)}`,

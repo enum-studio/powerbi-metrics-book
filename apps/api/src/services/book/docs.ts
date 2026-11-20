@@ -22,7 +22,7 @@ import { currentConventions } from "../conventions/store.js";
 import { withEvents } from "../events/feed.js";
 import { appsSeen, decodeCursor, pageBy, sizeOf } from "../mirror/read.js";
 import { piiColumn, piiMeasure, readsPii } from "../pii/rules.js";
-import { recordBookChange, requireCurator } from "./changes.js";
+import { BOOK, recordBookChange, requireCurator } from "./changes.js";
 import { checkCustom, exceptionIndex } from "./checks.js";
 
 /*
@@ -381,22 +381,29 @@ export async function docsChecks(
           const order = compare(nameOf(row), after.names[0]);
           return order > 0 || (order === 0 && compare(row.id, after.id) > 0);
         });
-  const exceptions = await visibleExceptions(
-    context,
-    conventions.exceptions.filter(
-      (item) =>
-        item.dataset !== undefined &&
-        (dataset === undefined ||
-          item.dataset === dataset.id ||
-          item.dataset === dataset.name),
-    ),
-  );
-  const unused = await unusedExceptions(
-    context,
-    { ...conventions, exceptions },
-    undefined,
-    rows,
-  );
+  // A curator's, as GET /conventions/exceptions/unused is, and the first page's alone.
+  const unused =
+    filters.cursor === undefined &&
+    (await context.access.check(context.principal, BOOK, "curate"))
+      ? await unusedExceptions(
+          context,
+          {
+            ...conventions,
+            exceptions: await visibleExceptions(
+              context,
+              conventions.exceptions.filter(
+                (item) =>
+                  item.dataset !== undefined &&
+                  (dataset === undefined ||
+                    item.dataset === dataset.id ||
+                    item.dataset === dataset.name),
+              ),
+            ),
+          },
+          undefined,
+          rows,
+        )
+      : undefined;
   const page = pageBy(remaining, sizeOf(filters.limit), nameOf);
   return {
     ...page,
@@ -409,6 +416,6 @@ export async function docsChecks(
       results,
     })),
     failing: failures.length,
-    unused_exceptions: unused,
+    ...(unused === undefined ? {} : { unused_exceptions: unused }),
   };
 }

@@ -1127,7 +1127,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Missing required documentation on visible datasets, tables and columns */
+    /** Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more */
     get: operations["getApiV1DocsChecks"];
     put?: never;
     post?: never;
@@ -9390,7 +9390,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Missing required documentation on visible datasets, tables and columns */
+      /** @description Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more */
       200: {
         headers: {
           [name: string]: unknown;
@@ -9413,7 +9413,7 @@ export interface operations {
               }[];
             }[];
             failing: number;
-            unused_exceptions: {
+            unused_exceptions?: {
               rule: string;
               target: {
                 [key: string]: string;

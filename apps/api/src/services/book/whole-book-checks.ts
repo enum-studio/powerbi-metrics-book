@@ -242,10 +242,13 @@ export async function unusedExceptions(
   const byTarget = new Map(
     checked.map((each) => [exceptionKey(each.target), each]),
   );
+  const datasets = elements.filter((each) => each.kind === "dataset");
+  const byId = new Map(datasets.map((each) => [each.id, each]));
+  const byName = Map.groupBy(datasets, (each) => each.name);
   return exceptions.flatMap(({ rule, reason, target }): UnusedException[] => {
-    const datasets = elements.filter((each) => each.kind === "dataset");
-    const named = datasets.filter((each) => each.name === target.dataset);
-    const dataset = datasets.find((each) => each.id === target.dataset);
+    const key = target.dataset;
+    const named = key === undefined ? [] : (byName.get(key) ?? []);
+    const dataset = key === undefined ? undefined : byId.get(key);
     if (dataset === undefined && named.length > 1)
       return [{ rule, target, reason, why: "ambiguous" }];
     const resolved = dataset ?? named[0];

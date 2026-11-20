@@ -920,7 +920,7 @@ pbmb docs COMMAND
 
 ### `pbmb docs check`
 
-List missing required documentation and unused conventions exceptions.
+List missing required documentation and, to a curator, unused exceptions.
 
 Exits 1 when anything fails. --json combines every page of checks.
 

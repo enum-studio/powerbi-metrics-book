@@ -21,6 +21,7 @@ import { term } from "../../db/schema/book.js";
 import { powerbiColumn, powerbiRelationship } from "../../db/schema/mirror.js";
 import type { Principal } from "../../principal.js";
 import { TOOLS } from "../../mcp/tools/index.js";
+import { docsChecks } from "../book/docs.js";
 import {
   applyAsAdmin,
   getCompanyPartAsAdmin,
@@ -141,6 +142,50 @@ describe("an unused exception on an element", () => {
         tx.rollback();
       }),
     ).rejects.toThrow(TransactionRollbackError));
+});
+
+describe("the unused list on the documentation checks", () => {
+  it("goes to a curator, on the first page alone, and to no viewer or service account without curation", () =>
+    rolledBack(async (tx) => {
+      const item = {
+        rule: "dataset_fields.definition",
+        dataset: "Sales",
+        reason: "Kept.",
+      };
+      await setConventions({ db: tx }, principals.admin, {
+        format: 1,
+        exceptions: [item],
+      });
+      const viewer = reaching({ powerbi_app_ids: [id.sales_app] });
+      const account: Principal = {
+        ...viewer,
+        kind: "service_account",
+        id: "docs-check-account",
+        via: "api",
+      };
+      for (const principal of [viewer, account])
+        expect(
+          await docsChecks(asPerson(principal, { db: tx }), { limit: 1 }),
+        ).not.toHaveProperty("unused_exceptions");
+      const first = await docsChecks(asPerson(curator, { db: tx }), {
+        limit: 1,
+      });
+      expect(first.unused_exceptions).toEqual([
+        {
+          rule: item.rule,
+          target: { dataset: "Sales" },
+          reason: item.reason,
+          why: "passes",
+        },
+      ]);
+      expect(first.next_cursor).not.toBeNull();
+      const second = await docsChecks(asPerson(curator, { db: tx }), {
+        limit: 1,
+        cursor: first.next_cursor ?? "",
+      });
+      expect(second.items).toHaveLength(1);
+      expect(second).not.toHaveProperty("unused_exceptions");
+    }));
 });
 
 describe("the conventions agents read", () => {

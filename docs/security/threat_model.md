@@ -907,7 +907,12 @@ otherwise reveal PII through which fields fail.
 
 Exception targets on element checks, apply results and unused lists are
 shown only to a caller who can see the target, including `pii_reader` for a
-PII column. Counts stay whole. The stored company part is returned whole to
+PII column. The unused list goes to a curator alone, on every route that
+gives it: `GET /api/v1/conventions/exceptions/unused`, and
+`GET /api/v1/docs/checks` on its first page; anyone else, and a later page,
+gets no `unused_exceptions` field, and the route does not work it out.
+Matching the exceptions to the elements reads each dataset index once, so
+20,000 of each take milliseconds. Counts stay whole. The stored company part is returned whole to
 a principal with `book:edit_conventions`: export and apply must round-trip
 the file, and the deployment repository already holds those targets.
 `GET /api/v1/conventions` and `get_conventions` return counts instead of
