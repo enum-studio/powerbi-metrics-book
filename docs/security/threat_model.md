@@ -187,7 +187,8 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   principal and per IP on sign-in, setup, token, query and CSV routes; a
   1 MiB body limit, except `PUT /api/v1/conventions`,
   `POST /api/v1/conventions/diff` and `POST /api/v1/conventions/apply`,
-  which allow 8 MiB for a baseline over a large book.
+  which apply an 8 MiB limit after checking `book:edit_conventions`, before
+  reading even a streamed body, for a baseline over a large book.
 - People sign in through Microsoft (single tenant), Google, an OpenID
   Connect provider or a passkey; who may sign in is decided at the
   callback, before an account exists (Better Auth's `validateUserInfo`),
@@ -1240,8 +1241,9 @@ Crossing: files an admin brings in, and ones they take out.
   A saved part is stored as the schema reads it, dropping keys such as
   `__proto__` under `naming.qualifiers`.
   `PUT /api/v1/conventions`, `POST /api/v1/conventions/diff` and
-  `POST /api/v1/conventions/apply` accept up to 8 MiB so a baseline on a
-  large book fits. Drafting uses case-insensitive prefixes and exact names;
+  `POST /api/v1/conventions/apply` check `book:edit_conventions` before
+  applying the 8 MiB body limit, including to streamed bodies, so a baseline
+  on a large book fits. Drafting uses case-insensitive prefixes and exact names;
   no conventions key accepts a regular expression that could stall a sync
   (`services/conventions/patterns.test.ts`).
 

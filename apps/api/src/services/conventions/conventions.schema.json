@@ -207,11 +207,10 @@
                 }
               },
               "required": {
-                "default": false,
                 "type": "boolean"
               }
             },
-            "required": ["key", "label", "type", "required"],
+            "required": ["key", "label", "type"],
             "additionalProperties": false
           }
         }
@@ -275,11 +274,10 @@
                 }
               },
               "required": {
-                "default": false,
                 "type": "boolean"
               }
             },
-            "required": ["key", "label", "type", "required"],
+            "required": ["key", "label", "type"],
             "additionalProperties": false
           }
         }
@@ -362,11 +360,10 @@
                 }
               },
               "required": {
-                "default": false,
                 "type": "boolean"
               }
             },
-            "required": ["key", "label", "type", "required"],
+            "required": ["key", "label", "type"],
             "additionalProperties": false
           }
         }
@@ -439,11 +436,10 @@
                 }
               },
               "required": {
-                "default": false,
                 "type": "boolean"
               }
             },
-            "required": ["key", "label", "type", "required"],
+            "required": ["key", "label", "type"],
             "additionalProperties": false
           }
         }
@@ -532,11 +528,10 @@
                 }
               },
               "required": {
-                "default": false,
                 "type": "boolean"
               }
             },
-            "required": ["key", "label", "type", "required"],
+            "required": ["key", "label", "type"],
             "additionalProperties": false
           }
         }

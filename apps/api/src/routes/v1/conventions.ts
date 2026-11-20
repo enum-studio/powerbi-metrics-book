@@ -1,8 +1,10 @@
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { validator } from "hono-openapi";
 import { z } from "zod";
 import type { AppEnv } from "../../app.js";
 import type { AppDeps } from "../../context.js";
+import { conventionsBodySizeLimit } from "../../http/security-headers.js";
+import { BOOK } from "../../services/book/changes.js";
 import { RULE_TARGETS } from "../../services/conventions/rules.js";
 import {
   CHECK_NAMES,
@@ -66,6 +68,11 @@ const CompanyPart = z.looseObject({
 export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   const as = serviceContext(deps);
+  const editConventions: MiddlewareHandler<AppEnv> = async (c, next) => {
+    const context = as(c);
+    await context.access.require(context.principal, BOOK, "edit_conventions");
+    await next();
+  };
 
   const rules = documented(
     "Every rule by its id: its value, where the value comes from, and whether it is off",
@@ -96,6 +103,8 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     "/conventions",
     save.doc,
     credential,
+    editConventions,
+    conventionsBodySizeLimit,
     validator("json", Document, refuse),
     async (c) =>
       save.answer(c, await setConventionsAsAdmin(as(c), c.req.valid("json"))),
@@ -127,6 +136,8 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     "/conventions/diff",
     diff.doc,
     credential,
+    editConventions,
+    conventionsBodySizeLimit,
     validator("json", Document, refuse),
     async (c) =>
       diff.answer(c, {
@@ -148,6 +159,8 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     "/conventions/apply",
     apply.doc,
     credential,
+    editConventions,
+    conventionsBodySizeLimit,
     validator(
       "json",
       z.strictObject({

@@ -728,3 +728,45 @@ def test_reset_all_keeps_only_format_and_preset(serve: Serve) -> None:
         {"conventions": {"format": 1, "preset": "minimal"}, "dry_run": dry_run}
         for dry_run in [True, False]
     ]
+
+
+def test_apply_custom_field_twice_prompts_only_once(
+    serve: Serve, tmp_path: Path
+) -> None:
+    document = {
+        "format": 1,
+        "metric_fields": {
+            "custom": [{"key": "owner_team", "label": "Owner team", "type": "text"}]
+        },
+    }
+    current = {"format": 1}
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal current
+        if request.method == "GET":
+            return json_response(200, current)
+        body = sent(request)
+        assert body["conventions"] == document
+        if not body["dry_run"]:
+            current = document
+        return json_response(
+            200,
+            {
+                "changed_rules": ["metric_fields.custom"],
+                "now_failing": {"metric_fields.custom": 0},
+                "exceptions_added": [],
+                "version": None if body["dry_run"] else 2,
+            },
+        )
+
+    seen = serve(answer)
+    path = tmp_path / "conventions.yml"
+    path.write_text(yaml.safe_dump(document))
+    first = run("conventions", "apply", str(path), input="y\n")
+    assert first.exit_code == 0, first.output
+    assert "Save these as the next version?" in first.stderr
+    second = run("conventions", "apply", str(path))
+    assert second.exit_code == 0, second.output
+    assert "No change." in second.stdout
+    assert "Save these as the next version?" not in second.stderr
+    assert len(seen) == 4

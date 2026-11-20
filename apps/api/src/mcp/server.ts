@@ -38,7 +38,7 @@ const SERVER_INFO = {
 
 /**
  * Keeps one request from becoming hundreds of database round trips. The body
- * is held to 1 MiB before any route reads it (bodySizeLimit, in
+ * on MCP requests is held to 1 MiB before this route reads it (bodySizeLimit, in
  * http/security-headers.ts).
  */
 const BATCH_LIMIT = 20;

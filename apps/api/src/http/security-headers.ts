@@ -71,14 +71,17 @@ const limitTo = (maxSize: number, size: string) =>
       ),
   });
 const anyBody = limitTo(MAX_BODY_BYTES, "1 MiB");
-const conventionsBody = limitTo(MAX_CONVENTIONS_BODY_BYTES, "8 MiB");
+export const conventionsBodySizeLimit = limitTo(
+  MAX_CONVENTIONS_BODY_BYTES,
+  "8 MiB",
+);
 
 /**
- * Refuses a body over 1 MiB before any handler reads it: at once when
- * Content-Length says so, and part way through when a streamed body passes
- * the limit. Saving, diffing and applying the conventions take 8 MiB.
+ * Refuses bodies over 1 MiB before the routes, except saving, diffing and
+ * applying conventions. Those routes authorize book:edit_conventions first,
+ * then apply conventionsBodySizeLimit, including to streamed bodies.
  */
 export const bodySizeLimit: MiddlewareHandler = (c, next) =>
-  (CONVENTIONS_BODIES.has(`${c.req.method} ${c.req.path}`)
-    ? conventionsBody
-    : anyBody)(c, next);
+  CONVENTIONS_BODIES.has(`${c.req.method} ${c.req.path}`)
+    ? next()
+    : anyBody(c, next);

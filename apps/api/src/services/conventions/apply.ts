@@ -117,9 +117,9 @@ async function baselineExceptions(
  * run, the save. A baseline reason first adds one exception for each failure
  * the change causes (baselineExceptions), so what exists is listed once and
  * every new name is held to the rule; the answer lists them, sorted, for the
- * file to hold. It saves even
- * when names now fail: the checks are the gate. A part equal to the one in
- * force saves nothing, so applying a file again is free.
+ * file to hold. It saves even when names now fail: the checks are the gate.
+ * A part equal to the one in force saves nothing, so applying a file again
+ * is free.
  */
 export async function applyConventions(
   context: ServiceContext,

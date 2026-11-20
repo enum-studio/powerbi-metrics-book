@@ -106,12 +106,13 @@ export const LEGACY_TRANSFORMS: readonly LegacyTransform[] = [
 /**
  * Turns each stored complete document, one without `format`, into the
  * company's part: every value equal to its preset's is dropped, so the rules
- * in force stay as they were, except trust.*, which stays whole. Runs in the start's migration transaction, as
- * the migrator. A document with `format` is never read here, so a later
- * preset change is never taken for the company's. The newest version must
- * upgrade, or the start stops; an older one that no longer resolves is left
- * as it was, with a warning, since nothing reads it in force. toSavablePart
- * drops, with a warning, a value set under a rule the part turns off.
+ * in force stay as they were, except trust.*, which stays whole. Runs in
+ * the start's migration transaction, as the migrator. A document with
+ * `format` is never read here, so a later preset change is never taken for
+ * the company's. The newest version must upgrade, or the start stops; an
+ * older one that no longer resolves is left as it was, with a warning,
+ * since nothing reads it in force. toSavablePart drops, with a warning,
+ * a value set under a rule the part turns off.
  */
 export async function upgradeStoredConventions(
   client: pg.Client,
