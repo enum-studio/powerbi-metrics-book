@@ -1247,7 +1247,10 @@ Crossing: files an admin brings in, and ones they take out.
   reads `conventions.yml` and `book.yml` only from a regular file, never
   through a symlink, so a YAML error never quotes another file. The apply
   preview gives the guide's size before and after, never its text. The CLI
-  refuses to write the conventions or guide through a symlink. Conventions
+  refuses to write the conventions or guide through a symlink. `apply
+  --baseline` shows the exceptions it would add and asks before it writes
+  them; it writes the file by a temporary file in the same folder and a
+  rename, and puts the file back as it was if the apply is refused. Conventions
   YAML refuses anchors and aliases
   (`apps/cli/tests/commands/conventions_file_security_test.py`,
   `apps/cli/tests/commands/test_conventions_file.py`).

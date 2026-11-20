@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import httpx
@@ -513,6 +514,89 @@ def test_admin_import_previews_conventions_and_skips_equal(
         assert result.stdout.index("drafting") < result.stdout.index(
             "Apply these changes?"
         )
+
+
+BASELINE_EXCEPTION = {"rule": "naming.case", "metric": "gmv", "reason": "Old"}
+
+
+def baseline_api(
+    refuse_save: bool = False,
+) -> Callable[[httpx.Request], httpx.Response]:
+    """Adds one exception, and refuses the save when `refuse_save`."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return json_response(200, {"format": 1})
+        body = sent(request)
+        if refuse_save and body["dry_run"] is False:
+            return json_response(400, {"error": "invalid", "message": "Refused."})
+        return json_response(
+            200,
+            {
+                "changed_rules": ["naming.case"],
+                "now_failing": {"naming.case": 1},
+                "exceptions_added": [BASELINE_EXCEPTION]
+                if "baseline_reason" in body
+                else [],
+                "version": None if body["dry_run"] else 2,
+            },
+        )
+
+    return answer
+
+
+def test_baseline_refuses_a_symlinked_file_and_leaves_its_target(
+    serve: Serve, tmp_path: Path
+) -> None:
+    target = tmp_path / "real.yml"
+    target.write_text("format: 1 # keep\n")
+    (tmp_path / "conventions.yml").symlink_to(target)
+    seen = serve(baseline_api())
+    result = run(
+        "conventions",
+        "apply",
+        str(tmp_path / "conventions.yml"),
+        "--baseline",
+        "--reason",
+        "Old",
+        "--yes",
+    )
+    assert result.exit_code == 2
+    assert target.read_text() == "format: 1 # keep\n"
+    assert (tmp_path / "conventions.yml").is_symlink()
+    assert seen == []
+
+
+def test_baseline_asks_before_writing_and_no_leaves_the_file(
+    serve: Serve, tmp_path: Path
+) -> None:
+    path = tmp_path / "conventions.yml"
+    original = b"format: 1 # keep\r\npreset: minimal\n"
+    path.write_bytes(original)
+    serve(baseline_api())
+    result = run(
+        "conventions", "apply", str(path), "--baseline", "--reason", "Old", input="n\n"
+    )
+    assert result.exit_code == 1
+    assert path.read_bytes() == original
+    assert result.output.index("metric: gmv") < result.output.index("Save these")
+
+
+def test_baseline_puts_the_file_back_when_the_apply_is_refused(
+    serve: Serve, tmp_path: Path
+) -> None:
+    path = tmp_path / "conventions.yml"
+    original = b"format: 1 # keep\n"
+    path.write_bytes(original)
+    seen = serve(baseline_api(refuse_save=True))
+    result = run(
+        "conventions", "apply", str(path), "--baseline", "--reason", "Old", "--yes"
+    )
+    assert result.exit_code != 0
+    assert "Refused." in result.output
+    assert sent(seen[-1])["dry_run"] is False
+    assert path.read_bytes() == original
+    assert sorted(item.name for item in tmp_path.iterdir()) == ["conventions.yml"]
 
 
 @pytest.mark.parametrize("global_json", [False, True])
