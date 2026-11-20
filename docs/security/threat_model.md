@@ -185,7 +185,9 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   endpoints and a bearer request with no cookie (below); a strict
   CSP (scripts from self only); `X-Frame-Options: DENY`; rate limits per
   principal and per IP on sign-in, setup, token, query and CSV routes; a
-  1 MiB body limit.
+  1 MiB body limit, except `PUT /api/v1/conventions`,
+  `POST /api/v1/conventions/diff` and `POST /api/v1/conventions/apply`,
+  which allow 8 MiB for a baseline over a large book.
 - People sign in through Microsoft (single tenant), Google, an OpenID
   Connect provider or a passkey; who may sign in is decided at the
   callback, before an account exists (Better Auth's `validateUserInfo`),
@@ -554,9 +556,9 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
 - `GET /api/v1/conventions` and MCP `get_conventions` give exception counts
   per rule, never the list. An element's own check results carry its
   `exception` and reason. Exception reasons and the guide are text agents
-  read as data, never instructions. Targets and names are at most 500
+  read as data, never instructions. Targets, names and words are at most 500
   characters; reasons at most 200, on one line, without control or format
-  characters.
+  characters or U+2028 and U+2029 line separators.
 - An unexpected error, from a route, a tool or Better Auth
   (`onAPIError.throw`), is logged by one function, `http/error-log.ts`:
   its name, message and stack, except a failed query, which is logged as
@@ -1231,7 +1233,12 @@ Crossing: files an admin brings in, and ones they take out.
   The CLI refuses to write the conventions or guide through a symlink.
   Conventions YAML refuses anchors and aliases
   (`apps/cli/tests/commands/test_conventions_file.py`).
-- Saving, diffing and applying conventions need `book:edit_conventions`.
+- Saving, diffing, applying and exporting conventions need
+  `book:edit_conventions`. The CLI's `set`, `edit` and `export --resolved`
+  keep the whole company exception list; `presets` reads only the
+  conventions anyone signed in may read.
+  A saved part is stored as the schema reads it, dropping keys such as
+  `__proto__` under `naming.qualifiers`.
   `PUT /api/v1/conventions`, `POST /api/v1/conventions/diff` and
   `POST /api/v1/conventions/apply` accept up to 8 MiB so a baseline on a
   large book fits. Drafting uses case-insensitive prefixes and exact names;

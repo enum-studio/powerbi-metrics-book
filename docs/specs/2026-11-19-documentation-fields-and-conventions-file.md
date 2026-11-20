@@ -383,6 +383,12 @@ One migration per branch.
   when every deployment is run from its repository; then the API could read the file.
 - **No regular expressions.** Stops being right if companies need patterns that prefixes and names
   cannot say; then a linear-time engine, never JavaScript's.
+- **The stored company part is whole for `book:edit_conventions`**, exceptions the caller cannot
+  see included, so export and apply round-trip the file the deployment repository holds. Stops
+  being right if editing the conventions is given to people who may not see every dataset.
+- **Agents get exception counts per rule, not the list**, since a baseline over a large book holds
+  thousands, and an element's own checks show its exception and reason. Stops being right if
+  agents need to plan around exceptions they have not met on an element yet.
 
 - **`owner` is a built-in dataset field, not required.** Stops being right if companies mostly name
   a person or team in a custom field anyway.

@@ -682,7 +682,7 @@ pbmb conventions apply [OPTIONS] FILE
 | Option | Takes | Default | What |
 | --- | --- | --- | --- |
 | `--dry-run` |   |   | Preview without saving. |
-| `--baseline` |   |   | Write exceptions for existing failures into the file. |
+| `--baseline` |   |   | Write exceptions for visible targets newly broken by the change. |
 | `--reason` | str |   | Why existing failures are excepted. |
 | `--yes` |   |   | Save without asking. |
 
@@ -703,6 +703,7 @@ pbmb conventions diff FILE
 Open the conventions as YAML in $EDITOR, check them, show the difference,
 ask, then save them as the next version.
 
+Requires book:edit_conventions, which admins have by default.
 Needs a terminal, so it cannot be used with --json. Your file is removed once
 it is saved. If the api refuses it, the save fails or you abort, the file is
 kept and its path printed, so nothing you wrote is lost.
@@ -714,6 +715,8 @@ pbmb conventions edit
 ### `pbmb conventions export`
 
 Export the company part, or the resolved conventions including the preset.
+
+Requires book:edit_conventions, which admins have by default.
 
 ```bash
 pbmb conventions export [OPTIONS]
@@ -747,6 +750,7 @@ pbmb conventions import [OPTIONS] FILE
 
 List the presets the conventions can start from, and the one in force.
 
+Anyone signed in may run this command.
 Switch with `pbmb conventions set preset minimal`; the preset is the base
 that the rest of the document overrides. The list is fixed in the CLI: the
 two presets the conventions schema names.
@@ -775,6 +779,7 @@ pbmb conventions reset [OPTIONS] [RULE]
 
 Change one rule and save the conventions as the next version.
 
+Requires book:edit_conventions, which admins have by default.
 The api checks the whole document and refuses what is not valid. It only
 accepts a change to a trust.* rule from a person in the browser (admin
 section), so `set` cannot make one.

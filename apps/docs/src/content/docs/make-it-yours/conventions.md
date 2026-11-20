@@ -194,7 +194,7 @@ An exception lets one target keep failing one rule. It needs `rule` (a rule id, 
 | `table_fields.*` | `dataset` and `table`: the bare table name, such as `Sales lines`. |
 | `column_fields.*` | `dataset` and `column`: `'<table>'[<column>]`. |
 
-Targets and names have at most 500 characters. A reason has at most 200 characters on one line, with no control or format characters. There are no wildcards.
+Names, words and exception targets have at most 500 characters. A reason has at most 200 characters on one line of visible text, with no control or format characters, U+2028 or U+2029. There are no wildcards.
 
 `get_conventions` gives agents exception counts per rule, rather than the list. An element's own check results show its `exception` and reason. Apply results and unused exception lists name only targets the caller can see. A principal with `book:edit_conventions` can export the whole stored company part so the file can round-trip through the deployment repository.
 
@@ -206,7 +206,7 @@ For a book with thousands of drafts, preview a stricter rule before applying it.
 pbmb conventions apply conventions.yml --baseline --reason "Names in use before the house style"
 ```
 
-The CLI writes exceptions into the file before applying it. A target must fail the proposed rule, have passed that rule under the version in force, and be visible to the person applying. Existing failures get no exception. Changing exceptions alone adds none. `--dry-run` previews without writing or saving. Review the added exceptions in git. New targets still have to pass the rule.
+The CLI writes exceptions into the file before applying it. A target must fail the proposed rule, have passed that rule under the version in force, and be visible to the person applying. Existing failures get no exception. Only changes to a rule's value, keys it reads or off state can add exceptions; changing exceptions alone adds none. Omitting exceptions from the file drops them even with `--baseline`. `--dry-run` previews without writing or saving. Review the added exceptions in git. New targets still have to pass the rule.
 
 `show --json` and the MCP `whoami` tool report off rules and exception counts so reviewers can see weakened checks. Whole-book counts can include targets the caller cannot see.
 
@@ -245,13 +245,13 @@ The answer names changed rules and counts their failures under the proposed conv
 |---|---|
 | `pbmb conventions show` | Shows the resolved conventions and guide. |
 | `pbmb conventions show --json` | Lists rule ids, values, sources, allowed values, off status and exception counts. |
-| `pbmb conventions set dataset_fields.owner.required true` | Changes one key and saves a version. |
-| `pbmb conventions edit` | Opens the conventions in your editor and saves the changes. |
+| `pbmb conventions set dataset_fields.owner.required true` | Changes one key and saves a version, preserving all company exceptions. Requires `book:edit_conventions`. |
+| `pbmb conventions edit` | Opens the conventions in your editor and saves the changes, preserving all company exceptions. Requires `book:edit_conventions`. |
 | `pbmb conventions apply conventions.yml` | Previews and saves the file. Add `--dry-run --json` to preview only. |
-| `pbmb conventions presets` | Lists the available presets. |
+| `pbmb conventions presets` | Lists the available presets. Anyone signed in may run it. |
 | `pbmb conventions reset naming.money_qualifier` | Removes the company's setting, off entry and exceptions for that rule, restoring the preset. Without an id, resets the whole company part. |
-| `pbmb conventions export -o conventions.yml` | Writes the company's part and its guide file. |
-| `pbmb conventions export --resolved` | Writes the whole resolved document, with the guide inline. |
+| `pbmb conventions export -o conventions.yml` | Writes the whole company part and its guide file. Requires `book:edit_conventions`. |
+| `pbmb conventions export --resolved` | Writes the resolved document with every company exception and the guide inline. Requires `book:edit_conventions`. |
 | `pbmb conventions diff conventions.yml` | Shows changes and exits 1 when the file differs from the version in force. Use it in the deployment's CI. |
 | `pbmb conventions validate conventions.yml` | Validates a file without saving it. |
 | `pbmb check` | Checks `conventions.yml` and `book.yml` offline against the shipped schemas. |
