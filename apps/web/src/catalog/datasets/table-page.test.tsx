@@ -92,7 +92,7 @@ function render({
   client.setQueryData(["catalog", "dataset", "d1"], dataset);
   client.setQueryData(["conventions"], {
     rules: {
-      element_fields: {
+      table_fields: {
         custom: [
           { key: "grain", label: "Grain", type: "text" },
           { key: "owner", label: "Owner", type: "text" },

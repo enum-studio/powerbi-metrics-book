@@ -62,7 +62,7 @@ export function Documentation({
         description !== description_pbi && (
           <Part term="Description in Power BI" text={description_pbi} />
         )}
-      {conventions.data.rules.element_fields.custom.map((field) => (
+      {conventions.data.rules[`${kind}_fields`].custom.map((field) => (
         <Part
           key={field.key}
           term={field.label}

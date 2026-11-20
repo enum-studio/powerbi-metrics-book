@@ -86,6 +86,47 @@ export const RULES: readonly Rule[] = [
   keyed("metric_fields", "metric", "metric_fields.unit", REQUIRED),
   keyed("metric_fields", "metric", "metric_fields.category", REQUIRED),
   keyed("metric_fields", "metric", "metric_fields.custom"),
+  ...[
+    "definition",
+    "when_to_use",
+    "owner",
+    "freshness",
+    "caveats",
+    "custom",
+  ].map((field) =>
+    keyed(
+      "dataset_fields",
+      "dataset",
+      `dataset_fields.${field}`,
+      field === "custom" ? null : REQUIRED,
+    ),
+  ),
+  ...["definition", "grain_and_filters", "caveats", "custom"].map((field) =>
+    keyed(
+      "table_fields",
+      "table",
+      `table_fields.${field}`,
+      field === "custom"
+        ? null
+        : field === "grain_and_filters"
+          ? [...REQUIRED, "when_fact"]
+          : REQUIRED,
+    ),
+  ),
+  ...["definition", "unit", "blank_means", "custom"].map((field) =>
+    keyed(
+      "column_fields",
+      "column",
+      `column_fields.${field}`,
+      field === "custom"
+        ? null
+        : field === "definition"
+          ? [...REQUIRED, "when_visible_and_no_term"]
+          : field === "unit"
+            ? [...REQUIRED, "when_numeric"]
+            : REQUIRED,
+    ),
+  ),
   // A content word is any but those of the kinds, the placed qualifiers, the
   // money qualifiers and ignore_words.
   keyed(

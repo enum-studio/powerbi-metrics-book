@@ -28,7 +28,7 @@ function render(missing = false) {
   });
   client.setQueryData(["conventions"], {
     rules: {
-      element_fields: {
+      column_fields: {
         custom: [{ key: "owner", label: "Owner", type: "text" }],
       },
     },

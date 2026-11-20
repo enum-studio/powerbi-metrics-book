@@ -12,6 +12,7 @@ import {
   useMirror,
 } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
+import { piiRule } from "../../db/schema/pii.js";
 import { term } from "../../db/schema/book.js";
 import type { Principal } from "../../principal.js";
 import { TOOLS } from "../../mcp/tools/index.js";
@@ -104,5 +105,85 @@ describe("an exception on a metric the caller cannot see", () => {
         asPerson(principals.admin, { db: tx }),
       );
       expect(company.exceptions).toEqual([hidden, seen, word]);
+    }));
+});
+
+describe("element exception visibility", () => {
+  it.each([
+    { rule: "dataset_fields.definition", dataset: "Sales" },
+    { rule: "table_fields.definition", dataset: "Sales", table: "Sales" },
+    {
+      rule: "column_fields.definition",
+      dataset: "Sales",
+      column: "'Sales'[Channel]",
+    },
+  ])("shows $rule only through a describable dataset", (target) =>
+    rolledBack(async (tx) => {
+      const item = { ...target, reason: "Kept." };
+      await setConventions({ db: tx }, principals.admin, {
+        format: 1,
+        exceptions: [item],
+      });
+      expect(await forAgents(tx, curator)).toEqual([item]);
+      expect(await forAgents(tx, outsider)).toEqual([]);
+    }),
+  );
+
+  it.each([
+    { rule: "dataset_fields.definition", dataset: "Missing" },
+    { rule: "table_fields.definition", dataset: "Sales", table: "Missing" },
+    {
+      rule: "column_fields.definition",
+      dataset: "Sales",
+      column: "'Sales'[Missing]",
+    },
+    { rule: "dataset_fields.definition", dataset: "Sales 2023" },
+  ])(
+    "leaves a missing or removed $rule target only in the admin's part",
+    (target) =>
+      rolledBack(async (tx) => {
+        const item = { ...target, reason: "Gone." };
+        await setConventions({ db: tx }, principals.admin, {
+          format: 1,
+          exceptions: [item],
+        });
+        expect(await forAgents(tx, admin)).toEqual([]);
+        expect(
+          (await getCompanyPartAsAdmin(asPerson(principals.admin, { db: tx })))
+            .exceptions,
+        ).toEqual([item]);
+        expect(await unused(tx, admin)).toEqual([]);
+      }),
+  );
+
+  it("hides a PII column exception from non-readers in agents' conventions and unused lists", () =>
+    rolledBack(async (tx) => {
+      await tx.insert(piiRule).values({
+        kind: "column",
+        table_name: "Sales",
+        name: "Channel",
+        pii: true,
+        set_by_kind: "person",
+        set_by_id: "test",
+        set_via: "api",
+      });
+      const item = {
+        rule: "column_fields.blank_means",
+        dataset: "Sales",
+        column: "'Sales'[Channel]",
+        reason: "Optional.",
+      };
+      await setConventions({ db: tx }, principals.admin, {
+        format: 1,
+        exceptions: [item],
+      });
+      expect(await forAgents(tx, curator)).toEqual([]);
+      expect(await unused(tx, curator)).toEqual([]);
+      const reader = {
+        ...curator,
+        roles: [...curator.roles, "pii_reader" as const],
+      };
+      expect(await forAgents(tx, reader)).toEqual([item]);
+      expect(await unused(tx, reader)).toEqual([item]);
     }));
 });

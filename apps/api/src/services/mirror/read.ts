@@ -161,6 +161,32 @@ export type Keyset = { descending?: boolean; name?: z.ZodType<string> };
 const encodeCursor = (last: { names: string[]; id: string }) =>
   Buffer.from(JSON.stringify([...last.names, last.id])).toString("base64url");
 
+/** Decode and validate a list keyset before comparing it in SQL or memory. */
+export function decodeCursor(
+  cursor: string,
+  names = 1,
+  name: z.ZodType<string> = textName,
+) {
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+  }
+  const parsed = z
+    .array(z.string())
+    .length(names + 1)
+    .safeParse(decoded);
+  const id = z.guid().safeParse(parsed.data?.at(-1));
+  const parts = z.tuple([name]).rest(name).safeParse(parsed.data?.slice(0, -1));
+  if (!parsed.success || !id.success || !parts.success)
+    throw new ServiceError(
+      "invalid",
+      "That cursor is not one a list gave. Ask again without it.",
+    );
+  return { names: parts.data, id: id.data };
+}
+
 /** `name` may be several columns, for a list ordered by each in turn before its id. */
 export function afterCursor(
   source: { name: PgColumn | PgColumn[]; id: PgColumn },
@@ -168,31 +194,12 @@ export function afterCursor(
   keyset: Keyset = {},
 ): SQL | undefined {
   if (cursor === undefined) return undefined;
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
-  } catch (error) {
-    if (!(error instanceof SyntaxError)) throw error;
-  }
   const columns = Array.isArray(source.name) ? source.name : [source.name];
-  const name = keyset.name ?? textName;
-  const key = z
-    .array(z.unknown())
-    .length(columns.length + 1)
-    .safeParse(decoded);
-  const names = key.success
-    ? key.data.slice(0, -1).map((part) => name.safeParse(part))
-    : [];
-  const id = z.guid().safeParse(key.data?.at(-1));
-  if (!key.success || !id.success || names.some((part) => !part.success)) {
-    throw new ServiceError(
-      "invalid",
-      "That cursor is not one a list gave. Ask again without it.",
-    );
-  }
+  const key = decodeCursor(cursor, columns.length, keyset.name);
+  const values = key.names.map((part) => sql`${part}`);
+  const id = key.id;
   const after = keyset.descending === true ? sql`<` : sql`>`;
-  const values = names.map((part) => sql`${part.data}`);
-  return sql`(${sql.join([...columns, source.id], sql`, `)}) ${after} (${sql.join(values, sql`, `)}, ${id.data}::uuid)`;
+  return sql`(${sql.join([...columns, source.id], sql`, `)}) ${after} (${sql.join(values, sql`, `)}, ${id}::uuid)`;
 }
 
 export const sizeOf = (limit: number | undefined) =>
@@ -461,6 +468,69 @@ async function resolveDataset(
   return found;
 }
 
+/** Keys and table kinds from the columns, measure counts and relationships shown to the caller. */
+export function modelKinds(
+  columns: readonly { table: string; name: string; data_type: string | null }[],
+  relationships: readonly (typeof powerbiRelationship.$inferSelect)[],
+) {
+  const many = new Set<string>();
+  const one = new Set<string>();
+  const joined = new Map<
+    string,
+    { table: string; column: string; joined_by: number }
+  >();
+  const ends = new Set<string>();
+  const columnKey = (table: string, column: string) =>
+    JSON.stringify([table, column]);
+  const dateColumns = new Set(
+    columns
+      .filter((c) => c.data_type === "DateTime" || c.data_type === "Date")
+      .map((c) => columnKey(c.table, c.name)),
+  );
+  for (const r of relationships) {
+    for (const side of ["from", "to"] as const) {
+      const table = r[`${side}_table`];
+      const column = r[`${side}_column`];
+      const key = columnKey(table, column);
+      ends.add(key);
+      const isOne =
+        r.cardinality === "one_to_one" ||
+        r.cardinality === (side === "from" ? "one_to_many" : "many_to_one");
+      const isMany =
+        r.cardinality === "many_to_many" ||
+        r.cardinality === (side === "from" ? "many_to_one" : "one_to_many");
+      if (isMany) many.add(table);
+      if (!isOne) continue;
+      one.add(table);
+      if (!r.is_active || !dateColumns.has(key)) continue;
+      const entry = joined.get(key) ?? { table, column, joined_by: 0 };
+      entry.joined_by++;
+      joined.set(key, entry);
+    }
+  }
+  const dateTables = [...joined.values()].sort(
+    (a, b) =>
+      b.joined_by - a.joined_by ||
+      a.table.localeCompare(b.table) ||
+      a.column.localeCompare(b.column),
+  );
+  const dates = new Set(dateTables.map((row) => row.table));
+  const tableKind = (table: {
+    name: string;
+    column_count: number;
+    measure_count: number;
+  }) => {
+    if (table.column_count === 0 && table.measure_count > 0)
+      return "measures" as const;
+    if (dates.has(table.name)) return "date" as const;
+    if (many.has(table.name)) return "fact" as const;
+    return one.has(table.name)
+      ? ("dimension" as const)
+      : ("standalone" as const);
+  };
+  return { tableKind, ends, columnKey, dateTables };
+}
+
 export async function getDataset(context: ServiceContext, reference: string) {
   const found = await resolveDataset(context, reference);
   const { workspace } = found;
@@ -569,60 +639,11 @@ export async function getDataset(context: ServiceContext, reference: string) {
       )
       .orderBy(asc(powerbiColumn.name)),
   ]);
-  const many = new Set<string>();
-  const one = new Set<string>();
-  const joined = new Map<
-    string,
-    { table: string; column: string; joined_by: number }
-  >();
-  const ends = new Set<string>();
-  const columnKey = (table: string, column: string) =>
-    JSON.stringify([table, column]);
-  const dateColumns = new Set(
-    columns
-      .filter((c) => c.data_type === "DateTime" || c.data_type === "Date")
-      .map((c) => columnKey(c.table, c.name)),
+  const columnsByTable = Map.groupBy(columns, (column) => column.table_id);
+  const { tableKind, ends, columnKey, dateTables } = modelKinds(
+    columns,
+    relationships,
   );
-  for (const r of relationships) {
-    for (const side of ["from", "to"] as const) {
-      const table = r[`${side}_table`];
-      const column = r[`${side}_column`];
-      const key = columnKey(table, column);
-      ends.add(key);
-      const isOne =
-        r.cardinality === "one_to_one" ||
-        r.cardinality === (side === "from" ? "one_to_many" : "many_to_one");
-      const isMany =
-        r.cardinality === "many_to_many" ||
-        r.cardinality === (side === "from" ? "many_to_one" : "one_to_many");
-      if (isMany) many.add(table);
-      if (!isOne) continue;
-      one.add(table);
-      if (!r.is_active || !dateColumns.has(key)) continue;
-      const entry = joined.get(key) ?? { table, column, joined_by: 0 };
-      entry.joined_by++;
-      joined.set(key, entry);
-    }
-  }
-  const dateTables = [...joined.values()].sort(
-    (a, b) =>
-      b.joined_by - a.joined_by ||
-      a.table.localeCompare(b.table) ||
-      a.column.localeCompare(b.column),
-  );
-  const tableKind = (table: {
-    name: string;
-    column_count: number;
-    measure_count: number;
-  }) => {
-    if (table.column_count === 0 && table.measure_count > 0)
-      return "measures" as const;
-    if (dateTables.some((d) => d.table === table.name)) return "date" as const;
-    if (many.has(table.name)) return "fact" as const;
-    return one.has(table.name)
-      ? ("dimension" as const)
-      : ("standalone" as const);
-  };
   const hiddenIn = new Map(piiByTable.map((row) => [row.table_id, row.hidden]));
   const hiddenMeasuresIn = new Map(
     piiMeasures.map((row) => [row.table_id, row.hidden]),
@@ -642,7 +663,6 @@ export async function getDataset(context: ServiceContext, reference: string) {
       shownIn,
     ),
     tables: tables.map(({ pii, ...table }) => {
-      // Counted after personal data is left out, so the kind agrees with the counts shown.
       const shown = {
         column_count: table.column_count - (hiddenIn.get(table.id) ?? 0),
         measure_count:
@@ -650,9 +670,9 @@ export async function getDataset(context: ServiceContext, reference: string) {
       };
       return {
         ...table,
-        kind: tableKind({ name: table.name, ...shown }),
-        column_names: columns
-          .filter((c) => c.table_id === table.id && !c.is_hidden)
+        kind: tableKind({ ...table, ...shown }),
+        column_names: (columnsByTable.get(table.id) ?? [])
+          .filter((c) => !c.is_hidden)
           .sort(
             (a, b) =>
               Number(ends.has(columnKey(b.table, b.name))) -
@@ -892,7 +912,7 @@ export async function listRelationships(
 }
 
 /** A relationship either of whose ends is a PII column is not shown to a person who may not read PII. */
-const leavesOutPiiEnds = () =>
+export const leavesOutPiiEnds = () =>
   and(
     not(
       piiColumnNamed(

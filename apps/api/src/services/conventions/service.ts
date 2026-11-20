@@ -1,14 +1,24 @@
-import { and, inArray, not } from "drizzle-orm";
+import { and, eq, inArray, isNull, not } from "drizzle-orm";
 import type { ServiceContext } from "../../context.js";
+import {
+  powerbiDataset,
+  powerbiTable,
+  powerbiColumn,
+} from "../../db/schema/mirror.js";
 import { metric } from "../../db/schema/book.js";
 import { BOOK, requireCurator } from "../book/changes.js";
 import { visibleMetric } from "../mirror/read.js";
 import { resolveMetric } from "../book/metrics.js";
 import { unusedExceptions } from "../book/whole-book-checks.js";
-import { readsPii } from "../pii/rules.js";
+import { piiColumn, readsPii } from "../pii/rules.js";
 import { type ApplyInput, applyConventions } from "./apply.js";
 import { FIXED_RULES, isRuleOff, RULES, valueAt } from "./rules.js";
-import type { Conventions, CustomFieldSpec } from "./schema.js";
+import {
+  exceptionKey,
+  columnTarget,
+  type Conventions,
+  type CustomFieldSpec,
+} from "./schema.js";
 import {
   conventionsInForce,
   currentConventions,
@@ -98,10 +108,9 @@ export function summariseRules(rules: Rules): string[] {
     term_fields.values.required === true &&
       "A term lists its values, each with what it means.",
     ...customFieldsIn("Terms", term_fields.custom),
-    ...customFieldsIn(
-      "Datasets, tables, columns and measures",
-      rules.element_fields.custom,
-    ),
+    ...customFieldsIn("Datasets", rules.dataset_fields.custom),
+    ...customFieldsIn("Tables", rules.table_fields.custom),
+    ...customFieldsIn("Columns", rules.column_fields.custom),
     `A variant differs from its metric on its period (${words(axes.period.values)}), its comparison (${words(axes.comparison.values)}) and its currency (${typeof currency === "string" ? "an ISO 4217 code, or local" : words(currency)}).`,
     ...axes.custom.map(
       (axis) => `A variant also differs on ${axis.key}: ${words(axis.values)}.`,
@@ -151,21 +160,73 @@ async function hiddenMetrics(
   return new Set(rows.map((row) => row.name));
 }
 
-/**
- * The exceptions whose element the caller may see: a metric's to whoever sees
- * the metric, a term's to anyone signed in, as term names are. No rule targets
- * a dataset, table or column yet, so one is hidden; the element checks show a
- * dataset's by describableDatasets, a table's or column's through its dataset,
- * and a PII column's only to a caller who readsPii.
- */
-async function visibleExceptions(
+/** Exceptions are visible only through a live target and its describable dataset. */
+export async function visibleExceptions(
   context: ServiceContext,
   exceptions: Conventions["exceptions"],
 ): Promise<Conventions["exceptions"]> {
   const metrics = new Set(exceptions.flatMap((item) => item.metric ?? []));
   const hidden = await hiddenMetrics(context, [...metrics]);
-  return exceptions.filter(({ metric, term }) =>
-    metric === undefined ? term !== undefined : !hidden.has(metric),
+  const visible = new Set<string>();
+  if (exceptions.some((item) => item.dataset !== undefined)) {
+    const allowed = await context.access.describableDatasets(context.principal);
+    const datasets = await context.db
+      .select({ id: powerbiDataset.id, name: powerbiDataset.name })
+      .from(powerbiDataset)
+      .where(and(allowed, isNull(powerbiDataset.removed_at)));
+    const ids = datasets.map((row) => row.id);
+    for (const row of datasets)
+      visible.add(exceptionKey({ dataset: row.name }));
+    if (ids.length > 0) {
+      const tables = await context.db
+        .select({
+          id: powerbiTable.id,
+          name: powerbiTable.name,
+          dataset_id: powerbiTable.dataset_id,
+        })
+        .from(powerbiTable)
+        .where(
+          and(
+            inArray(powerbiTable.dataset_id, ids),
+            isNull(powerbiTable.removed_at),
+          ),
+        );
+      const names = new Map(datasets.map((row) => [row.id, row.name]));
+      for (const row of tables)
+        visible.add(
+          exceptionKey({ dataset: names.get(row.dataset_id), table: row.name }),
+        );
+      const hides = !(await readsPii(context));
+      const columns = await context.db
+        .select({
+          name: powerbiColumn.name,
+          table: powerbiTable.name,
+          dataset_id: powerbiColumn.dataset_id,
+        })
+        .from(powerbiColumn)
+        .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
+        .where(
+          and(
+            inArray(powerbiColumn.dataset_id, ids),
+            isNull(powerbiColumn.removed_at),
+            isNull(powerbiTable.removed_at),
+            hides ? not(piiColumn(powerbiColumn, powerbiTable)) : undefined,
+          ),
+        );
+      for (const row of columns)
+        visible.add(
+          exceptionKey({
+            dataset: names.get(row.dataset_id),
+            column: columnTarget(row.table, row.name),
+          }),
+        );
+    }
+  }
+  return exceptions.filter(({ metric, term, dataset, table, column }) =>
+    metric !== undefined
+      ? !hidden.has(metric)
+      : term !== undefined ||
+        visible.has(exceptionKey({ dataset, table, column })),
   );
 }
 

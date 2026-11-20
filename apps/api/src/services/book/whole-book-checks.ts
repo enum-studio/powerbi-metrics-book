@@ -1,13 +1,33 @@
-import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { leavesOutPiiEnds, modelKinds } from "../mirror/read.js";
+import {
+  and,
+  count,
+  eq,
+  inArray,
+  isNull,
+  not,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import type { AppDeps } from "../../context.js";
 import { metric, term, termColumn } from "../../db/schema/book.js";
-import { powerbiColumn } from "../../db/schema/mirror.js";
+import {
+  powerbiColumn,
+  powerbiDataset,
+  powerbiTable,
+  powerbiMeasure,
+  powerbiRelationship,
+} from "../../db/schema/mirror.js";
+import { piiColumn, piiMeasure } from "../pii/rules.js";
 import { RULE_TARGETS, RULES } from "../conventions/rules.js";
 import { type Conventions, exceptionKey } from "../conventions/schema.js";
 import {
   type CheckResult,
   type CheckTarget,
   checkMetric,
+  checkElement,
+  elementTarget,
+  type CheckableElement,
   checkTerm,
   type ExceptionIndex,
   exceptionIndex,
@@ -34,7 +54,7 @@ export interface UnusedException {
   rule: string;
   target: CheckTarget;
   reason: string;
-  why: "no_such_target" | "passes";
+  why: "no_such_target" | "passes" | "ambiguous";
 }
 
 type Checked = { target: CheckTarget; results: CheckResult[] };
@@ -154,13 +174,16 @@ async function checkedTerms(
   });
 }
 
-const targetsOf = (kind: "metric" | "term", rules?: ReadonlySet<string>) =>
+const targetsOf = (
+  kind: (typeof RULE_TARGETS)[number],
+  rules?: ReadonlySet<string>,
+) =>
   RULES.some(
     (rule) =>
       rule.target === kind && (rules === undefined || rules.has(rule.id)),
   );
 
-/** Every failing result in the book under `conventions`, exceptions applied, optionally only for `rules`. Metrics and terms here; the element checks issue adds datasets, tables and columns. */
+/** Every failing result in the book under `conventions`, exceptions applied, optionally only for `rules`. Metrics, terms, datasets, tables and columns. */
 export async function failuresInBook(
   deps: Deps,
   conventions: Conventions,
@@ -170,6 +193,11 @@ export async function failuresInBook(
   const checked = [
     ...(targetsOf("metric", rules) ? await checkedMetrics(deps, run) : []),
     ...(targetsOf("term", rules) ? await checkedTerms(deps, run) : []),
+    ...((["dataset", "table", "column"] as const).some((kind) =>
+      targetsOf(kind, rules),
+    )
+      ? await checkedElements(deps, run)
+      : []),
   ];
   return checked.flatMap(({ target, results }) =>
     results
@@ -192,6 +220,7 @@ export async function unusedExceptions(
   deps: Deps,
   conventions: Conventions,
   only?: CheckTarget,
+  checkedElementsInRun?: CheckedElement[],
 ): Promise<UnusedException[]> {
   const run: Run = { conventions, exceptions: exceptionIndex(conventions) };
   const exceptions = conventions.exceptions
@@ -202,15 +231,27 @@ export async function unusedExceptions(
   ];
   const metrics = namesOf("metric");
   const terms = namesOf("term");
+  const elements = exceptions.some(({ target }) => target.dataset !== undefined)
+    ? (checkedElementsInRun ?? (await checkedElements(deps, run)))
+    : [];
   const checked = [
     ...(metrics.length > 0 ? await checkedMetrics(deps, run, metrics) : []),
     ...(terms.length > 0 ? await checkedTerms(deps, run, terms) : []),
+    ...elements,
   ];
   const byTarget = new Map(
     checked.map((each) => [exceptionKey(each.target), each]),
   );
   return exceptions.flatMap(({ rule, reason, target }): UnusedException[] => {
-    const found = byTarget.get(exceptionKey(target));
+    const datasets = elements.filter((each) => each.kind === "dataset");
+    const named = datasets.filter((each) => each.name === target.dataset);
+    const dataset = datasets.find((each) => each.id === target.dataset);
+    if (dataset === undefined && named.length > 1)
+      return [{ rule, target, reason, why: "ambiguous" }];
+    const resolved = dataset ?? named[0];
+    const lookup =
+      resolved === undefined ? target : { ...target, ...resolved.target };
+    const found = byTarget.get(exceptionKey(lookup));
     if (found === undefined)
       return [{ rule, target, reason, why: "no_such_target" }];
     const result = found.results.find((each) => each.rule === rule);
@@ -218,4 +259,163 @@ export async function unusedExceptions(
       ? [{ rule, target, reason, why: "passes" }]
       : [];
   });
+}
+
+export type CheckedElement = Checked & {
+  kind: "dataset" | "table" | "column";
+  id: string;
+  name: string;
+  dataset: string;
+  dataset_id: string;
+  table?: string;
+};
+
+/** Six bulk reads for the selected datasets, independent of their element count. */
+export async function checkedElements(
+  { db }: Deps,
+  run: Run,
+  allowed?: SQL,
+  hidesPii = false,
+): Promise<CheckedElement[]> {
+  const live = await db
+    .select({ row: powerbiDataset, allowed: allowed ?? sql<boolean>`true` })
+    .from(powerbiDataset)
+    .where(isNull(powerbiDataset.removed_at));
+  const names = new Map<string, number>();
+  for (const { row } of live)
+    names.set(row.name, (names.get(row.name) ?? 0) + 1);
+  const targets = new Map<string, string>();
+  for (const { row } of live) {
+    const unique = names.get(row.name) === 1;
+    targets.set(row.id, unique ? row.name : row.id);
+    if (unique) targets.set(row.name, row.name);
+  }
+  const exceptions = new Map(
+    run.conventions.exceptions.flatMap((item) => {
+      if (item.dataset === undefined) return [];
+      const dataset = targets.get(item.dataset);
+      return dataset === undefined
+        ? []
+        : [[exceptionKey({ ...item, dataset }), item.reason] as const];
+    }),
+  );
+  const datasets = live.filter((each) => each.allowed).map((each) => each.row);
+  if (datasets.length === 0) return [];
+  const ids = datasets.map((row) => row.id);
+  const [tables, columns, relationships, measures, links] = await Promise.all([
+    db
+      .select()
+      .from(powerbiTable)
+      .where(
+        and(
+          inArray(powerbiTable.dataset_id, ids),
+          isNull(powerbiTable.removed_at),
+        ),
+      ),
+    db
+      .select({ row: powerbiColumn })
+      .from(powerbiColumn)
+      .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
+      .where(
+        and(
+          inArray(powerbiColumn.dataset_id, ids),
+          isNull(powerbiColumn.removed_at),
+          isNull(powerbiTable.removed_at),
+          hidesPii ? not(piiColumn(powerbiColumn, powerbiTable)) : undefined,
+        ),
+      ),
+    db
+      .select()
+      .from(powerbiRelationship)
+      .where(
+        and(
+          inArray(powerbiRelationship.dataset_id, ids),
+          isNull(powerbiRelationship.removed_at),
+          hidesPii ? leavesOutPiiEnds() : undefined,
+        ),
+      ),
+    db
+      .select({ table_id: powerbiMeasure.table_id })
+      .from(powerbiMeasure)
+      .where(
+        and(
+          inArray(powerbiMeasure.dataset_id, ids),
+          isNull(powerbiMeasure.removed_at),
+          hidesPii ? not(piiMeasure(powerbiMeasure)) : undefined,
+        ),
+      ),
+    db
+      .select({ column_id: termColumn.column_id })
+      .from(termColumn)
+      .innerJoin(powerbiColumn, eq(powerbiColumn.id, termColumn.column_id))
+      .where(inArray(powerbiColumn.dataset_id, ids)),
+  ]);
+  const tablesByDataset = Map.groupBy(tables, (row) => row.dataset_id);
+  const columnsByTable = Map.groupBy(columns, ({ row }) => row.table_id);
+  const relationshipsByDataset = Map.groupBy(
+    relationships,
+    (row) => row.dataset_id,
+  );
+  const measuresByTable = Map.groupBy(measures, (row) => row.table_id);
+  const backed = new Set(links.map((row) => row.column_id));
+  const result: CheckedElement[] = [];
+  const add = (id: string, datasetId: string, element: CheckableElement) => {
+    const dataset = targets.get(datasetId) ?? datasetId;
+    const named = { ...element, dataset };
+    const target = elementTarget(named);
+    result.push({
+      kind: element.kind,
+      id,
+      name: element.name,
+      dataset: element.dataset,
+      dataset_id: datasetId,
+      ...(element.kind === "column" ? { table: element.table } : {}),
+      target,
+      results: checkElement(named, { ...run, exceptions }, target),
+    });
+  };
+  for (const dataset of datasets) {
+    add(dataset.id, dataset.id, {
+      ...dataset,
+      kind: "dataset",
+      dataset: dataset.name,
+    });
+    const ownTables = tablesByDataset.get(dataset.id) ?? [];
+    const modelColumns = ownTables.flatMap((table) =>
+      (columnsByTable.get(table.id) ?? []).map(({ row }) => ({
+        ...row,
+        table: table.name,
+      })),
+    );
+    const { tableKind, ends, columnKey } = modelKinds(
+      modelColumns,
+      relationshipsByDataset.get(dataset.id) ?? [],
+    );
+    for (const table of ownTables) {
+      const own = columnsByTable.get(table.id) ?? [];
+      const table_kind = tableKind({
+        name: table.name,
+        column_count: own.length,
+        measure_count: measuresByTable.get(table.id)?.length ?? 0,
+      });
+      add(table.id, dataset.id, {
+        ...table,
+        kind: "table",
+        dataset: dataset.name,
+        table_kind,
+      });
+      for (const { row } of own) {
+        add(row.id, dataset.id, {
+          ...row,
+          kind: "column",
+          dataset: dataset.name,
+          table: table.name,
+          is_key: ends.has(columnKey(table.name, row.name)),
+          is_hidden: table.is_hidden || row.is_hidden,
+          has_term: backed.has(row.id),
+        });
+      }
+    }
+  }
+  return result;
 }

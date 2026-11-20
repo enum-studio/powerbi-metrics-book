@@ -3,6 +3,7 @@ import {
   type Conventions,
   type CustomFieldSpec,
   exceptionKey,
+  columnTarget,
   METRIC_CHECK_NAMES,
   type MetricCheckName,
   TERM_CHECK_NAMES,
@@ -566,4 +567,168 @@ export function checkCustom(
       { problems },
     );
   }
+}
+
+/** Facts and documentation read in bulk by the whole-book runner. */
+export type CheckableElement = {
+  name: string;
+  dataset: string;
+  description: string | null;
+  custom: Record<string, unknown>;
+} & (
+  | {
+      kind: "dataset";
+      when_to_use?: string | null;
+      owner?: string | null;
+      freshness?: string | null;
+      caveats?: string | null;
+    }
+  | {
+      kind: "table";
+      is_hidden?: boolean;
+      table_kind: "fact" | "dimension" | "date" | "measures" | "standalone";
+      grain_and_filters?: string | null;
+      caveats?: string | null;
+    }
+  | {
+      kind: "column";
+      table: string;
+      is_hidden: boolean;
+      data_type: string | null;
+      is_key: boolean;
+      has_term: boolean;
+      unit?: string | null;
+      blank_means?: string | null;
+    }
+);
+
+export function checkElement(
+  element: CheckableElement,
+  context: Pick<MetricCheckContext, "conventions" | "exceptions">,
+  target = elementTarget(element),
+): CheckResult[] {
+  const check = `${element.kind}_fields` as const;
+  const rules = context.conventions[check];
+  const eligible =
+    element.kind === "table"
+      ? !element.is_hidden &&
+        element.table_kind !== "date" &&
+        element.table_kind !== "measures"
+      : element.kind !== "column" || !element.is_hidden;
+  const needs = (required: boolean | string): boolean =>
+    eligible &&
+    (required === true ||
+      (required === "when_fact" &&
+        element.kind === "table" &&
+        element.table_kind === "fact") ||
+      (required === "when_visible_and_no_term" &&
+        element.kind === "column" &&
+        !element.has_term) ||
+      (required === "when_numeric" &&
+        element.kind === "column" &&
+        !element.is_key &&
+        [
+          "int64",
+          "int32",
+          "int16",
+          "integer",
+          "double",
+          "decimal",
+          "single",
+          "currency",
+        ].includes(element.data_type?.toLowerCase() ?? "")));
+  const found: Finding[] = [];
+  const field = (
+    key: string,
+    required: boolean | string,
+    value: string | null | undefined,
+    message: string,
+  ) => {
+    if (needs(required) && blank(value ?? null))
+      found.push({ rule: `${check}.${key}`, message });
+  };
+  field(
+    "definition",
+    rules.definition.required,
+    element.description,
+    `Write the definition of this ${element.kind}.`,
+  );
+  if (element.kind === "dataset") {
+    const fields = context.conventions.dataset_fields;
+    field(
+      "when_to_use",
+      fields.when_to_use.required,
+      element.when_to_use,
+      "Write when to use this dataset.",
+    );
+    field(
+      "owner",
+      fields.owner.required,
+      element.owner,
+      "Write who owns this dataset.",
+    );
+    field(
+      "freshness",
+      fields.freshness.required,
+      element.freshness,
+      "Write how fresh this dataset is.",
+    );
+    field(
+      "caveats",
+      fields.caveats.required,
+      element.caveats,
+      "Write the caveats of this dataset.",
+    );
+  } else if (element.kind === "table") {
+    const fields = context.conventions.table_fields;
+    field(
+      "grain_and_filters",
+      fields.grain_and_filters.required,
+      element.grain_and_filters,
+      "Write the grain and filters of this table.",
+    );
+    field(
+      "caveats",
+      fields.caveats.required,
+      element.caveats,
+      "Write the caveats of this table.",
+    );
+  } else {
+    const fields = context.conventions.column_fields;
+    field(
+      "unit",
+      fields.unit.required,
+      element.unit,
+      "Write the unit of this column.",
+    );
+    field(
+      "blank_means",
+      fields.blank_means.required,
+      element.blank_means,
+      "Write what a blank means in this column.",
+    );
+  }
+  const custom = eligible
+    ? validateCustomFields(
+        rules.custom.map((spec) => ({
+          ...spec,
+          required: spec.required && needs(rules.definition.required),
+        })),
+        element.custom,
+      )
+    : [];
+  if (custom.length > 0)
+    found.push({ rule: `${check}.custom`, message: custom.join(" ") });
+  return underConventions(resultsOf(check, found), context, target);
+}
+
+export function elementTarget(element: CheckableElement): CheckTarget {
+  return element.kind === "column"
+    ? {
+        dataset: element.dataset,
+        column: columnTarget(element.table, element.name),
+      }
+    : element.kind === "table"
+      ? { dataset: element.dataset, table: element.name }
+      : { dataset: element.dataset };
 }

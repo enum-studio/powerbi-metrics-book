@@ -8743,7 +8743,10 @@
                               "metric_fields",
                               "metric_not_the_same_as",
                               "metric_base_variant",
-                              "term_fields"
+                              "term_fields",
+                              "dataset_fields",
+                              "table_fields",
+                              "column_fields"
                             ]
                           },
                           "target": {
@@ -9285,9 +9288,69 @@
                           ],
                           "additionalProperties": false
                         },
-                        "element_fields": {
+                        "dataset_fields": {
                           "type": "object",
                           "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "when_to_use": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "owner": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "freshness": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
                             "custom": {
                               "type": "array",
                               "items": {
@@ -9335,6 +9398,229 @@
                             }
                           },
                           "required": [
+                            "definition",
+                            "when_to_use",
+                            "owner",
+                            "freshness",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "table_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "grain_and_filters": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_fact"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "grain_and_filters",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "column_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_visible_and_no_term"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "unit": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_numeric"
+                                    }
+                                  ]
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "blank_means": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "unit",
+                            "blank_means",
                             "custom"
                           ],
                           "additionalProperties": false
@@ -9645,7 +9931,10 @@
                                       "metric_fields",
                                       "metric_not_the_same_as",
                                       "metric_base_variant",
-                                      "term_fields"
+                                      "term_fields",
+                                      "dataset_fields",
+                                      "table_fields",
+                                      "column_fields"
                                     ]
                                   }
                                 }
@@ -9688,6 +9977,23 @@
                               "metric_fields.unit",
                               "metric_fields.category",
                               "metric_fields.custom",
+                              "dataset_fields.definition",
+                              "dataset_fields",
+                              "dataset_fields.when_to_use",
+                              "dataset_fields.owner",
+                              "dataset_fields.freshness",
+                              "dataset_fields.caveats",
+                              "dataset_fields.custom",
+                              "table_fields.definition",
+                              "table_fields",
+                              "table_fields.grain_and_filters",
+                              "table_fields.caveats",
+                              "table_fields.custom",
+                              "column_fields.definition",
+                              "column_fields",
+                              "column_fields.unit",
+                              "column_fields.blank_means",
+                              "column_fields.custom",
                               "metric_fields.not_the_same_as",
                               "metric_not_the_same_as",
                               "metric_base_variant",
@@ -9719,6 +10025,20 @@
                                   "metric_fields.unit",
                                   "metric_fields.category",
                                   "metric_fields.custom",
+                                  "dataset_fields.definition",
+                                  "dataset_fields.when_to_use",
+                                  "dataset_fields.owner",
+                                  "dataset_fields.freshness",
+                                  "dataset_fields.caveats",
+                                  "dataset_fields.custom",
+                                  "table_fields.definition",
+                                  "table_fields.grain_and_filters",
+                                  "table_fields.caveats",
+                                  "table_fields.custom",
+                                  "column_fields.definition",
+                                  "column_fields.unit",
+                                  "column_fields.blank_means",
+                                  "column_fields.custom",
                                   "metric_fields.not_the_same_as",
                                   "metric_base_variant",
                                   "term_fields.definition",
@@ -9766,7 +10086,9 @@
                         "naming",
                         "metric_fields",
                         "term_fields",
-                        "element_fields",
+                        "dataset_fields",
+                        "table_fields",
+                        "column_fields",
                         "variants",
                         "drafting",
                         "trust",
@@ -10237,9 +10559,69 @@
                           ],
                           "additionalProperties": false
                         },
-                        "element_fields": {
+                        "dataset_fields": {
                           "type": "object",
                           "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "when_to_use": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "owner": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "freshness": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
                             "custom": {
                               "type": "array",
                               "items": {
@@ -10287,6 +10669,229 @@
                             }
                           },
                           "required": [
+                            "definition",
+                            "when_to_use",
+                            "owner",
+                            "freshness",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "table_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "grain_and_filters": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_fact"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "grain_and_filters",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "column_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_visible_and_no_term"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "unit": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_numeric"
+                                    }
+                                  ]
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "blank_means": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "unit",
+                            "blank_means",
                             "custom"
                           ],
                           "additionalProperties": false
@@ -10597,7 +11202,10 @@
                                       "metric_fields",
                                       "metric_not_the_same_as",
                                       "metric_base_variant",
-                                      "term_fields"
+                                      "term_fields",
+                                      "dataset_fields",
+                                      "table_fields",
+                                      "column_fields"
                                     ]
                                   }
                                 }
@@ -10640,6 +11248,23 @@
                               "metric_fields.unit",
                               "metric_fields.category",
                               "metric_fields.custom",
+                              "dataset_fields.definition",
+                              "dataset_fields",
+                              "dataset_fields.when_to_use",
+                              "dataset_fields.owner",
+                              "dataset_fields.freshness",
+                              "dataset_fields.caveats",
+                              "dataset_fields.custom",
+                              "table_fields.definition",
+                              "table_fields",
+                              "table_fields.grain_and_filters",
+                              "table_fields.caveats",
+                              "table_fields.custom",
+                              "column_fields.definition",
+                              "column_fields",
+                              "column_fields.unit",
+                              "column_fields.blank_means",
+                              "column_fields.custom",
                               "metric_fields.not_the_same_as",
                               "metric_not_the_same_as",
                               "metric_base_variant",
@@ -10671,6 +11296,20 @@
                                   "metric_fields.unit",
                                   "metric_fields.category",
                                   "metric_fields.custom",
+                                  "dataset_fields.definition",
+                                  "dataset_fields.when_to_use",
+                                  "dataset_fields.owner",
+                                  "dataset_fields.freshness",
+                                  "dataset_fields.caveats",
+                                  "dataset_fields.custom",
+                                  "table_fields.definition",
+                                  "table_fields.grain_and_filters",
+                                  "table_fields.caveats",
+                                  "table_fields.custom",
+                                  "column_fields.definition",
+                                  "column_fields.unit",
+                                  "column_fields.blank_means",
+                                  "column_fields.custom",
                                   "metric_fields.not_the_same_as",
                                   "metric_base_variant",
                                   "term_fields.definition",
@@ -10717,7 +11356,9 @@
                         "naming",
                         "metric_fields",
                         "term_fields",
-                        "element_fields",
+                        "dataset_fields",
+                        "table_fields",
+                        "column_fields",
                         "variants",
                         "drafting",
                         "trust",
@@ -10975,6 +11616,20 @@
                               "metric_fields.unit",
                               "metric_fields.category",
                               "metric_fields.custom",
+                              "dataset_fields.definition",
+                              "dataset_fields.when_to_use",
+                              "dataset_fields.owner",
+                              "dataset_fields.freshness",
+                              "dataset_fields.caveats",
+                              "dataset_fields.custom",
+                              "table_fields.definition",
+                              "table_fields.grain_and_filters",
+                              "table_fields.caveats",
+                              "table_fields.custom",
+                              "column_fields.definition",
+                              "column_fields.unit",
+                              "column_fields.blank_means",
+                              "column_fields.custom",
                               "metric_fields.not_the_same_as",
                               "metric_base_variant",
                               "term_fields.definition",
@@ -11107,10 +11762,10 @@
     "/api/v1/conventions/exceptions/unused": {
       "get": {
         "operationId": "getApiV1ConventionsExceptionsUnused",
-        "summary": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them",
+        "summary": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them",
         "responses": {
           "200": {
-            "description": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them",
+            "description": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them",
             "content": {
               "application/json": {
                 "schema": {
@@ -11147,7 +11802,8 @@
                             "type": "string",
                             "enum": [
                               "no_such_target",
-                              "passes"
+                              "passes",
+                              "ambiguous"
                             ]
                           }
                         },
@@ -16707,6 +17363,224 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/docs/checks": {
+      "get": {
+        "operationId": "getApiV1DocsChecks",
+        "summary": "Missing required documentation on visible datasets, tables and columns",
+        "responses": {
+          "200": {
+            "description": "Missing required documentation on visible datasets, tables and columns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "dataset",
+                              "table",
+                              "column"
+                            ]
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "dataset": {
+                            "type": "string"
+                          },
+                          "table": {
+                            "type": "string"
+                          },
+                          "results": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "check": {
+                                  "type": "string"
+                                },
+                                "rule": {
+                                  "type": "string"
+                                },
+                                "passed": {
+                                  "type": "boolean"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "exception": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "check",
+                                "rule",
+                                "passed",
+                                "message"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "name",
+                          "dataset",
+                          "results"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "failing": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "unused_exceptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "metric",
+                                "term",
+                                "dataset",
+                                "table",
+                                "column"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "why": {
+                            "type": "string",
+                            "enum": [
+                              "no_such_target",
+                              "passes",
+                              "ambiguous"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "target",
+                          "reason",
+                          "why"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "failing",
+                    "unused_exceptions",
+                    "next_cursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        ]
       }
     },
     "/api/v1/events": {

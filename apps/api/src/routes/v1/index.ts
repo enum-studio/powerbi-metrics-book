@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../app.js";
 import type { AppDeps } from "../../context.js";
+import { docsChecksRoutes } from "./docs-checks.js";
 import { adminRoutes } from "./admin.js";
 import { conventionsRoutes } from "./conventions.js";
 import { curationRoutes } from "./curation.js";
@@ -32,6 +33,7 @@ const ROUTE_MODULES: readonly ((deps: AppDeps) => Hono<AppEnv>)[] = [
   requestsRoutes,
   usageRoutes,
   readRoutes,
+  docsChecksRoutes,
   eventsRoutes,
   adminRoutes,
 ];

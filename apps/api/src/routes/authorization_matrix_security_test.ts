@@ -677,6 +677,7 @@ const ROUTE_REQUESTS: Partial<
   "POST /api/v1/conventions/apply": () => ({
     body: { conventions: { format: 1, ...checksOff() }, dry_run: true },
   }),
+  "GET /api/v1/docs/checks": () => ({}),
   "GET /api/v1/conventions/exceptions/unused": () => ({
     query: `metric=${encodeURIComponent(at.metric)}`,
     missingQuery: `metric=${MISSING}`,

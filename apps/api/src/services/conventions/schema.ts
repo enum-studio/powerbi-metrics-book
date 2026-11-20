@@ -24,9 +24,15 @@ export const METRIC_CHECK_NAMES = [
   "metric_base_variant",
 ] as const;
 export const TERM_CHECK_NAMES = ["term_fields"] as const;
+export const ELEMENT_CHECK_NAMES = [
+  "dataset_fields",
+  "table_fields",
+  "column_fields",
+] as const;
 export const CHECK_NAMES = [
   ...METRIC_CHECK_NAMES,
   ...TERM_CHECK_NAMES,
+  ...ELEMENT_CHECK_NAMES,
 ] as const;
 export type MetricCheckName = (typeof METRIC_CHECK_NAMES)[number];
 export type TermCheckName = (typeof TERM_CHECK_NAMES)[number];
@@ -192,6 +198,9 @@ export const exceptionKey = (
   item: Partial<Pick<ConventionsException, (typeof KEYED_BY)[number]>>,
 ): string => JSON.stringify(KEYED_BY.map((key) => item[key] ?? null));
 
+export const columnTarget = (table: string, column: string) =>
+  `'${table}'[${column}]`;
+
 const exceptions = z
   .array(exception)
   .refine(
@@ -223,7 +232,33 @@ export const conventionsSchema = z.strictObject({
     }),
     custom: customFields,
   }),
-  element_fields: z.strictObject({ custom: customFields }),
+  dataset_fields: z.strictObject({
+    definition: required,
+    when_to_use: required,
+    owner: required,
+    freshness: required,
+    caveats: required,
+    custom: customFields,
+  }),
+  table_fields: z.strictObject({
+    definition: required,
+    grain_and_filters: z.strictObject({
+      required: z.union([z.boolean(), z.literal("when_fact")]),
+    }),
+    caveats: required,
+    custom: customFields,
+  }),
+  column_fields: z.strictObject({
+    definition: z.strictObject({
+      required: z.union([z.boolean(), z.literal("when_visible_and_no_term")]),
+    }),
+    unit: z.strictObject({
+      required: z.union([z.boolean(), z.literal("when_numeric")]),
+      values: words,
+    }),
+    blank_means: required,
+    custom: customFields,
+  }),
   variants,
   drafting: z.strictObject({
     group_by_fingerprint: z.boolean(),

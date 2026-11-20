@@ -414,3 +414,31 @@ exceptions: []
     });
   });
 });
+
+it("copies pre-format custom fields to each kind and leaves measures with none", async () => {
+  const custom = [
+    { key: "owner_team", label: "Owner team", type: "text", required: true },
+  ];
+  const rules = resolve({});
+  const old = {
+    preset: rules.preset,
+    naming: rules.naming,
+    metric_fields: rules.metric_fields,
+    term_fields: rules.term_fields,
+    variants: rules.variants,
+    drafting: rules.drafting,
+    trust: rules.trust,
+    off: rules.off,
+    exceptions: rules.exceptions,
+    guide: rules.guide,
+  };
+  await store(1, { ...old, element_fields: { custom } });
+  expect(await upgradeStoredConventions(migrator)).toBe(1);
+  const [row] = await stored();
+  expect(resolve(row?.document)).toMatchObject({
+    dataset_fields: { custom },
+    table_fields: { custom },
+    column_fields: { custom },
+  });
+  expect(row?.document).not.toHaveProperty("element_fields");
+});

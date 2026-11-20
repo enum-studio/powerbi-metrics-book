@@ -1,21 +1,34 @@
-import { TransactionRollbackError } from "drizzle-orm";
+import { eq, TransactionRollbackError } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals, testPool } from "../../../test/deps.js";
-import { asPerson } from "../../../test/mirror-fixtures.js";
+import { appReader, asPerson } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
-import { metric, term } from "../../db/schema/book.js";
+import { metric, term, termColumn } from "../../db/schema/book.js";
 import * as schema from "../../db/schema/index.js";
+import { id, useMirror } from "../../../test/mirror-fixtures.js";
+import { applyConventions } from "../conventions/apply.js";
+import { exceptionKey } from "../conventions/schema.js";
 import { resolve } from "../conventions/store.js";
 import { METRICS, TERMS } from "../sample/book.js";
+import { getDataset } from "../mirror/read.js";
 import { metricChecks } from "./metrics.js";
-import { failuresInBook, unusedExceptions } from "./whole-book-checks.js";
+import {
+  checkedElements,
+  failuresInBook,
+  unusedExceptions,
+} from "./whole-book-checks.js";
+
+import { TEST_RUNNER } from "../../../test/database.js";
+import { exceptionIndex } from "./checks.js";
+import { setRole } from "../../../test/sample-mirror.js";
+import { piiRule } from "../../db/schema/pii.js";
 
 afterAll(closeTestPools);
 
 const statements: string[] = [];
 const logged = drizzle({
-  client: testPool("api_rw"),
+  client: testPool(TEST_RUNNER),
   schema,
   logger: { logQuery: (query) => statements.push(query) },
 });
@@ -24,6 +37,7 @@ const logged = drizzle({
 const rolledBack = (work: (tx: Db) => Promise<void>) =>
   expect(
     logged.transaction(async (tx) => {
+      await setRole(tx, "api_rw");
       await work(tx);
       tx.rollback();
     }),
@@ -201,5 +215,306 @@ describe("unusedExceptions", () => {
       expect(await unusedExceptions({ db: tx }, conventions)).toMatchObject([
         { why: "passes", target: { metric: "draft_0" } },
       ]);
+    }));
+});
+
+describe("whole-book element checks", () => {
+  useMirror();
+  it("derives term backing, numeric keys, date and fact kinds from the mirror", () =>
+    rolledBack(async (tx) => {
+      const [linked] = await tx
+        .insert(term)
+        .values({ name: "Channel meaning" })
+        .returning();
+      if (linked === undefined) throw new Error("Term was not inserted.");
+      await tx
+        .insert(termColumn)
+        .values({ term_id: linked.id, column_id: id.channel });
+      await setRole(tx, "worker_rw");
+      await tx
+        .update(schema.powerbiRelationship)
+        .set({ cardinality: "many_to_one" })
+        .where(eq(schema.powerbiRelationship.dataset_id, id.sales));
+      await tx
+        .update(schema.powerbiColumn)
+        .set({ data_type: "Int64" })
+        .where(eq(schema.powerbiColumn.id, id.order_date));
+      await tx
+        .update(schema.powerbiTable)
+        .set({ is_hidden: false })
+        .where(eq(schema.powerbiTable.id, id.date_table));
+      await tx.insert(schema.powerbiColumn).values({
+        dataset_id: id.sales,
+        table_id: id.date_table,
+        name: "Date",
+        data_type: "DateTime",
+        column_type: "data",
+      });
+      await setRole(tx, "api_rw");
+      const run = {
+        conventions: metricsBook,
+        exceptions: exceptionIndex(metricsBook),
+      };
+      const rows = await checkedElements({ db: tx }, run);
+      const passes = (id: string, rule: string) =>
+        rows
+          .find((row) => row.id === id)
+          ?.results.find((result) => result.rule === rule)?.passed;
+      expect(passes(id.channel, "column_fields.definition")).toBe(true);
+      expect(passes(id.order_date, "column_fields.unit")).toBe(true);
+      expect(
+        rows
+          .find((row) => row.id === id.date_table)
+          ?.results.every((result) => result.passed),
+      ).toBe(true);
+      expect(passes(id.sales_table, "table_fields.grain_and_filters")).toBe(
+        false,
+      );
+    }));
+
+  it("checks the table kind and numeric keys shown on the caller's table page", () =>
+    rolledBack(async (tx) => {
+      await setRole(tx, "worker_rw");
+      await tx
+        .update(schema.powerbiRelationship)
+        .set({ cardinality: "many_to_one" })
+        .where(eq(schema.powerbiRelationship.dataset_id, id.sales));
+      await tx
+        .update(schema.powerbiColumn)
+        .set({ data_type: "Int64" })
+        .where(eq(schema.powerbiColumn.id, id.order_date));
+      await tx.insert(schema.powerbiColumn).values({
+        dataset_id: id.sales,
+        table_id: id.date_table,
+        name: "Date",
+        data_type: "DateTime",
+        column_type: "data",
+      });
+      await setRole(tx, "api_rw");
+      await tx.insert(piiRule).values({
+        kind: "column",
+        table_name: "Date",
+        name: "Date",
+        set_by_kind: "person",
+        set_by_id: principals.admin.id,
+        set_via: "browser",
+        pii: true,
+      });
+      const run = {
+        conventions: metricsBook,
+        exceptions: exceptionIndex(metricsBook),
+      };
+      for (const readsPii of [false, true]) {
+        const context = asPerson(
+          {
+            ...appReader,
+            roles: readsPii
+              ? [...appReader.roles, "pii_reader"]
+              : appReader.roles,
+          },
+          { db: tx },
+        );
+        const page = await getDataset(context, id.sales);
+        const table = page.tables.find((row) => row.id === id.sales_table);
+        expect(table?.kind).toBe(readsPii ? "fact" : "standalone");
+        expect(table?.column_names).toEqual(
+          readsPii ? ["Order date", "Channel"] : ["Channel", "Order date"],
+        );
+        const rows = await checkedElements(
+          { db: tx },
+          run,
+          undefined,
+          !readsPii,
+        );
+        expect(
+          rows
+            .find((row) => row.id === id.sales_table)
+            ?.results.find(
+              (result) => result.rule === "table_fields.grain_and_filters",
+            )?.passed,
+        ).toBe(table?.kind !== "fact");
+        expect(
+          rows
+            .find((row) => row.id === id.order_date)
+            ?.results.find((result) => result.rule === "column_fields.unit")
+            ?.passed,
+        ).toBe(readsPii);
+      }
+    }));
+
+  it("asks nothing of hidden tables or their visible numeric columns", () =>
+    rolledBack(async (tx) => {
+      await setRole(tx, "worker_rw");
+      await tx
+        .update(schema.powerbiTable)
+        .set({ is_hidden: true })
+        .where(eq(schema.powerbiTable.id, id.sales_table));
+      await tx
+        .update(schema.powerbiColumn)
+        .set({ data_type: "Double" })
+        .where(eq(schema.powerbiColumn.id, id.channel));
+      await setRole(tx, "api_rw");
+      const rows = await checkedElements(
+        { db: tx },
+        { conventions: metricsBook, exceptions: exceptionIndex(metricsBook) },
+      );
+      const hidden = rows.filter(
+        (row) => row.id === id.sales_table || row.table === "Sales",
+      );
+      expect(hidden.length).toBeGreaterThan(1);
+      expect(
+        hidden.every((row) => row.results.every((result) => result.passed)),
+      ).toBe(true);
+    }));
+
+  it("includes element failures and unused exceptions, with a constant number of reads", () =>
+    rolledBack(async (tx) => {
+      const conventions = resolve({
+        exceptions: [
+          {
+            rule: "dataset_fields.definition",
+            dataset: "Sales",
+            reason: "Already documented.",
+          },
+          {
+            rule: "table_fields.definition",
+            dataset: "Sales",
+            table: "Sales",
+            reason: "Kept.",
+          },
+          {
+            rule: "column_fields.definition",
+            dataset: "Sales",
+            column: "'Sales'[Missing]",
+            reason: "Gone.",
+          },
+        ],
+      });
+      statements.length = 0;
+      const failures = await failuresInBook(
+        { db: tx },
+        conventions,
+        new Set([
+          "dataset_fields.when_to_use",
+          "table_fields.definition",
+          "column_fields.definition",
+        ]),
+      );
+      expect(statements).toHaveLength(6);
+      expect(failures).toContainEqual({
+        rule: "dataset_fields.when_to_use",
+        target: { dataset: "Sales" },
+      });
+      expect(failures).not.toContainEqual({
+        rule: "table_fields.definition",
+        target: { dataset: "Sales", table: "Sales" },
+      });
+      expect(failures).toContainEqual({
+        rule: "column_fields.definition",
+        target: { dataset: "Sales", column: "'Sales'[Channel]" },
+      });
+      const checked = await checkedElements(
+        { db: tx },
+        { conventions, exceptions: exceptionIndex(conventions) },
+      );
+      const reads = statements.length;
+      const unused = await unusedExceptions(
+        { db: tx },
+        conventions,
+        undefined,
+        checked,
+      );
+      expect(statements).toHaveLength(reads);
+      expect(unused).toEqual([
+        {
+          rule: "dataset_fields.definition",
+          target: { dataset: "Sales" },
+          reason: "Already documented.",
+          why: "passes",
+        },
+        {
+          rule: "column_fields.definition",
+          target: { dataset: "Sales", column: "'Sales'[Missing]" },
+          reason: "Gone.",
+          why: "no_such_target",
+        },
+      ]);
+    }));
+
+  it("includes element failures in apply and sorts the baseline's exceptions", () =>
+    rolledBack(async (tx) => {
+      const answer = await applyConventions({ db: tx }, principals.admin, {
+        conventions: {
+          format: 1,
+          dataset_fields: { owner: { required: true } },
+        },
+        dry_run: false,
+        baseline_reason: "Document later.",
+      });
+      expect(answer.now_failing["dataset_fields.owner"]).toBeGreaterThan(0);
+      expect(answer.exceptions_added).toContainEqual({
+        rule: "dataset_fields.owner",
+        dataset: "Sales",
+        reason: "Document later.",
+      });
+      for (const dataset of [id.twin_a, id.twin_b]) {
+        expect(answer.exceptions_added).toContainEqual({
+          rule: "dataset_fields.owner",
+          dataset,
+          reason: "Document later.",
+        });
+      }
+      expect(answer.version).not.toBeNull();
+      const keys = answer.exceptions_added.map(exceptionKey);
+      expect(keys).toEqual([...keys].sort());
+    }));
+
+  it("ignores ambiguous dataset names but applies ids and unique names", () =>
+    rolledBack(async (tx) => {
+      const conventions = resolve({
+        dataset_fields: { owner: { required: true } },
+        exceptions: [
+          {
+            rule: "dataset_fields.owner",
+            dataset: "Twin",
+            reason: "Ambiguous.",
+          },
+          { rule: "dataset_fields.owner", dataset: "Sales", reason: "Unique." },
+        ],
+      });
+      const failures = await failuresInBook({ db: tx }, conventions);
+      for (const dataset of [id.twin_a, id.twin_b]) {
+        expect(failures).toContainEqual({
+          rule: "dataset_fields.owner",
+          target: { dataset },
+        });
+      }
+      expect(failures).not.toContainEqual({
+        rule: "dataset_fields.owner",
+        target: { dataset: "Sales" },
+      });
+      expect(await unusedExceptions({ db: tx }, conventions)).toEqual([
+        {
+          rule: "dataset_fields.owner",
+          target: { dataset: "Twin" },
+          reason: "Ambiguous.",
+          why: "ambiguous",
+        },
+      ]);
+      const byId = resolve({
+        dataset_fields: { owner: { required: true } },
+        exceptions: [
+          {
+            rule: "dataset_fields.owner",
+            dataset: id.sales,
+            reason: "By id.",
+          },
+        ],
+      });
+      expect(await failuresInBook({ db: tx }, byId)).not.toContainEqual({
+        rule: "dataset_fields.owner",
+        target: { dataset: "Sales" },
+      });
+      expect(await unusedExceptions({ db: tx }, byId)).toEqual([]);
     }));
 });

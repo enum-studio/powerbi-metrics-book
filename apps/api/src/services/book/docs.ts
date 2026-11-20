@@ -1,3 +1,9 @@
+import { visibleExceptions } from "../conventions/service.js";
+import {
+  checkedElements,
+  unusedExceptions,
+  type CheckedElement,
+} from "./whole-book-checks.js";
 import { isDeepStrictEqual } from "node:util";
 import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn, PgColumn } from "drizzle-orm/pg-core";
@@ -14,10 +20,10 @@ import {
 import { NO_SUCH_DATASET, ServiceError } from "../../errors.js";
 import { currentConventions } from "../conventions/store.js";
 import { withEvents } from "../events/feed.js";
-import { appsSeen } from "../mirror/read.js";
+import { appsSeen, decodeCursor, pageBy, sizeOf } from "../mirror/read.js";
 import { piiColumn, piiMeasure, readsPii } from "../pii/rules.js";
 import { recordBookChange, requireCurator } from "./changes.js";
-import { checkCustom } from "./checks.js";
+import { checkCustom, exceptionIndex } from "./checks.js";
 
 /*
  * Our description of a mirror element, beside Power BI's. The sync never
@@ -239,7 +245,7 @@ export async function getDocs(
 /**
  * Sets what is given: a description (blank clears it) and the custom fields
  * (the whole object, replacing the old). The custom fields are checked against
- * the conventions' element_fields; one the conventions require and the
+ * the conventions' fields for the kind; one the conventions require and the
  * element lacks is for the checks to report, not a reason to refuse the write.
  */
 export async function setDocs(
@@ -264,9 +270,28 @@ export async function setDocs(
       { code: "docs.field_not_on_kind", field, kind: element.kind },
     );
   }
-  if (input.custom !== undefined) {
-    const { element_fields } = await currentConventions(context.db);
-    checkCustom(element_fields.custom, input.custom);
+  if (input.custom !== undefined || input.unit !== undefined) {
+    const rules = await currentConventions(context.db);
+    if (input.custom !== undefined) {
+      const kind = element.kind;
+      const fields =
+        kind === "dataset" || kind === "table" || kind === "column"
+          ? rules[`${kind}_fields`].custom
+          : [];
+      checkCustom(fields, input.custom);
+    }
+    if (input.unit?.trim()) {
+      const { column_fields } = rules;
+      if (!column_fields.unit.values.includes(input.unit.trim()))
+        throw new ServiceError(
+          "invalid",
+          `Use one of these units: ${column_fields.unit.values.join(", ")}.`,
+          {
+            code: "docs.unit_not_allowed",
+            values: column_fields.unit.values,
+          },
+        );
+    }
   }
   return withEvents(context.db, async (tx) => {
     const { table, docs: before } = await load(tx, context, element);
@@ -307,4 +332,83 @@ export async function setDocs(
     });
     return after;
   });
+}
+
+/** The visible documentation gaps, with a stable name/id keyset like the mirror lists. */
+export async function docsChecks(
+  context: ServiceContext,
+  filters: { dataset?: string; limit?: number; cursor?: string } = {},
+) {
+  const allowed = await context.access.describableDatasets(context.principal);
+  const conventions = await currentConventions(context.db);
+  const rows = await checkedElements(
+    context,
+    { conventions, exceptions: exceptionIndex(conventions) },
+    allowed,
+    !(await readsPii(context)),
+  );
+  const dataset =
+    filters.dataset === undefined
+      ? undefined
+      : rows.find(
+          (row) =>
+            row.kind === "dataset" &&
+            (row.name === filters.dataset || row.id === filters.dataset),
+        );
+  if (filters.dataset !== undefined && dataset === undefined)
+    throw new ServiceError("not_found", NO_SUCH_DATASET);
+  const failures = rows.filter(
+    (row) =>
+      (dataset === undefined || row.dataset_id === dataset.id) &&
+      row.results.some((result) => !result.passed),
+  );
+  const nameOf = (row: CheckedElement) =>
+    JSON.stringify([
+      row.dataset,
+      row.dataset_id,
+      row.kind === "dataset" ? "" : (row.table ?? row.name),
+      row.kind === "column" ? 1 : 0,
+      row.name,
+    ]);
+  const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  failures.sort((a, b) => compare(nameOf(a), nameOf(b)) || compare(a.id, b.id));
+  const after =
+    filters.cursor === undefined ? undefined : decodeCursor(filters.cursor);
+  const remaining =
+    after === undefined
+      ? failures
+      : failures.filter((row) => {
+          const order = compare(nameOf(row), after.names[0]);
+          return order > 0 || (order === 0 && compare(row.id, after.id) > 0);
+        });
+  const exceptions = await visibleExceptions(
+    context,
+    conventions.exceptions.filter(
+      (item) =>
+        item.dataset !== undefined &&
+        (dataset === undefined ||
+          item.dataset === dataset.id ||
+          item.dataset === dataset.name),
+    ),
+  );
+  const unused = await unusedExceptions(
+    context,
+    { ...conventions, exceptions },
+    undefined,
+    rows,
+  );
+  const page = pageBy(remaining, sizeOf(filters.limit), nameOf);
+  return {
+    ...page,
+    items: page.items.map(({ kind, id, name, dataset, table, results }) => ({
+      kind,
+      id,
+      name,
+      dataset,
+      ...(table === undefined ? {} : { table }),
+      results,
+    })),
+    failing: failures.length,
+    unused_exceptions: unused,
+  };
 }

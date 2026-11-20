@@ -162,14 +162,14 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
   );
 
   const unused = documented(
-    "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them",
+    "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them",
     z.object({
       unused: z.array(
         z.object({
           rule: z.string(),
           target: z.partialRecord(z.enum(RULE_TARGETS), z.string()),
           reason: z.string(),
-          why: z.enum(["no_such_target", "passes"]),
+          why: z.enum(["no_such_target", "passes", "ambiguous"]),
         }),
       ),
     }),
