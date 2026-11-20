@@ -106,7 +106,7 @@ Open `sample-book.yml` and delete:
 - the settings `search.provider` and `search.model`, which the setup set for the mock's embeddings;
 - any workspace ids, such as in `powerbi.sync.workspaces.include` and `powerbi.sync.workspaces.exclude`, which name the sample's workspaces.
 
-What is left is your `conventions` and the settings you chose, such as schedules and limits. After the new stack's setup, apply it:
+The export also wrote `conventions.yml` beside `sample-book.yml`. Keep both files together. What is left in `sample-book.yml` is the settings you chose, such as schedules and limits. After the new stack's setup, apply it:
 
 ```bash
 pbmb admin import sample-book.yml

@@ -265,6 +265,7 @@ describe("get_metric", () => {
         base_variants: { measure_reference: string }[];
         failing_checks: {
           check: string;
+          rule: string;
           message: string;
           other_labels?: string[];
         }[];
@@ -275,6 +276,7 @@ describe("get_metric", () => {
       const sharing = metric.failing_checks.find(
         ({ check }) => check === "metric_not_the_same_as",
       );
+      expect(sharing?.rule).toBe("metric_fields.not_the_same_as");
       expect(sharing?.message).toMatch(/^400 other metrics share/);
       expect(sharing?.other_labels).toHaveLength(10);
     }));

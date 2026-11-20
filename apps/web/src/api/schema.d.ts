@@ -530,6 +530,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conventions/rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Every rule by its id: its value, where the value comes from, and whether it is off */
+    get: operations["getApiV1ConventionsRules"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conventions/company": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What the company set over its preset, in the version in force */
+    get: operations["getApiV1ConventionsCompany"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/conventions": {
     parameters: {
       query?: never;
@@ -537,7 +571,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The company's conventions: the guide in words and the rules as data */
+    /** The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has */
     get: operations["getApiV1Conventions"];
     /** Save the conventions as the next version */
     put: operations["putApiV1Conventions"];
@@ -576,6 +610,40 @@ export interface paths {
     put?: never;
     /** What a document would change, unsaved */
     post: operations["postApiV1ConventionsDiff"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conventions/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run */
+    post: operations["postApiV1ConventionsApply"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/conventions/exceptions/unused": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them */
+    get: operations["getApiV1ConventionsExceptionsUnused"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1044,6 +1112,23 @@ export interface paths {
     };
     /** The glyph names and colors an icon may use */
     get: operations["getApiV1Icons"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/docs/checks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more */
+    get: operations["getApiV1DocsChecks"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1936,6 +2021,7 @@ export interface components {
         | "upstream"
         | "unavailable";
       message: string;
+      code?: string;
     };
     Me: {
       id: string;
@@ -2059,6 +2145,8 @@ export interface components {
       };
       failing_checks: {
         check: string;
+        /** @description The id of the rule the sentence is about. */
+        rule: string;
         message: string;
         /** @description The ten closest of the metrics the sentence counts, closest first. `GET /metrics/{name}/checks` lists them all. */
         other_labels?: string[];
@@ -4327,10 +4415,14 @@ export interface operations {
           "application/json": {
             checks: {
               check: string;
+              /** @description The id of the rule the result is about. */
+              rule: string;
               passed: boolean;
               message: string;
               /** @description The metrics the sentence counts, closest first. */
               other_labels?: string[];
+              /** @description Failing, it passes by an exception with this reason. */
+              exception?: string;
             }[];
           };
         };
@@ -5363,6 +5455,13 @@ export interface operations {
               id: string;
               name: string;
             };
+            when_to_use?: string | null;
+            owner?: string | null;
+            freshness?: string | null;
+            caveats?: string | null;
+            grain_and_filters?: string | null;
+            unit?: string | null;
+            blank_means?: string | null;
             description: string | null;
             description_pbi: string | null;
             described_by: string | null;
@@ -5428,6 +5527,13 @@ export interface operations {
           custom?: {
             [key: string]: string | number | boolean | null;
           };
+          when_to_use?: string | null;
+          owner?: string | null;
+          freshness?: string | null;
+          caveats?: string | null;
+          grain_and_filters?: string | null;
+          unit?: string | null;
+          blank_means?: string | null;
         };
       };
     };
@@ -5444,6 +5550,13 @@ export interface operations {
               id: string;
               name: string;
             };
+            when_to_use?: string | null;
+            owner?: string | null;
+            freshness?: string | null;
+            caveats?: string | null;
+            grain_and_filters?: string | null;
+            unit?: string | null;
+            blank_means?: string | null;
             description: string | null;
             description_pbi: string | null;
             described_by: string | null;
@@ -5674,6 +5787,119 @@ export interface operations {
       };
     };
   };
+  getApiV1ConventionsRules: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Every rule by its id: its value, where the value comes from, and whether it is off */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            rules: {
+              id: string;
+              /** @enum {string} */
+              check:
+                | "metric_name_form"
+                | "metric_name_generated"
+                | "metric_name_comparison"
+                | "metric_money_qualifier"
+                | "metric_qualifier_order"
+                | "metric_fields"
+                | "metric_not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields"
+                | "dataset_fields"
+                | "table_fields"
+                | "column_fields";
+              /** @enum {string} */
+              target: "metric" | "term" | "dataset" | "table" | "column";
+              value: unknown;
+              /** @enum {string} */
+              source: "preset" | "company";
+              allowed: (string | boolean)[] | null;
+              off: boolean;
+              exceptions: number;
+            }[];
+            fixed: {
+              id: string;
+              reason: string;
+            }[];
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1ConventionsCompany: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description What the company set over its preset, in the version in force */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            format: 1;
+            /** @enum {string} */
+            preset?: "metrics_book" | "minimal";
+          } & {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
   getApiV1Conventions: {
     parameters: {
       query?: never;
@@ -5683,7 +5909,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description The company's conventions: the guide in words and the rules as data */
+      /** @description The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has */
       200: {
         headers: {
           [name: string]: unknown;
@@ -5765,7 +5991,63 @@ export interface operations {
                   required: boolean;
                 }[];
               };
-              element_fields: {
+              dataset_fields: {
+                definition: {
+                  required: boolean;
+                };
+                when_to_use: {
+                  required: boolean;
+                };
+                owner: {
+                  required: boolean;
+                };
+                freshness: {
+                  required: boolean;
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              table_fields: {
+                definition: {
+                  required: boolean;
+                };
+                grain_and_filters: {
+                  required: boolean | "when_fact";
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              column_fields: {
+                definition: {
+                  required: boolean | "when_visible_and_no_term";
+                };
+                unit: {
+                  required: boolean | "when_numeric";
+                  values: string[];
+                };
+                blank_means: {
+                  required: boolean;
+                };
                 custom: {
                   key: string;
                   label: string;
@@ -5812,12 +6094,19 @@ export interface operations {
                   hidden_measures: boolean;
                   display_folders: string[];
                   tables: string[];
-                  name_patterns: string[];
+                  name_prefixes: string[];
+                  names: string[];
                 };
-                dismiss: {
-                  name_pattern: string;
-                  reason: string;
-                }[];
+                dismiss: (
+                  | {
+                      prefix: string;
+                      reason: string;
+                    }
+                  | {
+                      name: string;
+                      reason: string;
+                    }
+                )[];
               };
               trust: {
                 agent_verify_requires:
@@ -5832,23 +6121,60 @@ export interface operations {
                       | "metric_not_the_same_as"
                       | "metric_base_variant"
                       | "term_fields"
+                      | "dataset_fields"
+                      | "table_fields"
+                      | "column_fields"
                     )[];
                 /** @enum {string} */
                 human_verify_from: "browser" | "any";
               };
-              checks: {
-                off: (
-                  | "metric_name_form"
-                  | "metric_name_generated"
-                  | "metric_name_comparison"
-                  | "metric_money_qualifier"
-                  | "metric_qualifier_order"
-                  | "metric_fields"
-                  | "metric_not_the_same_as"
-                  | "metric_base_variant"
-                  | "term_fields"
-                )[];
-              };
+              off: (
+                | "naming.case"
+                | "metric_name_form"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "metric_name_comparison"
+                | "naming.money_qualifier"
+                | "metric_money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "dataset_fields.definition"
+                | "dataset_fields"
+                | "dataset_fields.when_to_use"
+                | "dataset_fields.owner"
+                | "dataset_fields.freshness"
+                | "dataset_fields.caveats"
+                | "dataset_fields.custom"
+                | "table_fields.definition"
+                | "table_fields"
+                | "table_fields.grain_and_filters"
+                | "table_fields.caveats"
+                | "table_fields.custom"
+                | "column_fields.definition"
+                | "column_fields"
+                | "column_fields.unit"
+                | "column_fields.blank_means"
+                | "column_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields"
+                | "term_fields.values"
+                | "term_fields.custom"
+              )[];
+            };
+            exceptions: {
+              [key: string]: number;
             };
           };
         };
@@ -5968,7 +6294,63 @@ export interface operations {
                   required: boolean;
                 }[];
               };
-              element_fields: {
+              dataset_fields: {
+                definition: {
+                  required: boolean;
+                };
+                when_to_use: {
+                  required: boolean;
+                };
+                owner: {
+                  required: boolean;
+                };
+                freshness: {
+                  required: boolean;
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              table_fields: {
+                definition: {
+                  required: boolean;
+                };
+                grain_and_filters: {
+                  required: boolean | "when_fact";
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              column_fields: {
+                definition: {
+                  required: boolean | "when_visible_and_no_term";
+                };
+                unit: {
+                  required: boolean | "when_numeric";
+                  values: string[];
+                };
+                blank_means: {
+                  required: boolean;
+                };
                 custom: {
                   key: string;
                   label: string;
@@ -6015,12 +6397,19 @@ export interface operations {
                   hidden_measures: boolean;
                   display_folders: string[];
                   tables: string[];
-                  name_patterns: string[];
+                  name_prefixes: string[];
+                  names: string[];
                 };
-                dismiss: {
-                  name_pattern: string;
-                  reason: string;
-                }[];
+                dismiss: (
+                  | {
+                      prefix: string;
+                      reason: string;
+                    }
+                  | {
+                      name: string;
+                      reason: string;
+                    }
+                )[];
               };
               trust: {
                 agent_verify_requires:
@@ -6035,23 +6424,99 @@ export interface operations {
                       | "metric_not_the_same_as"
                       | "metric_base_variant"
                       | "term_fields"
+                      | "dataset_fields"
+                      | "table_fields"
+                      | "column_fields"
                     )[];
                 /** @enum {string} */
                 human_verify_from: "browser" | "any";
               };
-              checks: {
-                off: (
-                  | "metric_name_form"
+              off: (
+                | "naming.case"
+                | "metric_name_form"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "metric_name_comparison"
+                | "naming.money_qualifier"
+                | "metric_money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "dataset_fields.definition"
+                | "dataset_fields"
+                | "dataset_fields.when_to_use"
+                | "dataset_fields.owner"
+                | "dataset_fields.freshness"
+                | "dataset_fields.caveats"
+                | "dataset_fields.custom"
+                | "table_fields.definition"
+                | "table_fields"
+                | "table_fields.grain_and_filters"
+                | "table_fields.caveats"
+                | "table_fields.custom"
+                | "column_fields.definition"
+                | "column_fields"
+                | "column_fields.unit"
+                | "column_fields.blank_means"
+                | "column_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields"
+                | "term_fields.values"
+                | "term_fields.custom"
+              )[];
+              exceptions: {
+                /** @enum {string} */
+                rule:
+                  | "naming.case"
+                  | "naming.kinds"
                   | "metric_name_generated"
-                  | "metric_name_comparison"
-                  | "metric_money_qualifier"
-                  | "metric_qualifier_order"
-                  | "metric_fields"
-                  | "metric_not_the_same_as"
+                  | "naming.forbidden_words"
+                  | "naming.money_qualifier"
+                  | "naming.qualifier_order"
+                  | "metric_fields.definition"
+                  | "metric_fields.aliases"
+                  | "metric_fields.when_to_use"
+                  | "metric_fields.grain_and_filters"
+                  | "metric_fields.unit"
+                  | "metric_fields.category"
+                  | "metric_fields.custom"
+                  | "dataset_fields.definition"
+                  | "dataset_fields.when_to_use"
+                  | "dataset_fields.owner"
+                  | "dataset_fields.freshness"
+                  | "dataset_fields.caveats"
+                  | "dataset_fields.custom"
+                  | "table_fields.definition"
+                  | "table_fields.grain_and_filters"
+                  | "table_fields.caveats"
+                  | "table_fields.custom"
+                  | "column_fields.definition"
+                  | "column_fields.unit"
+                  | "column_fields.blank_means"
+                  | "column_fields.custom"
+                  | "metric_fields.not_the_same_as"
                   | "metric_base_variant"
-                  | "term_fields"
-                )[];
-              };
+                  | "term_fields.definition"
+                  | "term_fields.values"
+                  | "term_fields.custom";
+                reason: string;
+                metric?: string;
+                term?: string;
+                dataset?: string;
+                table?: string;
+                column?: string;
+              }[];
             };
             changes: {
               path: string;
@@ -6188,6 +6653,179 @@ export interface operations {
       };
       /** @description The caller's role or credential does not allow it. */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  postApiV1ConventionsApply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          conventions: {
+            [key: string]: unknown;
+          };
+          dry_run: boolean;
+          baseline_reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            changed_rules: string[];
+            now_failing: {
+              [key: string]: number;
+            };
+            exceptions_added: {
+              /** @enum {string} */
+              rule:
+                | "naming.case"
+                | "naming.kinds"
+                | "metric_name_generated"
+                | "naming.forbidden_words"
+                | "naming.money_qualifier"
+                | "naming.qualifier_order"
+                | "metric_fields.definition"
+                | "metric_fields.aliases"
+                | "metric_fields.when_to_use"
+                | "metric_fields.grain_and_filters"
+                | "metric_fields.unit"
+                | "metric_fields.category"
+                | "metric_fields.custom"
+                | "dataset_fields.definition"
+                | "dataset_fields.when_to_use"
+                | "dataset_fields.owner"
+                | "dataset_fields.freshness"
+                | "dataset_fields.caveats"
+                | "dataset_fields.custom"
+                | "table_fields.definition"
+                | "table_fields.grain_and_filters"
+                | "table_fields.caveats"
+                | "table_fields.custom"
+                | "column_fields.definition"
+                | "column_fields.unit"
+                | "column_fields.blank_means"
+                | "column_fields.custom"
+                | "metric_fields.not_the_same_as"
+                | "metric_base_variant"
+                | "term_fields.definition"
+                | "term_fields.values"
+                | "term_fields.custom";
+              reason: string;
+              metric?: string;
+              term?: string;
+              dataset?: string;
+              table?: string;
+              column?: string;
+            }[];
+            version: number | null;
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1ConventionsExceptionsUnused: {
+    parameters: {
+      query?: {
+        metric?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            unused: {
+              rule: string;
+              target: {
+                [key: string]: string;
+              };
+              reason: string;
+              /** @enum {string} */
+              why: "no_such_target" | "passes" | "ambiguous";
+            }[];
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -8150,6 +8788,7 @@ export interface operations {
               name: string;
               icon: string | null;
               description: string | null;
+              when_to_use: string | null;
               workspace: {
                 /** @enum {string} */
                 kind: "workspace" | "app" | "dataset" | "table";
@@ -8251,6 +8890,10 @@ export interface operations {
             icon: string | null;
             description: string | null;
             description_pbi: string | null;
+            when_to_use: string | null;
+            owner: string | null;
+            freshness: string | null;
+            caveats: string | null;
             workspace: {
               /** @constant */
               kind: "workspace";
@@ -8311,6 +8954,7 @@ export interface operations {
               is_hidden: boolean;
               description: string | null;
               description_pbi: string | null;
+              grain_and_filters: string | null;
               column_count: number;
               measure_count: number;
               custom: {
@@ -8408,6 +9052,8 @@ export interface operations {
               is_hidden: boolean;
               description: string | null;
               description_pbi: string | null;
+              unit: string | null;
+              blank_means: string | null;
               display_folder: string | null;
               terms: {
                 id: string;
@@ -8503,6 +9149,8 @@ export interface operations {
               is_hidden: boolean;
               description: string | null;
               description_pbi: string | null;
+              unit: string | null;
+              blank_means: string | null;
               display_folder: string | null;
               terms: {
                 id: string;
@@ -8720,6 +9368,93 @@ export interface operations {
       };
       /** @description The caller's role or credential does not allow it. */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1DocsChecks: {
+    parameters: {
+      query?: {
+        dataset?: string;
+        limit?: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            items: {
+              /** @enum {string} */
+              kind: "dataset" | "table" | "column";
+              id: string;
+              name: string;
+              dataset: string;
+              table?: string;
+              results: {
+                check: string;
+                rule: string;
+                passed: boolean;
+                message: string;
+                exception?: string;
+              }[];
+            }[];
+            failing: number;
+            unused_exceptions?: {
+              rule: string;
+              target: {
+                [key: string]: string;
+              };
+              reason: string;
+              /** @enum {string} */
+              why: "no_such_target" | "passes" | "ambiguous";
+            }[];
+            next_cursor: string | null;
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
         headers: {
           [name: string]: unknown;
         };

@@ -38,7 +38,24 @@ term_fields:
   definition: { required: true }
   values: { required: false }
   custom: []
-element_fields:
+dataset_fields:
+  definition: { required: true }
+  when_to_use: { required: false }
+  owner: { required: false }
+  freshness: { required: false }
+  caveats: { required: false }
+  custom: []
+table_fields:
+  definition: { required: false }
+  grain_and_filters: { required: false }
+  caveats: { required: false }
+  custom: []
+column_fields:
+  definition: { required: false }
+  unit:
+    required: false
+    values: [money, count, quantity, rate, ratio, duration]
+  blank_means: { required: false }
   custom: []
 variants:
   axes:
@@ -77,15 +94,16 @@ drafting:
     hidden_measures: false
     display_folders: []
     tables: []
-    name_patterns: []
+    name_prefixes: []
+    names: []
   dismiss: []
 trust:
   agent_verify_requires: all_checks
   human_verify_from: browser
-checks:
-  off:
-    - metric_name_form
-    - metric_name_generated
-    - metric_name_comparison
-    - metric_money_qualifier
-    - metric_qualifier_order
+off:
+  - metric_name_form
+  - metric_name_generated
+  - metric_name_comparison
+  - metric_money_qualifier
+  - metric_qualifier_order
+exceptions: []

@@ -53,3 +53,56 @@ it("shows Approve to a curator, and hides it in the demo", () => {
   expect(approveShown(false)).toBe(true);
   expect(approveShown(true)).toBe(false);
 });
+
+it("lists each failing result with its rule id after the sentence", () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+  });
+  client.setQueryData(signInConfigQuery.queryKey, {
+    ...configWith({
+      name: "Metrics",
+      company: null,
+      logo_url: null,
+      custom: false,
+    }),
+    demo: false,
+  });
+  client.setQueryData(checksQuery(METRIC.name).queryKey, [
+    {
+      check: "metric_fields",
+      rule: "metric_fields.definition",
+      passed: false,
+      message: "Fill in definition.",
+    },
+    {
+      check: "metric_fields",
+      rule: "metric_fields.unit",
+      passed: false,
+      message: "Fill in unit.",
+    },
+    {
+      check: "metric_fields",
+      rule: "metric_fields.category",
+      passed: true,
+      message: "Passes.",
+    },
+  ]);
+  const host = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(host);
+  act(() => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <Approve metric={METRIC} me={CURATOR} />
+      </QueryClientProvider>,
+    );
+  });
+  const rows = [...host.querySelectorAll("li")].map((li) => li.textContent);
+  expect(rows).toEqual([
+    "Fill in definition.metric_fields.definition",
+    "Fill in unit.metric_fields.unit",
+  ]);
+  act(() => {
+    root.unmount();
+  });
+  host.remove();
+});

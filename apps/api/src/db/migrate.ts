@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 import { readDatabaseUrl } from "../config.js";
+import { upgradeStoredConventions } from "../services/conventions/upgrade.js";
 import { applyGrants } from "./grants.js";
 // Loaded for its side effect: each schema module declares its grants on import.
 import "./schema/index.js";
@@ -71,8 +72,10 @@ async function refuseUnrecordedInviteEnds(client: pg.Client): Promise<void> {
  * Connected as the migrator: applies every migration the database has not
  * recorded, rebuilds the indexes if the server has moved since they were built,
  * then applies the grants, then the hand-written SQL in src/db/sql in name
- * order. The grants and every SQL file run on each start, so each must leave
- * the database the same however often it runs. They run in one transaction:
+ * order, then turns each stored complete conventions document into the
+ * company's part (upgradeStoredConventions), where the preset files are on
+ * disk. Each runs on every start, so each must leave the database the same
+ * however often it runs. They run in one transaction:
  * the grants revoke everything first, and a routine a SQL file grants again
  * (deployment_has_admin) must never be seen without its grant.
  */
@@ -113,6 +116,7 @@ export async function migrateDatabase(
       for (const file of await sqlFiles()) {
         await client.query(await readFile(join(SQL_FOLDER, file), "utf8"));
       }
+      await upgradeStoredConventions(client);
       await client.query("commit");
     } catch (error) {
       await client.query("rollback");

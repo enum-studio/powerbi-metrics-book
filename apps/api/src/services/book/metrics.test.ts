@@ -942,6 +942,33 @@ describe("trust", () => {
       expect(verified.touched_at).not.toBeNull();
     }));
 
+  it("fails a required check as a whole when any one of its rules fails, and names that rule", () =>
+    drafted(async (tx, sample) => {
+      await setConventionsAsAdmin(asPerson(reaching({}, "admin"), { db: tx }), {
+        trust: {
+          agent_verify_requires: ["metric_fields"],
+          human_verify_from: "browser",
+        },
+      });
+      const name = await draftOf(tx, sample, SALES, "Average order value");
+      const context = asPerson(token(curator), { db: tx });
+      // The draft has no definition: metric_fields.definition fails, though most of its other rules pass.
+      await expect(verifyMetric(context, name)).rejects.toThrow(
+        /metric_fields\.definition: Fill in definition/,
+      );
+      await updateMetric(context, name, {
+        definition: "The average net sales of one order.",
+        aliases: [],
+        when_to_use: "To see if customers spend more each time.",
+        grain_and_filters: "One order.",
+        unit: "money",
+      });
+      // Every rule but the category passes; the one failing rule still fails the check.
+      await expect(verifyMetric(context, name)).rejects.toThrow(
+        /metric_fields\.category/,
+      );
+    }));
+
   it("passes metric_base_variant for a metric holding only other, not one holding only a proven shift", () =>
     drafted(async (tx, sample) => {
       await setConventionsAsAdmin(asPerson(reaching({}, "admin"), { db: tx }), {
@@ -996,7 +1023,7 @@ describe("trust", () => {
       expect(await failing()).toEqual(["metric_not_the_same_as"]);
       for (const promote of [verifyMetric, approveMetric]) {
         await expect(promote(browser, name)).rejects.toThrow(
-          /metric_not_the_same_as/,
+          /metric_fields\.not_the_same_as/,
         );
       }
     }));

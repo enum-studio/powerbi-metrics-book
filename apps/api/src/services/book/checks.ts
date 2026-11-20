@@ -2,11 +2,15 @@ import { ServiceError } from "../../errors.js";
 import {
   type Conventions,
   type CustomFieldSpec,
+  exceptionKey,
+  columnTarget,
   METRIC_CHECK_NAMES,
   type MetricCheckName,
   TERM_CHECK_NAMES,
+  type CheckName,
   type TermCheckName,
 } from "../conventions/schema.js";
+import { isRuleOff, rulesOfCheck } from "../conventions/rules.js";
 
 /*
  * The checks the conventions turn on, off or configure. Each reads its rule
@@ -32,6 +36,7 @@ export type CheckableMetric = {
 };
 
 export type CheckableTerm = {
+  name: string;
   definition: string | null;
   values: unknown;
   /** A backing column holds categories (text), so the term lists what each value means. */
@@ -41,13 +46,35 @@ export type CheckableTerm = {
 
 export type CheckResult = {
   check: string;
+  /** The id of the rule this result is about; a check that applies several rules gives one result for each. */
+  rule: string;
   passed: boolean;
   message: string;
   /** The metrics a failing metric_not_the_same_as is about, closest first: a common word can match hundreds, so the message counts them and this lists them. */
   other_labels?: string[];
+  /** The reason of the exception the conventions make for this element: it fails the rule, and passes by the exception. */
+  exception?: string;
 };
+
+/** The element a result or an exception is about: a metric by its key, a term by its name, an element of a dataset by its names. */
+export interface CheckTarget {
+  metric?: string;
+  term?: string;
+  dataset?: string;
+  table?: string;
+  column?: string;
+}
+
+/** The reason of each of the conventions' exceptions, by exceptionKey: built once for a run of the checks, and given to each. */
+export type ExceptionIndex = ReadonlyMap<string, string>;
+export const exceptionIndex = (conventions: Conventions): ExceptionIndex =>
+  new Map(
+    conventions.exceptions.map((item) => [exceptionKey(item), item.reason]),
+  );
+
 export type MetricCheckContext = {
   conventions: Conventions;
+  exceptions: ExceptionIndex;
   /** The labels of the other metrics that may share a word of this one's; see wordsComparedWithOtherLabels. */
   other_labels: string[];
   live_base_variants: number;
@@ -58,17 +85,17 @@ export type MetricCheckContext = {
 };
 export type TermCheckContext = {
   conventions: Conventions;
+  exceptions: ExceptionIndex;
   backed_by_columns: number;
 };
 
+/** One rule a check found broken: its id, and the sentence that tells what to fix. */
+type Finding = { rule: string; message: string; other_labels?: string[] };
 type MetricCheck = (
   metric: CheckableMetric,
   context: MetricCheckContext,
-) => string | { message: string; other_labels: string[] } | null;
-type TermCheck = (
-  term: CheckableTerm,
-  context: TermCheckContext,
-) => string | null;
+) => Finding[];
+type TermCheck = (term: CheckableTerm, context: TermCheckContext) => Finding[];
 
 const SNAKE_CASE = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 /** How many labels a metric's page names for a failing metric_not_the_same_as; its checks list them all. */
@@ -107,30 +134,36 @@ function takesKind(words: string[], kind: string): boolean {
 
 const metric_name_form: MetricCheck = (metric, { conventions, advise }) => {
   const { kinds } = conventions.naming;
-  const problems: string[] = [];
+  const rename = advise ? " Rename it." : "";
+  const found: Finding[] = [];
   if (
     conventions.naming.case === "snake_case" &&
     !SNAKE_CASE.test(metric.name)
   ) {
-    problems.push(
-      `The key ${metric.name} is not snake_case: lower-case words joined by underscores (naming.case).`,
-    );
+    found.push({
+      rule: "naming.case",
+      message: `The key ${metric.name} is not snake_case: lower-case words joined by underscores (naming.case).${rename}`,
+    });
   }
   const words = wordsOf(metric.name);
   if (kinds.length > 0 && !kinds.some((kind) => takesKind(words, kind))) {
-    problems.push(
-      `The key does not start or end with a kind the conventions name: ${kinds.join(", ")} (naming.kinds).`,
-    );
+    found.push({
+      rule: "naming.kinds",
+      message: `The key does not start or end with a kind the conventions name: ${kinds.join(", ")} (naming.kinds).${rename}`,
+    });
   }
-  return problems.length === 0
-    ? null
-    : `${problems.join(" ")}${advise ? " Rename it." : ""}`;
+  return found;
 };
 
 const metric_name_generated: MetricCheck = (metric, { advise }) =>
   metric.name_is_generated
-    ? `The sync made the key ${metric.name} from a measure name and nobody has confirmed it.${advise ? " Rename the metric by the conventions, or confirm the key as it is." : ""}`
-    : null;
+    ? [
+        {
+          rule: "metric_name_generated",
+          message: `The sync made the key ${metric.name} from a measure name and nobody has confirmed it.${advise ? " Rename the metric by the conventions, or confirm the key as it is." : ""}`,
+        },
+      ]
+    : [];
 
 const metric_name_comparison: MetricCheck = (
   metric,
@@ -141,8 +174,13 @@ const metric_name_comparison: MetricCheck = (
     holds(words, word),
   );
   return found.length === 0
-    ? null
-    : `The key holds ${found.join(", ")}, which the conventions forbid in a key (naming.forbidden_words).${advise ? " Rename it without them, and file a shifted measure as a variant of its metric." : ""}`;
+    ? []
+    : [
+        {
+          rule: "naming.forbidden_words",
+          message: `The key holds ${found.join(", ")}, which the conventions forbid in a key (naming.forbidden_words).${advise ? " Rename it without them, and file a shifted measure as a variant of its metric." : ""}`,
+        },
+      ];
 };
 
 const metric_money_qualifier: MetricCheck = (
@@ -151,11 +189,16 @@ const metric_money_qualifier: MetricCheck = (
 ) => {
   const { required, values, units } = conventions.naming.money_qualifier;
   if (!required || metric.unit === null || !units.includes(metric.unit))
-    return null;
+    return [];
   const words = wordsOf(metric.name);
   return values.some((value) => holds(words, value))
-    ? null
-    : `The key ${metric.name} is in ${metric.unit} but carries none of the qualifiers the conventions require on it: ${values.join(", ")} (naming.money_qualifier).${advise ? " Rename it with one." : ""}`;
+    ? []
+    : [
+        {
+          rule: "naming.money_qualifier",
+          message: `The key ${metric.name} is in ${metric.unit} but carries none of the qualifiers the conventions require on it: ${values.join(", ")} (naming.money_qualifier).${advise ? " Rename it with one." : ""}`,
+        },
+      ];
 };
 
 const metric_qualifier_order: MetricCheck = (
@@ -180,47 +223,58 @@ const metric_qualifier_order: MetricCheck = (
     const hit = markers.find((marker) => findRun(words, marker.run, at) === at);
     if (hit === undefined) continue;
     if (previous !== undefined && hit.rank < previous.rank) {
-      return `The key puts ${hit.marker} (${hit.group}) after ${previous.marker} (${previous.group}), but the conventions order qualifiers ${order.join(", ")} (naming.qualifier_order).${advise ? ` Rename it with ${hit.marker} before ${previous.marker}.` : ""}`;
+      return [
+        {
+          rule: "naming.qualifier_order",
+          message: `The key puts ${hit.marker} (${hit.group}) after ${previous.marker} (${previous.group}), but the conventions order qualifiers ${order.join(", ")} (naming.qualifier_order).${advise ? ` Rename it with ${hit.marker} before ${previous.marker}.` : ""}`,
+        },
+      ];
     }
     previous = hit;
     at += hit.run.length - 1;
   }
-  return null;
+  return [];
 };
 
 const metric_fields: MetricCheck = (metric, { conventions }) => {
   const rules = conventions.metric_fields;
-  const empty = [
-    rules.definition.required && blank(metric.definition) && "definition",
-    rules.when_to_use.required && blank(metric.when_to_use) && "when_to_use",
-    rules.grain_and_filters.required &&
-      blank(metric.grain_and_filters) &&
+  const found: Finding[] = [];
+  const add = (field: string, message: string) =>
+    found.push({ rule: `metric_fields.${field}`, message });
+  const empty: [string, boolean][] = [
+    ["definition", rules.definition.required && blank(metric.definition)],
+    ["when_to_use", rules.when_to_use.required && blank(metric.when_to_use)],
+    [
       "grain_and_filters",
-    rules.unit.required && blank(metric.unit) && "unit",
-    rules.category.required && metric.category_id === null && "category",
-    rules.not_the_same_as.required === true &&
-      blank(metric.not_the_same_as) &&
+      rules.grain_and_filters.required && blank(metric.grain_and_filters),
+    ],
+    ["unit", rules.unit.required && blank(metric.unit)],
+    ["category", rules.category.required && metric.category_id === null],
+    [
       "not_the_same_as",
-  ].filter((field) => field !== false);
+      rules.not_the_same_as.required === true && blank(metric.not_the_same_as),
+    ],
+  ];
+  for (const [field, missing] of empty) {
+    if (missing) add(field, `Fill in ${field}.`);
+  }
   // An empty list of aliases is the reviewed "none" the standard allows.
-  const unreviewed = [
-    rules.aliases.required && metric.aliases === null && "aliases",
-  ].filter((field) => field !== false);
-  const problems: string[] = [];
-  if (empty.length > 0) problems.push(`Fill in ${empty.join(", ")}.`);
-  if (unreviewed.length > 0) {
-    problems.push(
-      `Review ${unreviewed.join(", ")}: give them, or an empty list when there are none.`,
+  if (rules.aliases.required && metric.aliases === null) {
+    add(
+      "aliases",
+      "Review aliases: give them, or an empty list when there are none.",
     );
   }
   const { unit } = metric;
   if (unit !== null && !blank(unit) && !rules.unit.values.includes(unit)) {
-    problems.push(
+    add(
+      "unit",
       `The unit ${unit} is not one the conventions name: ${rules.unit.values.join(", ")}.`,
     );
   }
-  problems.push(...validateCustomFields(rules.custom, metric.custom));
-  return problems.length === 0 ? null : `${problems.join(" ")} (metric_fields)`;
+  const custom = validateCustomFields(rules.custom, metric.custom);
+  if (custom.length > 0) add("custom", custom.join(" "));
+  return found;
 };
 
 /** A content word is any but the words of the kinds, the placed qualifiers and ignore_words. */
@@ -245,10 +299,12 @@ export function wordsComparedWithOtherLabels(
   conventions: Conventions,
 ): string[] {
   if (
-    conventions.checks.off.includes("metric_not_the_same_as") ||
     conventions.metric_fields.not_the_same_as.required !==
       "when_label_shares_a_word" ||
-    !blank(metric.not_the_same_as)
+    !blank(metric.not_the_same_as) ||
+    rulesOfCheck("metric_not_the_same_as").some((rule) =>
+      isRuleOff(rule, conventions),
+    )
   )
     return [];
   return contentWordsUnder(conventions)(metric.label);
@@ -259,7 +315,7 @@ const metric_not_the_same_as: MetricCheck = (
   { conventions, other_labels },
 ) => {
   const own = new Set(wordsComparedWithOtherLabels(metric, conventions));
-  if (own.size === 0) return null;
+  if (own.size === 0) return [];
   const contentWords = contentWordsUnder(conventions);
   const sharing = other_labels
     .map((label) => {
@@ -274,15 +330,18 @@ const metric_not_the_same_as: MetricCheck = (
         a.unshared - b.unshared ||
         a.label.localeCompare(b.label, undefined, { numeric: true }),
     );
-  if (sharing.length === 0) return null;
+  if (sharing.length === 0) return [];
   const others =
     sharing.length === 1
       ? "Another metric shares"
       : `${String(sharing.length)} other metrics share`;
-  return {
-    message: `${others} a content word of the label "${metric.label}". Say in not_the_same_as how this metric differs.`,
-    other_labels: sharing.map(({ label }) => label),
-  };
+  return [
+    {
+      rule: "metric_fields.not_the_same_as",
+      message: `${others} a content word of the label "${metric.label}". Say in not_the_same_as how this metric differs.`,
+      other_labels: sharing.map(({ label }) => label),
+    },
+  ];
 };
 
 // `other` says no measure computes the metric unshifted, so a metric holding
@@ -292,8 +351,14 @@ const metric_base_variant: MetricCheck = (
   { live_base_variants, live_other_variants },
 ) =>
   live_base_variants > 0 || live_other_variants > 0
-    ? null
-    : "The metric has no live base variant: no measure computes it unshifted. File the measure that does under it, or dismiss the metric.";
+    ? []
+    : [
+        {
+          rule: "metric_base_variant",
+          message:
+            "The metric has no live base variant: no measure computes it unshifted. File the measure that does under it, or dismiss the metric.",
+        },
+      ];
 
 const hasValues = (values: unknown): boolean =>
   Array.isArray(values)
@@ -304,18 +369,29 @@ const hasValues = (values: unknown): boolean =>
 
 const term_fields: TermCheck = (term, { conventions, backed_by_columns }) => {
   const rules = conventions.term_fields;
-  const problems: string[] = [];
-  if (rules.definition.required && blank(term.definition))
-    problems.push("Write its definition.");
+  const found: Finding[] = [];
+  if (rules.definition.required && blank(term.definition)) {
+    found.push({
+      rule: "term_fields.definition",
+      message: "Write its definition.",
+    });
+  }
   const needsValues =
     rules.values.required === true ||
     (rules.values.required === "when_categorical" &&
       backed_by_columns > 0 &&
       term.categorical);
-  if (needsValues && !hasValues(term.values))
-    problems.push("List its values, each with what it means.");
-  problems.push(...validateCustomFields(rules.custom, term.custom));
-  return problems.length === 0 ? null : `${problems.join(" ")} (term_fields)`;
+  if (needsValues && !hasValues(term.values)) {
+    found.push({
+      rule: "term_fields.values",
+      message: "List its values, each with what it means.",
+    });
+  }
+  const custom = validateCustomFields(rules.custom, term.custom);
+  if (custom.length > 0) {
+    found.push({ rule: "term_fields.custom", message: custom.join(" ") });
+  }
+  return found;
 };
 
 /** One function per check, keyed by the name the conventions use for it. */
@@ -335,24 +411,69 @@ export const TERM_CHECKS = { term_fields } satisfies Record<
   TermCheck
 >;
 
-const result = (
-  check: string,
-  problem: ReturnType<MetricCheck>,
-): CheckResult => {
-  if (problem === null) return { check, passed: true, message: "Passes." };
-  return typeof problem === "string"
-    ? { check, passed: false, message: problem }
-    : { check, passed: false, ...problem };
-};
+/**
+ * One result for each rule the check applies, failing for those it found
+ * broken. A finding under a rule the check is not filed under (metric_fields
+ * asking for not_the_same_as) is a result too.
+ */
+function resultsOf(check: CheckName, found: Finding[]): CheckResult[] {
+  const results: CheckResult[] = rulesOfCheck(check).map(({ id }) => {
+    const finding = found.find((one) => one.rule === id);
+    return finding === undefined
+      ? { check, rule: id, passed: true, message: "Passes." }
+      : { check, passed: false, ...finding };
+  });
+  const filed = new Set(results.map(({ rule }) => rule));
+  for (const finding of found) {
+    if (!filed.has(finding.rule)) {
+      results.push({ check, passed: false, ...finding });
+    }
+  }
+  return results;
+}
 
-/** Every metric check the conventions leave on; one in checks.off gives no result. */
+/**
+ * The results `off` leaves, by the rule's id or by the check that gave it,
+ * each failure an exception covers passing under that exception.
+ */
+function underConventions(
+  results: CheckResult[],
+  context: Pick<MetricCheckContext, "conventions" | "exceptions">,
+  target: CheckTarget,
+): CheckResult[] {
+  const { conventions, exceptions } = context;
+  const off = new Set<string>(conventions.off);
+  return results
+    .filter(({ check, rule }) => !off.has(check) && !off.has(rule))
+    .map((result) => {
+      const reason = result.passed
+        ? undefined
+        : exceptions.get(exceptionKey({ rule: result.rule, ...target }));
+      return reason === undefined
+        ? result
+        : { ...result, passed: true, exception: reason };
+    });
+}
+
+/** Every metric check the conventions leave on; a check or a rule in `off` gives no result. */
 export function checkMetric(
   metric: CheckableMetric,
   context: MetricCheckContext,
 ): CheckResult[] {
-  const off = new Set<string>(context.conventions.checks.off);
-  return METRIC_CHECK_NAMES.filter((check) => !off.has(check)).map((check) =>
-    result(check, METRIC_CHECKS[check](metric, context)),
+  const off = new Set<string>(context.conventions.off);
+  // Under any other setting metric_fields owns the rule, so it is told once.
+  const sharesAWord =
+    context.conventions.metric_fields.not_the_same_as.required ===
+    "when_label_shares_a_word";
+  return underConventions(
+    METRIC_CHECK_NAMES.filter(
+      (check) =>
+        !off.has(check) && (sharesAWord || check !== "metric_not_the_same_as"),
+    ).flatMap((check) =>
+      resultsOf(check, METRIC_CHECKS[check](metric, context)),
+    ),
+    context,
+    { metric: metric.name },
   );
 }
 
@@ -360,9 +481,13 @@ export function checkTerm(
   term: CheckableTerm,
   context: TermCheckContext,
 ): CheckResult[] {
-  const off = new Set<string>(context.conventions.checks.off);
-  return TERM_CHECK_NAMES.filter((check) => !off.has(check)).map((check) =>
-    result(check, TERM_CHECKS[check](term, context)),
+  const off = new Set<string>(context.conventions.off);
+  return underConventions(
+    TERM_CHECK_NAMES.filter((check) => !off.has(check)).flatMap((check) =>
+      resultsOf(check, TERM_CHECKS[check](term, context)),
+    ),
+    context,
+    { term: term.name },
   );
 }
 
@@ -442,4 +567,168 @@ export function checkCustom(
       { problems },
     );
   }
+}
+
+/** Facts and documentation read in bulk by the whole-book runner. */
+export type CheckableElement = {
+  name: string;
+  dataset: string;
+  description: string | null;
+  custom: Record<string, unknown>;
+} & (
+  | {
+      kind: "dataset";
+      when_to_use?: string | null;
+      owner?: string | null;
+      freshness?: string | null;
+      caveats?: string | null;
+    }
+  | {
+      kind: "table";
+      is_hidden?: boolean;
+      table_kind: "fact" | "dimension" | "date" | "measures" | "standalone";
+      grain_and_filters?: string | null;
+      caveats?: string | null;
+    }
+  | {
+      kind: "column";
+      table: string;
+      is_hidden: boolean;
+      data_type: string | null;
+      is_key: boolean;
+      has_term: boolean;
+      unit?: string | null;
+      blank_means?: string | null;
+    }
+);
+
+export function checkElement(
+  element: CheckableElement,
+  context: Pick<MetricCheckContext, "conventions" | "exceptions">,
+  target = elementTarget(element),
+): CheckResult[] {
+  const check = `${element.kind}_fields` as const;
+  const rules = context.conventions[check];
+  const eligible =
+    element.kind === "table"
+      ? !element.is_hidden &&
+        element.table_kind !== "date" &&
+        element.table_kind !== "measures"
+      : element.kind !== "column" || !element.is_hidden;
+  const needs = (required: boolean | string): boolean =>
+    eligible &&
+    (required === true ||
+      (required === "when_fact" &&
+        element.kind === "table" &&
+        element.table_kind === "fact") ||
+      (required === "when_visible_and_no_term" &&
+        element.kind === "column" &&
+        !element.has_term) ||
+      (required === "when_numeric" &&
+        element.kind === "column" &&
+        !element.is_key &&
+        [
+          "int64",
+          "int32",
+          "int16",
+          "integer",
+          "double",
+          "decimal",
+          "single",
+          "currency",
+        ].includes(element.data_type?.toLowerCase() ?? "")));
+  const found: Finding[] = [];
+  const field = (
+    key: string,
+    required: boolean | string,
+    value: string | null | undefined,
+    message: string,
+  ) => {
+    if (needs(required) && blank(value ?? null))
+      found.push({ rule: `${check}.${key}`, message });
+  };
+  field(
+    "definition",
+    rules.definition.required,
+    element.description,
+    `Write the definition of this ${element.kind}.`,
+  );
+  if (element.kind === "dataset") {
+    const fields = context.conventions.dataset_fields;
+    field(
+      "when_to_use",
+      fields.when_to_use.required,
+      element.when_to_use,
+      "Write when to use this dataset.",
+    );
+    field(
+      "owner",
+      fields.owner.required,
+      element.owner,
+      "Write who owns this dataset.",
+    );
+    field(
+      "freshness",
+      fields.freshness.required,
+      element.freshness,
+      "Write how fresh this dataset is.",
+    );
+    field(
+      "caveats",
+      fields.caveats.required,
+      element.caveats,
+      "Write the caveats of this dataset.",
+    );
+  } else if (element.kind === "table") {
+    const fields = context.conventions.table_fields;
+    field(
+      "grain_and_filters",
+      fields.grain_and_filters.required,
+      element.grain_and_filters,
+      "Write the grain and filters of this table.",
+    );
+    field(
+      "caveats",
+      fields.caveats.required,
+      element.caveats,
+      "Write the caveats of this table.",
+    );
+  } else {
+    const fields = context.conventions.column_fields;
+    field(
+      "unit",
+      fields.unit.required,
+      element.unit,
+      "Write the unit of this column.",
+    );
+    field(
+      "blank_means",
+      fields.blank_means.required,
+      element.blank_means,
+      "Write what a blank means in this column.",
+    );
+  }
+  const custom = eligible
+    ? validateCustomFields(
+        rules.custom.map((spec) => ({
+          ...spec,
+          required: spec.required && needs(rules.definition.required),
+        })),
+        element.custom,
+      )
+    : [];
+  if (custom.length > 0)
+    found.push({ rule: `${check}.custom`, message: custom.join(" ") });
+  return underConventions(resultsOf(check, found), context, target);
+}
+
+export function elementTarget(element: CheckableElement): CheckTarget {
+  return element.kind === "column"
+    ? {
+        dataset: element.dataset,
+        column: columnTarget(element.table, element.name),
+      }
+    : element.kind === "table"
+      ? { dataset: element.dataset, table: element.name }
+      : { dataset: element.dataset };
 }

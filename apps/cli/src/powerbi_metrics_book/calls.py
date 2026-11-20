@@ -7,7 +7,7 @@ A command that does more opens `open_session` itself.
 """
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 
 import typer
 from rich.console import Console
@@ -82,29 +82,50 @@ def show_done(
         session.emit(document, lambda console: console.print(Text(plain(sentence))))
 
 
-def every_metric(client: Client) -> list[dict[str, Json]]:
-    """Every metric the caller may see, each page followed to the end."""
-    metrics: list[dict[str, Json]] = []
-    cursor: str | None = None
-    seen: set[str] = set()
-    while True:
-        page = object_of(
-            client.get("/metrics", query_of(limit=500, cursor=cursor)), "the metrics"
-        )
-        metrics += objects_in(page, "items")
-        next_cursor = page.get("next_cursor")
-        if not isinstance(next_cursor, str):
-            return metrics
-        if next_cursor in seen:
-            raise ApiError(
-                "upstream", "The api repeated a cursor while listing metrics.", 200
-            )
-        seen.add(next_cursor)
-        cursor = next_cursor
-
-
 # More pages than a person has datasets: the api is not coming to an end.
 MAX_PAGES = 100
+
+
+def every_page(
+    client: Client, path: str, query: Query, what: str
+) -> Iterator[dict[str, Json]]:
+    """Each page of a list route, `next_cursor` followed to the last one.
+
+    A cursor the api repeats, or more than MAX_PAGES pages, is the api's
+    error: it is not coming to an end.
+    """
+    cursor: str | None = None
+    seen: set[str] = set()
+    for _ in range(MAX_PAGES):
+        page = object_of(client.get(path, {**query, **query_of(cursor=cursor)}), what)
+        yield page
+        following = page.get("next_cursor")
+        if not isinstance(following, str):
+            return
+        if following in seen:
+            raise ApiError(
+                "upstream",
+                f"The api's {what} did not come to an end: it repeated a cursor.",
+                200,
+            )
+        seen.add(following)
+        cursor = following
+    raise ApiError(
+        "upstream",
+        f"The api's {what} did not come to an end after {MAX_PAGES} pages.",
+        200,
+    )
+
+
+def every_metric(client: Client) -> list[dict[str, Json]]:
+    """Every metric the caller may see, each page followed to the end."""
+    return [
+        metric
+        for page in every_page(client, "/metrics", query_of(limit=500), "metrics")
+        for metric in objects_in(page, "items")
+    ]
+
+
 # The shape the api's dataset routes accept as an id.
 GUID = re.compile(r"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 
@@ -119,34 +140,17 @@ def dataset_id(client: Client, reference: str) -> str:
     """
     if GUID.fullmatch(reference):
         return reference
-    found: list[dict[str, Json]] = []
-    cursor: str | None = None
-    seen: set[str] = set()
-    for _ in range(MAX_PAGES):
-        page = object_of(
-            client.get(
-                "/datasets", query_of(name_prefix=reference, limit=500, cursor=cursor)
-            ),
-            "the datasets",
+    found = [
+        dataset
+        for page in every_page(
+            client,
+            "/datasets",
+            query_of(name_prefix=reference, limit=500),
+            "list of datasets",
         )
-        found += [
-            dataset
-            for dataset in objects_in(page, "items")
-            if dataset.get("name") == reference
-        ]
-        following = page.get("next_cursor")
-        if not isinstance(following, str):
-            break
-        if following in seen:
-            raise ApiError(
-                "upstream", "The api's list of datasets did not come to an end.", 200
-            )
-        seen.add(following)
-        cursor = following
-    else:
-        raise ApiError(
-            "upstream", "The api's list of datasets did not come to an end.", 200
-        )
+        for dataset in objects_in(page, "items")
+        if dataset.get("name") == reference
+    ]
     if not found:
         raise ApiError(
             "not_found",

@@ -22,11 +22,15 @@ import { jobRequest } from "../../db/schema/jobs.js";
 import {
   powerbiAccess,
   powerbiApp,
+  powerbiColumn,
   powerbiDataset,
   powerbiMeasure,
+  powerbiTable,
   powerbiWorkspace,
   syncRun,
 } from "../../db/schema/mirror.js";
+import { asPerson } from "../../../test/mirror-fixtures.js";
+import { setDocs } from "../book/docs.js";
 import { runSync, type SyncKind } from "./run.js";
 
 /*
@@ -377,6 +381,95 @@ describe("a workspace that cannot be scanned", () => {
       expect(run.counts).toMatchObject({ batches_failed: 1 });
       expect(run.counts).not.toHaveProperty("workspaces_failed");
       expect(run.error).not.toContain("Workspaces to skip");
+    });
+  });
+});
+
+describe("our documentation fields", () => {
+  it("are left as they were by the next sync of the same dataset", async () => {
+    const tenant = sampleTenant();
+    const sales = datasetNamed(tenant, "Sales").id;
+    await withSync(tenant, async (tx, sync) => {
+      await sync();
+      const [table] = await tx
+        .select({ id: powerbiTable.id })
+        .from(powerbiTable)
+        .where(eq(powerbiTable.dataset_id, sales))
+        .limit(1);
+      const [column] = await tx
+        .select({ id: powerbiColumn.id })
+        .from(powerbiColumn)
+        .where(eq(powerbiColumn.dataset_id, sales))
+        .limit(1);
+      if (table === undefined || column === undefined)
+        throw new Error("The sample dataset has no table or column");
+      // The api writes them, as the role it has.
+      await setRole(tx, "api_rw");
+      const context = asPerson(principals.curator, {
+        db: tx,
+        mode: "everyone",
+      });
+      const dataset = {
+        when_to_use: "For sales questions",
+        owner: "Sales Operations",
+        freshness: "Refreshed at 06:00",
+        caveats: "Excludes returns",
+      };
+      await setDocs(context, { kind: "dataset", id: sales }, dataset);
+      await setDocs(
+        context,
+        { kind: "table", id: table.id },
+        { grain_and_filters: "One row per order line", caveats: "No returns" },
+      );
+      await setDocs(
+        context,
+        { kind: "column", id: column.id },
+        { unit: "money", blank_means: "Not priced" },
+      );
+      await setRole(tx, "worker_rw");
+      const read = async () => ({
+        dataset: (
+          await tx
+            .select({
+              when_to_use: powerbiDataset.when_to_use,
+              owner: powerbiDataset.owner,
+              freshness: powerbiDataset.freshness,
+              caveats: powerbiDataset.caveats,
+            })
+            .from(powerbiDataset)
+            .where(eq(powerbiDataset.id, sales))
+        )[0],
+        table: (
+          await tx
+            .select({
+              grain_and_filters: powerbiTable.grain_and_filters,
+              caveats: powerbiTable.caveats,
+            })
+            .from(powerbiTable)
+            .where(eq(powerbiTable.id, table.id))
+        )[0],
+        column: (
+          await tx
+            .select({
+              unit: powerbiColumn.unit,
+              blank_means: powerbiColumn.blank_means,
+            })
+            .from(powerbiColumn)
+            .where(eq(powerbiColumn.id, column.id))
+        )[0],
+      });
+      const before = await read();
+      expect(before.dataset).toEqual(dataset);
+      expect(before.table).toEqual({
+        grain_and_filters: "One row per order line",
+        caveats: "No returns",
+      });
+      expect(before.column).toEqual({
+        unit: "money",
+        blank_means: "Not priced",
+      });
+      await sync();
+      expect(await read()).toEqual(before);
     });
   });
 });

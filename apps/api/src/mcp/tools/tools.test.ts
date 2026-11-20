@@ -36,6 +36,7 @@ import {
 import { createCategory } from "../../services/book/categories.js";
 import { updateMetric } from "../../services/book/metrics.js";
 import { CONNECTOR_REACHED_ACTION } from "../../services/audit/connector.js";
+import { setConventions } from "../../services/conventions/store.js";
 import { createTerm } from "../../services/book/terms.js";
 import { resultCsv } from "../../services/queries/csv.js";
 import { verifyCsvLink } from "../../services/queries/links.js";
@@ -993,6 +994,41 @@ describe("whoami", () => {
       await f.settings.set("access.metadata_visibility", "everyone");
     }
     expect(await metricsOf(analyst)).toBeGreaterThan(0);
+  });
+
+  it("counts the rules off, each rule of a check in off, and the exceptions", async () => {
+    const weakenedFor = async () =>
+      (
+        await ask(
+          analyst,
+          "whoami",
+          {},
+          z.object({
+            conventions: z.object({
+              rules_off: z.number(),
+              exceptions: z.number(),
+            }),
+          }),
+        )
+      ).conventions;
+    expect(await weakenedFor()).toEqual({ rules_off: 0, exceptions: 0 });
+    const save = (part: object) =>
+      setConventions({ db: f.deps.db }, principals.admin, {
+        format: 1,
+        ...part,
+      });
+    await save({
+      off: ["metric_name_form", "naming.forbidden_words"],
+      exceptions: [
+        { rule: "metric_base_variant", metric: "net_sales", reason: "Kept." },
+      ],
+    });
+    try {
+      // metric_name_form holds naming.case and naming.kinds.
+      expect(await weakenedFor()).toEqual({ rules_off: 3, exceptions: 1 });
+    } finally {
+      await save({});
+    }
   });
 
   it("writes one row when the first calls of a client come together", async () => {

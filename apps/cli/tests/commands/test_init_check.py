@@ -42,6 +42,11 @@ def test_init_writes_the_deployment_directory_with_the_image_pinned_by_digest(
     compose = (target / "compose.yml").read_text()
     assert f"image: &image {IMAGE}\n" in compose
     assert "build:" not in compose
+    assert (
+        (target / "conventions.yml")
+        .read_text()
+        .endswith("format: 1\npreset: metrics_book\n")
+    )
     assert (target / "cerbos/config.yaml").is_file()
     assert (target / "postgres/init/01_roles_and_database.sh").is_file()
     assert (target / ".gitignore").read_text().splitlines() == [
@@ -265,6 +270,7 @@ def test_check_reports_every_step_and_exits_1_before_it_needs_docker(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "book.yml").write_text("format: 2\n")
+    (tmp_path / "conventions.yml").write_text("format: 2\n")
 
     result = run("check", str(tmp_path), "--json")
 
@@ -273,6 +279,7 @@ def test_check_reports_every_step_and_exits_1_before_it_needs_docker(
     assert report["ok"] is False
     assert [step["name"] for step in report["steps"]] == [
         "book.yml",
+        "conventions.yml",
         ".env",
         "policy tests",
     ]
@@ -289,6 +296,7 @@ def test_check_passes_a_fresh_deployment(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines() == [
         "ok   book.yml",
+        "ok   conventions.yml",
         "ok   .env",
         "ok   policy tests",
     ]

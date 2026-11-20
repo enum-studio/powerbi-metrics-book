@@ -549,7 +549,10 @@ function isSkipped(measure: Measure, skip: DraftingRules["skip"]): boolean {
     (skip.hidden_measures && measure.is_hidden) ||
     (folder !== null && skip.display_folders.includes(folder)) ||
     skip.tables.includes(measure.table_name) ||
-    skip.name_patterns.some((p) => new RegExp(p, "u").test(measure.name))
+    skip.name_prefixes.some((prefix) =>
+      measure.name.toLowerCase().startsWith(prefix.toLowerCase()),
+    ) ||
+    skip.names.some((name) => measure.name.toLowerCase() === name.toLowerCase())
   );
 }
 
@@ -578,9 +581,11 @@ async function decide(
       continue;
     }
     const key = rules.group_by_fingerprint ? fingerprint : item.measure.id;
-    const name = item.measure.name;
-    const rule = rules.dismiss.find((r) =>
-      new RegExp(r.name_pattern, "u").test(name),
+    const name = item.measure.name.toLowerCase();
+    const rule = rules.dismiss.find((rule) =>
+      "prefix" in rule
+        ? name.startsWith(rule.prefix.toLowerCase())
+        : name === rule.name.toLowerCase(),
     );
     if (rule !== undefined) dismissed.push({ item, reason: rule.reason });
     else if (variantOf !== null) variants.push({ item, key, ...variantOf });

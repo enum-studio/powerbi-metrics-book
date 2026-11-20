@@ -102,6 +102,10 @@ type Dataset = {
   /** Null for a personal workspace: Power BI names it after its owner, a person. */
   workspace_name: string | null;
   description: string | null;
+  when_to_use: string | null;
+  owner: string | null;
+  freshness: string | null;
+  caveats: string | null;
   custom: Record<string, unknown>;
   app_ids: string[];
 };
@@ -119,6 +123,10 @@ async function liveDatasets(db: Db): Promise<Map<string, Dataset>> {
       description: sql<
         string | null
       >`coalesce(${powerbiDataset.description}, ${powerbiDataset.description_pbi})`,
+      when_to_use: powerbiDataset.when_to_use,
+      owner: powerbiDataset.owner,
+      freshness: powerbiDataset.freshness,
+      caveats: powerbiDataset.caveats,
       custom: powerbiDataset.custom,
     })
     .from(powerbiDataset)
@@ -243,6 +251,10 @@ export async function collectDocuments(
         d.name,
         labelled("Workspace", d.workspace_name),
         d.description,
+        d.when_to_use,
+        d.owner,
+        d.freshness,
+        d.caveats,
       ),
     });
 
@@ -267,6 +279,8 @@ export async function collectDocuments(
         `Dataset: ${dataset.name}`,
         t.description,
         t.description_pbi,
+        t.grain_and_filters,
+        t.caveats,
       ),
     });
   }
@@ -339,6 +353,8 @@ export async function collectDocuments(
         labelled("Data type", c.data_type),
         c.description,
         c.description_pbi,
+        c.unit,
+        c.blank_means,
         labelled("Term", list(termsOfColumn.get(c.id)?.sort() ?? null)),
       ),
     });

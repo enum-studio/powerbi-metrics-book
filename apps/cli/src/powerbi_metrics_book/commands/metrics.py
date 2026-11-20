@@ -95,7 +95,7 @@ def _show_metric(console: Console, metric: dict[str, Json]) -> None:
         for failure in failing:
             line(
                 console,
-                f"  {one_line(failure.get('check'))}: {_check_sentence(failure)}",
+                f"  {one_line(failure.get('rule'))}: {_check_sentence(failure)}",
             )
     else:
         line(console, "\nNo failing checks.")
@@ -526,12 +526,32 @@ def check(
             failures += [
                 (
                     metric,
-                    one_line(result.get("check")),
+                    one_line(result.get("rule")),
                     _check_sentence(result),
                 )
                 for result in objects_in(answer, "checks")
                 if result.get("passed") is not True
             ]
+
+        unused_answer = object_of(
+            session.client.get(
+                "/conventions/exceptions/unused",
+                query={} if name is None else {"metric": name},
+            ),
+            "the unused exceptions",
+        )
+        unused = objects_in(unused_answer, "unused")
+        failures += [
+            (
+                " ".join(
+                    f"{key} {value}"
+                    for key, value in object_of(item["target"], "the target").items()
+                ),
+                "conventions.exception_unused",
+                f"{one_line(item['rule'])}: {one_line(item['why'])}",
+            )
+            for item in unused
+        ]
 
         def render(console: Console) -> None:
             for metric, failed, sentence in failures:
@@ -541,6 +561,13 @@ def check(
             else:
                 line(console, f"All checks pass on {len(names)} metrics.")
 
-        session.emit({"metrics": metrics, "failing": len(failures)}, render)
+        session.emit(
+            {
+                "metrics": metrics,
+                "unused": unused_answer["unused"],
+                "failing": len(failures),
+            },
+            render,
+        )
     if failures:
         raise typer.Exit(1)

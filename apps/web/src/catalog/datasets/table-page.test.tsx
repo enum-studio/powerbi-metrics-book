@@ -92,10 +92,10 @@ function render({
   client.setQueryData(["catalog", "dataset", "d1"], dataset);
   client.setQueryData(["conventions"], {
     rules: {
-      element_fields: {
+      table_fields: {
         custom: [
-          { key: "grain", label: "Grain", type: "text" },
-          { key: "owner", label: "Owner", type: "text" },
+          { key: "source_system", label: "Source system", type: "text" },
+          { key: "steward", label: "Steward", type: "text" },
         ],
       },
     },
@@ -104,7 +104,7 @@ function render({
     description: "One row per order line.",
     description_pbi: "Order lines.",
     described_at: null,
-    custom: { grain: "One order line" },
+    custom: { source_system: "Order service" },
   });
   const key = ["catalog", "dataset", "d1", "table", table];
   if (tableFields instanceof Error)
@@ -129,7 +129,7 @@ it("opens on the documentation, with its tabs and no diagram", () => {
   );
   expect(html).not.toContain("Diagram");
   expect(html).toMatch(
-    /One row per order line\..*Description in Power BI.*Order lines\..*Grain.*One order line.*Owner.*Not written yet.*Fact table/s,
+    /One row per order line\..*Description in Power BI.*Order lines\..*Source system.*Order service.*Steward.*Not written yet.*Fact table/s,
   );
 });
 

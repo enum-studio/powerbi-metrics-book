@@ -22,18 +22,26 @@ type Answers = dict[tuple[str, str], httpx.Response]
 def routes(answers: Answers) -> Callable[[httpx.Request], httpx.Response]:
     def handler(request: httpx.Request) -> httpx.Response:
         key = (request.method, request.url.path.removeprefix(API))
+        if key == ("GET", "/conventions/exceptions/unused"):
+            return json_response(200, {"unused": []})
         return answers.get(key) or api_error(404, "not_found", f"No route {key}.")
 
     return handler
 
 
 def checks_answer(*results: tuple[str, bool, str]) -> httpx.Response:
+    """Each result is (rule, passed, message); its check is the rule's first part."""
     return json_response(
         200,
         {
             "checks": [
-                {"check": check, "passed": passed, "message": message}
-                for check, passed, message in results
+                {
+                    "check": rule.split(".")[0],
+                    "rule": rule,
+                    "passed": passed,
+                    "message": message,
+                }
+                for rule, passed, message in results
             ]
         },
     )
@@ -117,7 +125,7 @@ def test_check_all_exits_1_and_lists_each_failing_check_with_its_sentence(
             {
                 ("GET", "/metrics"): json_response(200, page),
                 ("GET", "/metrics/total_net_sales_excl_vat/checks"): checks_answer(
-                    ("metric_fields", False, "when_to_use is empty."),
+                    ("metric_fields.when_to_use", False, "when_to_use is empty."),
                     ("metric_name_form", True, "ok"),
                     ("metric_base_variant", False, "No live base variant."),
                 ),
@@ -134,19 +142,22 @@ def test_check_all_exits_1_and_lists_each_failing_check_with_its_sentence(
     document = json.loads(result.stdout)
     assert document["failing"] == 2
     failed = {
-        (metric["name"], check["check"]): check["message"]
+        (metric["name"], check["rule"]): check["message"]
         for metric in document["metrics"]
         for check in metric["checks"]
         if not check["passed"]
     }
     assert failed == {
-        ("total_net_sales_excl_vat", "metric_fields"): "when_to_use is empty.",
+        ("total_net_sales_excl_vat", "metric_fields.when_to_use"): (
+            "when_to_use is empty."
+        ),
         ("total_net_sales_excl_vat", "metric_base_variant"): "No live base variant.",
     }
     human = run("metrics", "check", "--all")
-    assert "total_net_sales_excl_vat: metric_fields: when_to_use is empty." in (
-        human.stdout
+    sentence = (
+        "total_net_sales_excl_vat: metric_fields.when_to_use: when_to_use is empty."
     )
+    assert sentence in human.stdout
     assert "number_of_orders" not in human.stdout
 
 
@@ -154,6 +165,8 @@ def test_check_all_follows_the_cursor_and_passes_when_nothing_fails(
     serve: Serve,
 ) -> None:
     def pages(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/unused"):
+            return json_response(200, {"unused": []})
         if request.url.path.endswith("/checks"):
             return checks_answer(("metric_fields", True, "ok"))
         if request.url.params.get("cursor") == "next":
@@ -180,6 +193,7 @@ def test_check_wants_a_name_or_all_not_both(serve: Serve) -> None:
 def test_show_and_check_print_the_labels_a_check_counts(serve: Serve) -> None:
     failing = {
         "check": "metric_not_the_same_as",
+        "rule": "metric_fields.not_the_same_as",
         "message": "2 other metrics share a content word.",
         "other_labels": ["Number of returns", "Number of visits"],
     }
@@ -197,7 +211,7 @@ def test_show_and_check_print_the_labels_a_check_counts(serve: Serve) -> None:
     )
 
     sentence = (
-        "metric_not_the_same_as: 2 other metrics share a content word. "
+        "metric_fields.not_the_same_as: 2 other metrics share a content word. "
         "Closest first: Number of returns; Number of visits."
     )
     for command in ("show", "check"):
@@ -208,7 +222,13 @@ def test_show_and_check_print_the_labels_a_check_counts(serve: Serve) -> None:
 def test_show_prints_the_failing_checks_before_the_fields_and_the_dax_reference(
     serve: Serve,
 ) -> None:
-    failing = [{"check": "metric_fields", "message": "when_to_use is empty."}]
+    failing = [
+        {
+            "check": "metric_fields",
+            "rule": "metric_fields.when_to_use",
+            "message": "when_to_use is empty.",
+        }
+    ]
     serve(
         routes(
             {
@@ -222,7 +242,9 @@ def test_show_prints_the_failing_checks_before_the_fields_and_the_dax_reference(
     result = run("metrics", "show", "number_of_orders")
 
     text = result.stdout
-    assert text.index("metric_fields: when_to_use is empty.") < text.index("definition")
+    assert text.index("metric_fields.when_to_use: when_to_use is empty.") < text.index(
+        "definition"
+    )
     for expected in ("[Orders]", "Sample data sales", "previous_year", "sales/orders"):
         assert expected in text
 
@@ -781,6 +803,31 @@ CONVENTIONS_ANSWER = {
     "rules": RULES,
 }
 CHANGE = {"path": "naming.case", "before": "snake_case", "after": "none"}
+RULE_LIST = {
+    "rules": [
+        {
+            "id": "naming.case",
+            "check": "metric_name_form",
+            "target": "metric",
+            "value": "snake_case",
+            "source": "company",
+            "allowed": ["snake_case", "none"],
+            "off": False,
+            "exceptions": 0,
+        },
+        {
+            "id": "metric_base_variant",
+            "check": "metric_base_variant",
+            "target": "metric",
+            "value": None,
+            "source": "preset",
+            "allowed": None,
+            "off": True,
+            "exceptions": 0,
+        },
+    ],
+    "fixed": [{"id": "format", "reason": "It says how to read the rest."}],
+}
 
 
 def conventions_api(
@@ -789,6 +836,32 @@ def conventions_api(
     return routes(
         {
             ("GET", "/conventions"): json_response(200, CONVENTIONS_ANSWER),
+            ("GET", "/conventions/rules"): json_response(200, RULE_LIST),
+            ("GET", "/conventions/company"): json_response(
+                200,
+                {
+                    "format": 1,
+                    **(
+                        {"preset": "minimal"}
+                        if diff and diff.json() == {"changes": []}
+                        else {
+                            "preset": "metrics_book",
+                            "naming": {"case": "snake_case"},
+                        }
+                    ),
+                },
+            ),
+            ("POST", "/conventions/apply"): json_response(
+                200,
+                {
+                    "changed_rules": []
+                    if diff and diff.json() == {"changes": []}
+                    else ["naming.case"],
+                    "now_failing": {"naming.case": 1},
+                    "exceptions_added": [],
+                    "version": 4,
+                },
+            ),
             ("POST", "/conventions/diff"): diff
             or json_response(200, {"changes": [CHANGE]}),
             ("PUT", "/conventions"): save
@@ -801,7 +874,9 @@ def conventions_api(
 
 def a_file(folder: Path, document: dict[str, object] | None = None) -> Path:
     path = folder / "conventions.yml"
-    path.write_text(yaml.safe_dump(document or {"preset": "minimal"}))
+    path.write_text(
+        yaml.safe_dump({"format": 1, **(document or {"preset": "minimal"})})
+    )
     return path
 
 
@@ -813,7 +888,26 @@ def test_conventions_show_prints_the_guide_then_the_rules_in_words(
     result = run("conventions", "show")
 
     assert result.stdout.index("Names follow") < result.stdout.index("- A metric key")
-    assert json.loads(run("conventions", "show", "--json").stdout) == CONVENTIONS_ANSWER
+    shown = json.loads(run("conventions", "show", "--json").stdout)
+    assert shown == {**CONVENTIONS_ANSWER, **RULE_LIST}
+
+
+def test_conventions_show_lists_each_rule_with_its_source_and_whether_it_is_off(
+    serve: Serve,
+) -> None:
+    serve(conventions_api())
+
+    rows = [
+        row.split()
+        for row in run("conventions", "show").stdout.splitlines()
+        if row.strip().startswith(("id", "naming.case", "metric_base_variant"))
+    ]
+
+    assert rows == [
+        ["id", "value", "source", "off"],
+        ["naming.case", "snake_case", "company", "false"],
+        ["metric_base_variant", "-", "preset", "true"],
+    ]
 
 
 def test_conventions_export_is_the_yaml_that_import_takes(serve: Serve) -> None:
@@ -822,10 +916,9 @@ def test_conventions_export_is_the_yaml_that_import_takes(serve: Serve) -> None:
     exported = yaml.safe_load(run("conventions", "export").stdout)
 
     assert exported == {
+        "format": 1,
         "preset": "metrics_book",
-        "guide": "Names follow the company standard.",
-        "naming": RULES["naming"],
-        "trust": RULES["trust"],
+        "naming": {"case": "snake_case"},
     }
     assert json.loads(run("conventions", "export", "--json").stdout) == exported
 
@@ -865,20 +958,18 @@ def test_conventions_set_inside_a_value_is_refused(serve: Serve) -> None:
     result = run("conventions", "set", "preset.name", "x")
 
     assert result.exit_code == 2
-    assert [request.method for request in seen] == ["GET"]
+    assert [request.method for request in seen] == ["GET", "GET"]
 
 
 def test_diff_shows_the_changes_and_saves_nothing(serve: Serve, tmp_path: Path) -> None:
     seen = serve(conventions_api())
-
     result = run("conventions", "diff", str(a_file(tmp_path)))
-
-    assert 'naming.case: "snake_case" -> "none"' in result.stdout
-    assert [request.method for request in seen] == ["POST"]
-    assert sent(seen[0]) == {"preset": "minimal"}
+    assert result.exit_code == 1
+    assert "naming" in result.stdout
+    assert [request.method for request in seen] == ["GET", "GET"]
     assert json.loads(
         run("conventions", "diff", str(a_file(tmp_path)), "--json").stdout
-    ) == {"changes": [CHANGE]}
+    )["changes"]
 
 
 def test_validate_says_a_file_is_valid(serve: Serve, tmp_path: Path) -> None:
@@ -922,12 +1013,20 @@ def test_import_shows_the_difference_and_asks_before_saving(
     unasked = run("conventions", "import", path)
     accepted = run("conventions", "import", path, input="y\n")
 
-    assert 'naming.case: "snake_case" -> "none"' in declined.stdout
+    assert "naming.case:" in declined.stdout
     assert declined.exit_code == 1
     assert unasked.exit_code == 1
-    assert "Nothing was saved." in declined.stderr
+    assert "alias for apply" in declined.stderr
     assert accepted.exit_code == 0
-    assert [request.method for request in seen] == ["POST", "POST", "POST", "PUT"]
+    assert [request.method for request in seen] == [
+        "GET",
+        "POST",
+        "GET",
+        "POST",
+        "GET",
+        "POST",
+        "POST",
+    ]
 
 
 def test_import_with_yes_saves_without_asking_and_json_needs_yes(
@@ -941,11 +1040,12 @@ def test_import_with_yes_saves_without_asking_and_json_needs_yes(
         ["--json", "conventions", "import", path],
     ):
         assert run(*refused).exit_code == 2
-    assert seen == []
+    assert all(sent(request)["dry_run"] for request in seen if request.method == "POST")
+    seen.clear()
     result = run("conventions", "import", path, "--yes", "--json")
 
     assert json.loads(result.stdout)["version"] == 4
-    assert [request.method for request in seen] == ["POST", "PUT"]
+    assert [request.method for request in seen] == ["GET", "POST", "POST"]
 
 
 def test_import_of_a_file_that_changes_nothing_saves_nothing(
@@ -955,8 +1055,8 @@ def test_import_of_a_file_that_changes_nothing_saves_nothing(
 
     result = run("conventions", "import", str(a_file(tmp_path)), "--yes")
 
-    assert "No changes." in result.stdout
-    assert [request.method for request in seen] == ["POST"]
+    assert "No change." in result.stdout
+    assert [request.method for request in seen] == ["GET"]
 
 
 def fake_editor(folder: Path, command: str) -> str:
@@ -981,9 +1081,9 @@ def test_edit_opens_the_yaml_in_the_editor_checks_it_shows_the_difference_and_sa
 
     assert result.exit_code == 0
     assert yaml.safe_load(copy.read_text())["naming"]["case"] == "snake_case"
-    assert [request.method for request in seen] == ["GET", "POST", "PUT"]
-    assert sent(seen[1])["naming"]["case"] == "none"
-    assert sent(seen[2]) == sent(seen[1])
+    assert [request.method for request in seen] == ["GET", "GET", "POST", "PUT"]
+    assert sent(seen[2])["naming"]["case"] == "none"
+    assert sent(seen[3]) == sent(seen[2])
     assert 'naming.case: "snake_case" -> "none"' in result.stdout
     assert "Saved as version 4." in result.stdout
 
@@ -1025,6 +1125,8 @@ def test_edit_refuses_without_a_terminal_or_an_editor(
     assert without_terminal.exit_code == 2
     assert without_editor.exit_code == 2
     assert "conventions export" in without_terminal.stderr
+    assert "pbmb conventions apply <file>" in without_terminal.stderr
+    assert "pbmb conventions apply <file>" in without_editor.stderr
     assert seen == []
 
 
@@ -1226,6 +1328,7 @@ def test_names_with_newlines_print_on_one_line(serve: Serve) -> None:
                         failing_checks=[
                             {
                                 "check": "metric_fields",
+                                "rule": "metric_fields.unit",
                                 "message": "Bad.\nAll checks pass.",
                             }
                         ],
@@ -1251,7 +1354,7 @@ def test_names_with_newlines_print_on_one_line(serve: Serve) -> None:
     tree = run("categories", "tree").stdout.splitlines()
 
     assert "number_of_orders: Orders Failing checks (9) (draft)" in shown
-    assert "  metric_fields: Bad. All checks pass." in shown
+    assert "  metric_fields.unit: Bad. All checks pass." in shown
     assert tree == ["sales  Sales fake/child Fake (1 metrics) (1 metrics)"]
 
 
@@ -1389,3 +1492,44 @@ def test_show_says_who_accepted_each_answer(serve: Serve) -> None:
     assert "Answered: Q4? (acceptor unknown)" in text
     assert "Answered: Q5? (accepted by the asker, an agent)" in text
     assert "Answered: Q6? (accepted by someone else)" in text
+
+
+@pytest.mark.parametrize("command", ["set", "edit", "export", "presets"])
+def test_conventions_keep_company_exceptions(
+    command: str, monkeypatch: pytest.MonkeyPatch, serve: Serve, tmp_path: Path
+) -> None:
+    exceptions = [
+        {"rule": "naming.kinds", "metric": "gmv", "reason": "Name in use"},
+        {
+            "rule": "column_fields.unit",
+            "dataset": "Sample restricted data",
+            "column": "'Sales'[Amount]",
+            "reason": "Reviewed separately",
+        },
+    ]
+    handler = conventions_api()
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/company"):
+            return json_response(200, {"format": 1, "exceptions": exceptions})
+        return handler(request)
+
+    seen = serve(answer)
+    path = tmp_path / "conventions.yml"
+    arguments = {
+        "set": ["set", "naming.case", "none"],
+        "edit": ["edit"],
+        "export": ["export", "--resolved", "--output", str(path)],
+        "presets": ["presets"],
+    }
+    monkeypatch.setenv("EDITOR", fake_editor(tmp_path, "true"))
+    monkeypatch.setattr(conventions, "_has_terminal", lambda: True)
+    result = run("conventions", *arguments[command], input="y\n")
+    assert result.exit_code == 0, result.output
+    if command == "presets":
+        assert [request.url.path for request in seen] == [API + "/conventions"]
+    elif command == "export":
+        assert yaml.safe_load(path.read_text())["exceptions"] == exceptions
+    else:
+        assert seen[-1].method == "PUT"
+        assert sent(seen[-1])["exceptions"] == exceptions

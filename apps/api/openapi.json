@@ -142,6 +142,9 @@
           },
           "message": {
             "type": "string"
+          },
+          "code": {
+            "type": "string"
           }
         },
         "required": [
@@ -720,6 +723,10 @@
                 "check": {
                   "type": "string"
                 },
+                "rule": {
+                  "type": "string",
+                  "description": "The id of the rule the sentence is about."
+                },
                 "message": {
                   "type": "string"
                 },
@@ -760,6 +767,7 @@
               },
               "required": [
                 "check",
+                "rule",
                 "message"
               ],
               "additionalProperties": false
@@ -6317,6 +6325,10 @@
                           "check": {
                             "type": "string"
                           },
+                          "rule": {
+                            "type": "string",
+                            "description": "The id of the rule the result is about."
+                          },
                           "passed": {
                             "type": "boolean"
                           },
@@ -6329,10 +6341,15 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "exception": {
+                            "description": "Failing, it passes by an exception with this reason.",
+                            "type": "string"
                           }
                         },
                         "required": [
                           "check",
+                          "rule",
                           "passed",
                           "message"
                         ],
@@ -7967,6 +7984,48 @@
                       ],
                       "additionalProperties": false
                     },
+                    "when_to_use": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "freshness": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "caveats": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "grain_and_filters": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "unit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "blank_means": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "description": {
                       "type": [
                         "string",
@@ -8121,6 +8180,83 @@
                         }
                       ]
                     }
+                  },
+                  "when_to_use": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "freshness": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "caveats": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "grain_and_filters": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unit": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "blank_means": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -8159,6 +8295,48 @@
                         "name"
                       ],
                       "additionalProperties": false
+                    },
+                    "when_to_use": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "freshness": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "caveats": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "grain_and_filters": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "unit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "blank_means": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "description": {
                       "type": [
@@ -8534,6 +8712,206 @@
         ]
       }
     },
+    "/api/v1/conventions/rules": {
+      "get": {
+        "operationId": "getApiV1ConventionsRules",
+        "summary": "Every rule by its id: its value, where the value comes from, and whether it is off",
+        "responses": {
+          "200": {
+            "description": "Every rule by its id: its value, where the value comes from, and whether it is off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "check": {
+                            "type": "string",
+                            "enum": [
+                              "metric_name_form",
+                              "metric_name_generated",
+                              "metric_name_comparison",
+                              "metric_money_qualifier",
+                              "metric_qualifier_order",
+                              "metric_fields",
+                              "metric_not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields",
+                              "dataset_fields",
+                              "table_fields",
+                              "column_fields"
+                            ]
+                          },
+                          "target": {
+                            "type": "string",
+                            "enum": [
+                              "metric",
+                              "term",
+                              "dataset",
+                              "table",
+                              "column"
+                            ]
+                          },
+                          "value": {},
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "preset",
+                              "company"
+                            ]
+                          },
+                          "allowed": {
+                            "anyOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": [
+                                    "string",
+                                    "boolean"
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "off": {
+                            "type": "boolean"
+                          },
+                          "exceptions": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "check",
+                          "target",
+                          "value",
+                          "source",
+                          "allowed",
+                          "off",
+                          "exceptions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "fixed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "rules",
+                    "fixed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conventions/company": {
+      "get": {
+        "operationId": "getApiV1ConventionsCompany",
+        "summary": "What the company set over its preset, in the version in force",
+        "responses": {
+          "200": {
+            "description": "What the company set over its preset, in the version in force",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "format": {
+                      "type": "number",
+                      "const": 1
+                    },
+                    "preset": {
+                      "type": "string",
+                      "enum": [
+                        "metrics_book",
+                        "minimal"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "format"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/conventions": {
       "put": {
         "operationId": "putApiV1Conventions",
@@ -8560,7 +8938,8 @@
                           ]
                         },
                         "guide": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 262144
                         },
                         "naming": {
                           "type": "object",
@@ -8575,14 +8954,16 @@
                             "kinds": {
                               "type": "array",
                               "items": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 500
                               }
                             },
                             "forbidden_words": {
                               "type": "array",
                               "items": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "maxLength": 500
                               }
                             },
                             "money_qualifier": {
@@ -8595,14 +8976,16 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "units": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -8617,20 +9000,21 @@
                               "type": "array",
                               "items": {
                                 "type": "string",
-                                "pattern": "^[a-z][a-z0-9_]*$"
+                                "maxLength": 500
                               }
                             },
                             "qualifiers": {
                               "type": "object",
                               "propertyNames": {
                                 "type": "string",
-                                "pattern": "^[a-z][a-z0-9_]*$"
+                                "maxLength": 500
                               },
                               "additionalProperties": {
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 500
                                 }
                               }
                             },
@@ -8710,7 +9094,8 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -8742,7 +9127,8 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -8771,11 +9157,12 @@
                                 "properties": {
                                   "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                    "maxLength": 500
                                   },
                                   "label": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   },
                                   "type": {
                                     "type": "string",
@@ -8792,7 +9179,8 @@
                                     "type": "array",
                                     "items": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 500
                                     }
                                   },
                                   "required": {
@@ -8864,11 +9252,12 @@
                                 "properties": {
                                   "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                    "maxLength": 500
                                   },
                                   "label": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   },
                                   "type": {
                                     "type": "string",
@@ -8885,7 +9274,8 @@
                                     "type": "array",
                                     "items": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 500
                                     }
                                   },
                                   "required": {
@@ -8910,9 +9300,69 @@
                           ],
                           "additionalProperties": false
                         },
-                        "element_fields": {
+                        "dataset_fields": {
                           "type": "object",
                           "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "when_to_use": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "owner": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "freshness": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
                             "custom": {
                               "type": "array",
                               "items": {
@@ -8920,11 +9370,12 @@
                                 "properties": {
                                   "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                    "maxLength": 500
                                   },
                                   "label": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   },
                                   "type": {
                                     "type": "string",
@@ -8941,7 +9392,8 @@
                                     "type": "array",
                                     "items": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 500
                                     }
                                   },
                                   "required": {
@@ -8960,6 +9412,234 @@
                             }
                           },
                           "required": [
+                            "definition",
+                            "when_to_use",
+                            "owner",
+                            "freshness",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "table_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "grain_and_filters": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_fact"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "grain_and_filters",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "column_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_visible_and_no_term"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "unit": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_numeric"
+                                    }
+                                  ]
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "blank_means": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "unit",
+                            "blank_means",
                             "custom"
                           ],
                           "additionalProperties": false
@@ -8977,7 +9657,8 @@
                                       "type": "array",
                                       "items": {
                                         "type": "string",
-                                        "minLength": 1
+                                        "minLength": 1,
+                                        "maxLength": 500
                                       }
                                     }
                                   },
@@ -9019,8 +9700,7 @@
                                         {
                                           "type": "array",
                                           "items": {
-                                            "type": "string",
-                                            "pattern": "^(?:[A-Z]{3}|local)$"
+                                            "type": "string"
                                           }
                                         }
                                       ]
@@ -9038,14 +9718,14 @@
                                     "properties": {
                                       "key": {
                                         "type": "string",
-                                        "pattern": "^[a-z][a-z0-9_]*$"
+                                        "maxLength": 500
                                       },
                                       "values": {
                                         "minItems": 1,
                                         "type": "array",
                                         "items": {
                                           "type": "string",
-                                          "pattern": "^[a-z][a-z0-9_]*$"
+                                          "maxLength": 500
                                         }
                                       }
                                     },
@@ -9090,35 +9770,40 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_quarter": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_month": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_week": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_day": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9138,14 +9823,16 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "currency": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9164,19 +9851,29 @@
                                 "display_folders": {
                                   "type": "array",
                                   "items": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 500
                                   }
                                 },
                                 "tables": {
                                   "type": "array",
                                   "items": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 500
                                   }
                                 },
-                                "name_patterns": {
+                                "name_prefixes": {
                                   "type": "array",
                                   "items": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 500
+                                  }
+                                },
+                                "names": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9184,28 +9881,52 @@
                                 "hidden_measures",
                                 "display_folders",
                                 "tables",
-                                "name_patterns"
+                                "name_prefixes",
+                                "names"
                               ],
                               "additionalProperties": false
                             },
                             "dismiss": {
                               "type": "array",
                               "items": {
-                                "type": "object",
-                                "properties": {
-                                  "name_pattern": {
-                                    "type": "string"
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "prefix": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "prefix",
+                                      "reason"
+                                    ],
+                                    "additionalProperties": false
                                   },
-                                  "reason": {
-                                    "type": "string",
-                                    "minLength": 1
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "reason"
+                                    ],
+                                    "additionalProperties": false
                                   }
-                                },
-                                "required": [
-                                  "name_pattern",
-                                  "reason"
-                                ],
-                                "additionalProperties": false
+                                ]
                               }
                             }
                           },
@@ -9242,7 +9963,10 @@
                                       "metric_fields",
                                       "metric_not_the_same_as",
                                       "metric_base_variant",
-                                      "term_fields"
+                                      "term_fields",
+                                      "dataset_fields",
+                                      "table_fields",
+                                      "column_fields"
                                     ]
                                   }
                                 }
@@ -9262,31 +9986,134 @@
                           ],
                           "additionalProperties": false
                         },
-                        "checks": {
-                          "type": "object",
-                          "properties": {
-                            "off": {
-                              "type": "array",
-                              "items": {
+                        "off": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "naming.case",
+                              "metric_name_form",
+                              "naming.kinds",
+                              "metric_name_generated",
+                              "naming.forbidden_words",
+                              "metric_name_comparison",
+                              "naming.money_qualifier",
+                              "metric_money_qualifier",
+                              "naming.qualifier_order",
+                              "metric_qualifier_order",
+                              "metric_fields.definition",
+                              "metric_fields",
+                              "metric_fields.aliases",
+                              "metric_fields.when_to_use",
+                              "metric_fields.grain_and_filters",
+                              "metric_fields.unit",
+                              "metric_fields.category",
+                              "metric_fields.custom",
+                              "dataset_fields.definition",
+                              "dataset_fields",
+                              "dataset_fields.when_to_use",
+                              "dataset_fields.owner",
+                              "dataset_fields.freshness",
+                              "dataset_fields.caveats",
+                              "dataset_fields.custom",
+                              "table_fields.definition",
+                              "table_fields",
+                              "table_fields.grain_and_filters",
+                              "table_fields.caveats",
+                              "table_fields.custom",
+                              "column_fields.definition",
+                              "column_fields",
+                              "column_fields.unit",
+                              "column_fields.blank_means",
+                              "column_fields.custom",
+                              "metric_fields.not_the_same_as",
+                              "metric_not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields.definition",
+                              "term_fields",
+                              "term_fields.values",
+                              "term_fields.custom"
+                            ]
+                          }
+                        },
+                        "exceptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "metric_name_form",
+                                  "naming.case",
+                                  "naming.kinds",
                                   "metric_name_generated",
-                                  "metric_name_comparison",
-                                  "metric_money_qualifier",
-                                  "metric_qualifier_order",
-                                  "metric_fields",
-                                  "metric_not_the_same_as",
+                                  "naming.forbidden_words",
+                                  "naming.money_qualifier",
+                                  "naming.qualifier_order",
+                                  "metric_fields.definition",
+                                  "metric_fields.aliases",
+                                  "metric_fields.when_to_use",
+                                  "metric_fields.grain_and_filters",
+                                  "metric_fields.unit",
+                                  "metric_fields.category",
+                                  "metric_fields.custom",
+                                  "dataset_fields.definition",
+                                  "dataset_fields.when_to_use",
+                                  "dataset_fields.owner",
+                                  "dataset_fields.freshness",
+                                  "dataset_fields.caveats",
+                                  "dataset_fields.custom",
+                                  "table_fields.definition",
+                                  "table_fields.grain_and_filters",
+                                  "table_fields.caveats",
+                                  "table_fields.custom",
+                                  "column_fields.definition",
+                                  "column_fields.unit",
+                                  "column_fields.blank_means",
+                                  "column_fields.custom",
+                                  "metric_fields.not_the_same_as",
                                   "metric_base_variant",
-                                  "term_fields"
+                                  "term_fields.definition",
+                                  "term_fields.values",
+                                  "term_fields.custom"
                                 ]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "metric": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "term": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "dataset": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "table": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "column": {
+                                "type": "string",
+                                "maxLength": 500
                               }
-                            }
-                          },
-                          "required": [
-                            "off"
-                          ],
-                          "additionalProperties": false
+                            },
+                            "required": [
+                              "rule",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -9295,11 +10122,14 @@
                         "naming",
                         "metric_fields",
                         "term_fields",
-                        "element_fields",
+                        "dataset_fields",
+                        "table_fields",
+                        "column_fields",
                         "variants",
                         "drafting",
                         "trust",
-                        "checks"
+                        "off",
+                        "exceptions"
                       ],
                       "additionalProperties": false
                     },
@@ -9382,10 +10212,10 @@
       },
       "get": {
         "operationId": "getApiV1Conventions",
-        "summary": "The company's conventions: the guide in words and the rules as data",
+        "summary": "The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has",
         "responses": {
           "200": {
-            "description": "The company's conventions: the guide in words and the rules as data",
+            "description": "The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has",
             "content": {
               "application/json": {
                 "schema": {
@@ -9430,14 +10260,16 @@
                             "kinds": {
                               "type": "array",
                               "items": {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 500
                               }
                             },
                             "forbidden_words": {
                               "type": "array",
                               "items": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "maxLength": 500
                               }
                             },
                             "money_qualifier": {
@@ -9450,14 +10282,16 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "units": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9472,20 +10306,21 @@
                               "type": "array",
                               "items": {
                                 "type": "string",
-                                "pattern": "^[a-z][a-z0-9_]*$"
+                                "maxLength": 500
                               }
                             },
                             "qualifiers": {
                               "type": "object",
                               "propertyNames": {
                                 "type": "string",
-                                "pattern": "^[a-z][a-z0-9_]*$"
+                                "maxLength": 500
                               },
                               "additionalProperties": {
                                 "type": "array",
                                 "items": {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "maxLength": 500
                                 }
                               }
                             },
@@ -9565,7 +10400,8 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9597,7 +10433,8 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9626,11 +10463,12 @@
                                 "properties": {
                                   "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                    "maxLength": 500
                                   },
                                   "label": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   },
                                   "type": {
                                     "type": "string",
@@ -9647,7 +10485,8 @@
                                     "type": "array",
                                     "items": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 500
                                     }
                                   },
                                   "required": {
@@ -9719,11 +10558,12 @@
                                 "properties": {
                                   "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                    "maxLength": 500
                                   },
                                   "label": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   },
                                   "type": {
                                     "type": "string",
@@ -9740,7 +10580,8 @@
                                     "type": "array",
                                     "items": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 500
                                     }
                                   },
                                   "required": {
@@ -9765,9 +10606,69 @@
                           ],
                           "additionalProperties": false
                         },
-                        "element_fields": {
+                        "dataset_fields": {
                           "type": "object",
                           "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "when_to_use": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "owner": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "freshness": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
                             "custom": {
                               "type": "array",
                               "items": {
@@ -9775,11 +10676,12 @@
                                 "properties": {
                                   "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                    "maxLength": 500
                                   },
                                   "label": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   },
                                   "type": {
                                     "type": "string",
@@ -9796,7 +10698,8 @@
                                     "type": "array",
                                     "items": {
                                       "type": "string",
-                                      "minLength": 1
+                                      "minLength": 1,
+                                      "maxLength": 500
                                     }
                                   },
                                   "required": {
@@ -9815,6 +10718,234 @@
                             }
                           },
                           "required": [
+                            "definition",
+                            "when_to_use",
+                            "owner",
+                            "freshness",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "table_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "grain_and_filters": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_fact"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "grain_and_filters",
+                            "caveats",
+                            "custom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "column_fields": {
+                          "type": "object",
+                          "properties": {
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_visible_and_no_term"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "unit": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "anyOf": [
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "const": "when_numeric"
+                                    }
+                                  ]
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "blank_means": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "custom": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "choice"
+                                    ]
+                                  },
+                                  "values": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type",
+                                  "required"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "definition",
+                            "unit",
+                            "blank_means",
                             "custom"
                           ],
                           "additionalProperties": false
@@ -9832,7 +10963,8 @@
                                       "type": "array",
                                       "items": {
                                         "type": "string",
-                                        "minLength": 1
+                                        "minLength": 1,
+                                        "maxLength": 500
                                       }
                                     }
                                   },
@@ -9874,8 +11006,7 @@
                                         {
                                           "type": "array",
                                           "items": {
-                                            "type": "string",
-                                            "pattern": "^(?:[A-Z]{3}|local)$"
+                                            "type": "string"
                                           }
                                         }
                                       ]
@@ -9893,14 +11024,14 @@
                                     "properties": {
                                       "key": {
                                         "type": "string",
-                                        "pattern": "^[a-z][a-z0-9_]*$"
+                                        "maxLength": 500
                                       },
                                       "values": {
                                         "minItems": 1,
                                         "type": "array",
                                         "items": {
                                           "type": "string",
-                                          "pattern": "^[a-z][a-z0-9_]*$"
+                                          "maxLength": 500
                                         }
                                       }
                                     },
@@ -9945,35 +11076,40 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_quarter": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_month": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_week": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "previous_day": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -9993,14 +11129,16 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 },
                                 "currency": {
                                   "type": "array",
                                   "items": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "minLength": 1,
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -10019,19 +11157,29 @@
                                 "display_folders": {
                                   "type": "array",
                                   "items": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 500
                                   }
                                 },
                                 "tables": {
                                   "type": "array",
                                   "items": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 500
                                   }
                                 },
-                                "name_patterns": {
+                                "name_prefixes": {
                                   "type": "array",
                                   "items": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 500
+                                  }
+                                },
+                                "names": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "maxLength": 500
                                   }
                                 }
                               },
@@ -10039,28 +11187,52 @@
                                 "hidden_measures",
                                 "display_folders",
                                 "tables",
-                                "name_patterns"
+                                "name_prefixes",
+                                "names"
                               ],
                               "additionalProperties": false
                             },
                             "dismiss": {
                               "type": "array",
                               "items": {
-                                "type": "object",
-                                "properties": {
-                                  "name_pattern": {
-                                    "type": "string"
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "prefix": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "prefix",
+                                      "reason"
+                                    ],
+                                    "additionalProperties": false
                                   },
-                                  "reason": {
-                                    "type": "string",
-                                    "minLength": 1
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "reason"
+                                    ],
+                                    "additionalProperties": false
                                   }
-                                },
-                                "required": [
-                                  "name_pattern",
-                                  "reason"
-                                ],
-                                "additionalProperties": false
+                                ]
                               }
                             }
                           },
@@ -10097,7 +11269,10 @@
                                       "metric_fields",
                                       "metric_not_the_same_as",
                                       "metric_base_variant",
-                                      "term_fields"
+                                      "term_fields",
+                                      "dataset_fields",
+                                      "table_fields",
+                                      "column_fields"
                                     ]
                                   }
                                 }
@@ -10117,31 +11292,55 @@
                           ],
                           "additionalProperties": false
                         },
-                        "checks": {
-                          "type": "object",
-                          "properties": {
-                            "off": {
-                              "type": "array",
-                              "items": {
-                                "type": "string",
-                                "enum": [
-                                  "metric_name_form",
-                                  "metric_name_generated",
-                                  "metric_name_comparison",
-                                  "metric_money_qualifier",
-                                  "metric_qualifier_order",
-                                  "metric_fields",
-                                  "metric_not_the_same_as",
-                                  "metric_base_variant",
-                                  "term_fields"
-                                ]
-                              }
-                            }
-                          },
-                          "required": [
-                            "off"
-                          ],
-                          "additionalProperties": false
+                        "off": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "naming.case",
+                              "metric_name_form",
+                              "naming.kinds",
+                              "metric_name_generated",
+                              "naming.forbidden_words",
+                              "metric_name_comparison",
+                              "naming.money_qualifier",
+                              "metric_money_qualifier",
+                              "naming.qualifier_order",
+                              "metric_qualifier_order",
+                              "metric_fields.definition",
+                              "metric_fields",
+                              "metric_fields.aliases",
+                              "metric_fields.when_to_use",
+                              "metric_fields.grain_and_filters",
+                              "metric_fields.unit",
+                              "metric_fields.category",
+                              "metric_fields.custom",
+                              "dataset_fields.definition",
+                              "dataset_fields",
+                              "dataset_fields.when_to_use",
+                              "dataset_fields.owner",
+                              "dataset_fields.freshness",
+                              "dataset_fields.caveats",
+                              "dataset_fields.custom",
+                              "table_fields.definition",
+                              "table_fields",
+                              "table_fields.grain_and_filters",
+                              "table_fields.caveats",
+                              "table_fields.custom",
+                              "column_fields.definition",
+                              "column_fields",
+                              "column_fields.unit",
+                              "column_fields.blank_means",
+                              "column_fields.custom",
+                              "metric_fields.not_the_same_as",
+                              "metric_not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields.definition",
+                              "term_fields",
+                              "term_fields.values",
+                              "term_fields.custom"
+                            ]
+                          }
                         }
                       },
                       "required": [
@@ -10149,20 +11348,34 @@
                         "naming",
                         "metric_fields",
                         "term_fields",
-                        "element_fields",
+                        "dataset_fields",
+                        "table_fields",
+                        "column_fields",
                         "variants",
                         "drafting",
                         "trust",
-                        "checks"
+                        "off"
                       ],
                       "additionalProperties": false
+                    },
+                    "exceptions": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
                     }
                   },
                   "required": [
                     "preset",
                     "guide",
                     "summary",
-                    "rules"
+                    "rules",
+                    "exceptions"
                   ],
                   "additionalProperties": false
                 }
@@ -10354,6 +11567,323 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/conventions/apply": {
+      "post": {
+        "operationId": "postApiV1ConventionsApply",
+        "summary": "Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run",
+        "responses": {
+          "200": {
+            "description": "Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed_rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "now_failing": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "exceptions_added": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string",
+                            "enum": [
+                              "naming.case",
+                              "naming.kinds",
+                              "metric_name_generated",
+                              "naming.forbidden_words",
+                              "naming.money_qualifier",
+                              "naming.qualifier_order",
+                              "metric_fields.definition",
+                              "metric_fields.aliases",
+                              "metric_fields.when_to_use",
+                              "metric_fields.grain_and_filters",
+                              "metric_fields.unit",
+                              "metric_fields.category",
+                              "metric_fields.custom",
+                              "dataset_fields.definition",
+                              "dataset_fields.when_to_use",
+                              "dataset_fields.owner",
+                              "dataset_fields.freshness",
+                              "dataset_fields.caveats",
+                              "dataset_fields.custom",
+                              "table_fields.definition",
+                              "table_fields.grain_and_filters",
+                              "table_fields.caveats",
+                              "table_fields.custom",
+                              "column_fields.definition",
+                              "column_fields.unit",
+                              "column_fields.blank_means",
+                              "column_fields.custom",
+                              "metric_fields.not_the_same_as",
+                              "metric_base_variant",
+                              "term_fields.definition",
+                              "term_fields.values",
+                              "term_fields.custom"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "metric": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "term": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "dataset": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "table": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "column": {
+                            "type": "string",
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "version": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "changed_rules",
+                    "now_failing",
+                    "exceptions_added",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conventions": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "additionalProperties": {}
+                  },
+                  "dry_run": {
+                    "type": "boolean"
+                  },
+                  "baseline_reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "conventions",
+                  "dry_run"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conventions/exceptions/unused": {
+      "get": {
+        "operationId": "getApiV1ConventionsExceptionsUnused",
+        "summary": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them",
+        "responses": {
+          "200": {
+            "description": "The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unused": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "metric",
+                                "term",
+                                "dataset",
+                                "table",
+                                "column"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "why": {
+                            "type": "string",
+                            "enum": [
+                              "no_such_target",
+                              "passes",
+                              "ambiguous"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "target",
+                          "reason",
+                          "why"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "unused"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "metric",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        ]
       }
     },
     "/api/v1/queries": {
@@ -14041,6 +15571,12 @@
                               "null"
                             ]
                           },
+                          "when_to_use": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "workspace": {
                             "type": "object",
                             "properties": {
@@ -14108,6 +15644,7 @@
                           "name",
                           "icon",
                           "description",
+                          "when_to_use",
                           "workspace",
                           "reached_through",
                           "has_row_level_security",
@@ -14366,6 +15903,30 @@
                       ]
                     },
                     "description_pbi": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "when_to_use": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "owner": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "freshness": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "caveats": {
                       "type": [
                         "string",
                         "null"
@@ -14674,6 +16235,12 @@
                               "null"
                             ]
                           },
+                          "grain_and_filters": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "column_count": {
                             "type": "number"
                           },
@@ -14698,6 +16265,7 @@
                           "is_hidden",
                           "description",
                           "description_pbi",
+                          "grain_and_filters",
                           "column_count",
                           "measure_count",
                           "custom"
@@ -14716,6 +16284,10 @@
                     "icon",
                     "description",
                     "description_pbi",
+                    "when_to_use",
+                    "owner",
+                    "freshness",
+                    "caveats",
                     "workspace",
                     "apps",
                     "reached_through",
@@ -14882,6 +16454,18 @@
                               "null"
                             ]
                           },
+                          "unit": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "blank_means": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "display_folder": {
                             "type": [
                               "string",
@@ -14925,6 +16509,8 @@
                           "is_hidden",
                           "description",
                           "description_pbi",
+                          "unit",
+                          "blank_means",
                           "display_folder",
                           "terms",
                           "removed"
@@ -15137,6 +16723,18 @@
                             "null"
                           ]
                         },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "blank_means": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "display_folder": {
                           "type": [
                             "string",
@@ -15192,6 +16790,8 @@
                         "is_hidden",
                         "description",
                         "description_pbi",
+                        "unit",
+                        "blank_means",
                         "display_folder",
                         "terms",
                         "removed",
@@ -15770,6 +17370,223 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/docs/checks": {
+      "get": {
+        "operationId": "getApiV1DocsChecks",
+        "summary": "Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more",
+        "responses": {
+          "200": {
+            "description": "Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "dataset",
+                              "table",
+                              "column"
+                            ]
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "dataset": {
+                            "type": "string"
+                          },
+                          "table": {
+                            "type": "string"
+                          },
+                          "results": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "check": {
+                                  "type": "string"
+                                },
+                                "rule": {
+                                  "type": "string"
+                                },
+                                "passed": {
+                                  "type": "boolean"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "exception": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "check",
+                                "rule",
+                                "passed",
+                                "message"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "name",
+                          "dataset",
+                          "results"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "failing": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "unused_exceptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rule": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "metric",
+                                "term",
+                                "dataset",
+                                "table",
+                                "column"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "why": {
+                            "type": "string",
+                            "enum": [
+                              "no_such_target",
+                              "passes",
+                              "ambiguous"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "target",
+                          "reason",
+                          "why"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "failing",
+                    "next_cursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ]
       }
     },
     "/api/v1/events": {

@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { docsChecks } from "./docs.js";
+import { setConventions } from "../conventions/store.js";
+import { principals } from "../../../test/deps.js";
 import { createTestDeps } from "../../../test/deps.js";
 import { inSampleMirror, setRole } from "../../../test/sample-mirror.js";
 import {
@@ -27,7 +30,7 @@ import {
   powerbiMeasure,
 } from "../../db/schema/mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
-import { ServiceError } from "../../errors.js";
+import { NO_SUCH_DATASET, ServiceError } from "../../errors.js";
 import type { Principal } from "../../principal.js";
 import { nextDrafts } from "./drafts.js";
 import { draftDatasets } from "./drafter.js";
@@ -1120,3 +1123,53 @@ describe("moving and merging around PII variants", () => {
       expect(row?.metric_id).not.toBe(fresh);
     }));
 });
+
+it("never lists a PII column's missing documentation or names its unused exception for a non-reader", () =>
+  rolledBack(async (tx) => {
+    await filed(tx);
+    await setConventions({ db: tx }, principals.admin, {
+      format: 1,
+      exceptions: [
+        {
+          rule: "column_fields.blank_means",
+          dataset: "Sales",
+          column: "'Sales'[Channel]",
+          reason: "Optional.",
+        },
+      ],
+    });
+    const hidden = await docsChecks(asPerson(curator, { db: tx }));
+    expect(hidden.items.some((item) => item.id === id.channel)).toBe(false);
+    expect(JSON.stringify(hidden.unused_exceptions)).not.toContain("Channel");
+    const seen = await docsChecks(asPerson(withRole(curator), { db: tx }));
+    expect(
+      seen.items.find((item) => item.id === id.channel)?.results,
+    ).toContainEqual(
+      expect.objectContaining({
+        rule: "column_fields.definition",
+        passed: false,
+      }),
+    );
+    expect(seen.unused_exceptions).toContainEqual(
+      expect.objectContaining({
+        target: { dataset: "Sales", column: "'Sales'[Channel]" },
+      }),
+    );
+    await tx.insert(piiRule).values({
+      kind: "column",
+      table_name: "Sales",
+      name: "Order date",
+      pii: true,
+      ...by,
+    });
+    // With both columns hidden and a visible measure, Sales is a measures table.
+    const withoutColumns = await docsChecks(asPerson(curator, { db: tx }));
+    expect(
+      withoutColumns.items.some((item) => item.id === id.sales_table),
+    ).toBe(false);
+    expect(seen.items.some((item) => item.id === id.sales_table)).toBe(true);
+    for (const dataset of ["Finance", "Missing"])
+      await expect(
+        docsChecks(asPerson(curator, { db: tx }), { dataset }),
+      ).rejects.toMatchObject({ kind: "not_found", message: NO_SUCH_DATASET });
+  }));

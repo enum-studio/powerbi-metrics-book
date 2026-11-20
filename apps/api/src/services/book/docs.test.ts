@@ -17,7 +17,7 @@ import { powerbiDataset } from "../../db/schema/mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
 import type { Principal } from "../../principal.js";
 import { setConventionsAsAdmin } from "../conventions/service.js";
-import { getDocs, setDocs } from "./docs.js";
+import { docsChecks, getDocs, setDocs } from "./docs.js";
 
 useMirror();
 
@@ -48,6 +48,10 @@ describe("getDocs", () => {
     const context = asPerson(appReader);
     expect(await getDocs(context, { kind: "dataset", id: id.sales })).toEqual({
       element: { kind: "dataset", id: id.sales, name: "Sales" },
+      when_to_use: null,
+      owner: null,
+      freshness: null,
+      caveats: null,
       description: "Every order line since 2024.",
       description_pbi: "Orders and revenue.",
       described_by: null,
@@ -180,14 +184,14 @@ describe("setDocs", () => {
       expect(row?.description).toBe("Every order line since 2024.");
     }));
 
-  it("checks the custom fields against element_fields, and replaces them whole", () =>
+  it("checks the custom fields against dataset_fields, and replaces them whole", () =>
     rolledBack(async (tx) => {
       const admin = as(
         tx,
         reaching({ powerbi_app_ids: [id.sales_app] }, "admin"),
       );
       await setConventionsAsAdmin(admin, {
-        element_fields: {
+        dataset_fields: {
           custom: [
             {
               key: "tier",
@@ -221,6 +225,93 @@ describe("setDocs", () => {
         (await setDocs(context, element, { custom: { owner_team: "Finance" } }))
           .custom,
       ).toEqual({ owner_team: "Finance" });
+    }));
+});
+
+describe("the built-in fields", () => {
+  it("are written per kind, trimmed, cleared by a blank, recorded, and carried by the answer of their kind only", () =>
+    rolledBack(async (tx) => {
+      const context = as(tx);
+      const dataset = await setDocs(
+        context,
+        { kind: "dataset", id: id.sales },
+        { when_to_use: "  For sales  ", owner: "Sales Operations" },
+      );
+      expect(dataset).toMatchObject({
+        when_to_use: "For sales",
+        owner: "Sales Operations",
+        freshness: null,
+        caveats: null,
+        described_by: "test-curator",
+      });
+      expect(dataset).not.toHaveProperty("unit");
+      const table = await setDocs(
+        context,
+        { kind: "table", id: id.sales_table },
+        { grain_and_filters: "One row per order line", caveats: "No returns" },
+      );
+      expect(table).toMatchObject({
+        grain_and_filters: "One row per order line",
+      });
+      expect(table).not.toHaveProperty("owner");
+      const column = await setDocs(
+        context,
+        { kind: "column", id: id.channel },
+        { unit: "money", blank_means: "Not priced" },
+      );
+      expect(column).toMatchObject({
+        unit: "money",
+        blank_means: "Not priced",
+      });
+      expect(
+        await getDocs(context, { kind: "measure", id: id.net_sales }),
+      ).not.toHaveProperty("unit");
+      const cleared = await setDocs(
+        context,
+        { kind: "dataset", id: id.sales },
+        { owner: "  " },
+      );
+      expect(cleared).toMatchObject({ owner: null, when_to_use: "For sales" });
+      const [change] = await tx
+        .select()
+        .from(bookChange)
+        .where(
+          and(
+            eq(bookChange.action, "docs"),
+            eq(bookChange.element_id, id.sales),
+          ),
+        )
+        .orderBy(asc(bookChange.id));
+      expect(change).toMatchObject({
+        before: { when_to_use: null },
+        after: { when_to_use: "For sales" },
+      });
+    }));
+
+  it("are refused on a kind that lacks them, naming the field and the kind", () =>
+    rolledBack(async (tx) => {
+      const context = as(tx);
+      for (const [kind, element, field] of [
+        ["dataset", id.sales, "unit"],
+        ["column", id.channel, "owner"],
+        ["measure", id.net_sales, "caveats"],
+        ["table", id.sales_table, "when_to_use"],
+      ] as const)
+        await expect(
+          setDocs(context, { kind, id: element }, { [field]: "x" }),
+        ).rejects.toMatchObject({
+          kind: "invalid",
+          message: `${field} is not a field of a ${kind}. ${
+            kind === "dataset"
+              ? "A dataset has when_to_use, owner, freshness, caveats."
+              : kind === "column"
+                ? "A column has unit, blank_means."
+                : kind === "table"
+                  ? "A table has grain_and_filters, caveats."
+                  : "A measure has no built-in fields."
+          }`,
+          detail: { code: "docs.field_not_on_kind", field, kind },
+        });
     }));
 });
 
@@ -273,5 +364,77 @@ describe("docs of PII elements", () => {
       expect(
         await getDocs(as(tx, reader), { kind: "measure", id: id.net_sales }),
       ).toMatchObject({ element: { name: "Net sales" } });
+    }));
+});
+
+it("validates column units against their own convention and gives the allowed units", () =>
+  rolledBack(async (tx) => {
+    const context = as(tx);
+    await expect(
+      setDocs(context, { kind: "column", id: id.channel }, { unit: "USD" }),
+    ).rejects.toMatchObject({
+      detail: {
+        code: "docs.unit_not_allowed",
+        values: ["money", "count", "quantity", "rate", "ratio", "duration"],
+      },
+    });
+    expect(
+      (
+        await setDocs(
+          context,
+          { kind: "column", id: id.channel },
+          { unit: "count" },
+        )
+      ).unit,
+    ).toBe("count");
+  }));
+
+describe("documentation checks", () => {
+  it("lists only element exceptions from the checked rows and orders parents first", () =>
+    rolledBack(async (tx) => {
+      await setConventionsAsAdmin(as(tx, reaching({}, "admin")), {
+        format: 1,
+        exceptions: [
+          {
+            rule: "term_fields.definition",
+            term: "Absent",
+            reason: "Not an element.",
+          },
+          {
+            rule: "dataset_fields.owner",
+            dataset: "Sales",
+            reason: "Optional.",
+          },
+        ],
+      });
+      const page = await docsChecks(as(tx), { limit: 500 });
+      expect(page.unused_exceptions).toEqual([
+        {
+          rule: "dataset_fields.owner",
+          target: { dataset: "Sales" },
+          reason: "Optional.",
+          why: "passes",
+        },
+      ]);
+      const sales = page.items.filter((row) => row.dataset === "Sales");
+      expect(sales[0]?.kind).toBe("dataset");
+      const table = sales.findIndex(
+        (row) => row.kind === "table" && row.name === "Sales",
+      );
+      const column = sales.findIndex(
+        (row) => row.kind === "column" && row.table === "Sales",
+      );
+      expect(table).toBeGreaterThan(0);
+      expect(column).toBeGreaterThan(table);
+    }));
+
+  it("filters a dataset id independently of another dataset with the same name", () =>
+    rolledBack(async (tx) => {
+      const context = asPerson(reaching({}, "admin"), {
+        db: tx,
+        mode: "everyone",
+      });
+      const page = await docsChecks(context, { dataset: id.twin_a });
+      expect(page.items.map((row) => row.id)).toEqual([id.twin_a]);
     }));
 });

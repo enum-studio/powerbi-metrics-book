@@ -178,12 +178,17 @@ const Checks = z.object({
   checks: z.array(
     z.object({
       check: z.string(),
+      rule: z.string().describe("The id of the rule the result is about."),
       passed: z.boolean(),
       message: z.string(),
       other_labels: z
         .array(z.string())
         .optional()
         .describe("The metrics the sentence counts, closest first."),
+      exception: z
+        .string()
+        .optional()
+        .describe("Failing, it passes by an exception with this reason."),
     }),
   ),
 });
@@ -553,7 +558,19 @@ export function curationRoutes(deps: AppDeps): Hono<AppEnv> {
     validator("param", z.object({ kind: text, id: guid }), refuse),
     validator(
       "json",
-      z.strictObject({ description: freeOrNull, custom }).partial(),
+      z
+        .strictObject({
+          description: freeOrNull,
+          custom,
+          when_to_use: freeOrNull,
+          owner: freeOrNull,
+          freshness: freeOrNull,
+          caveats: freeOrNull,
+          grain_and_filters: freeOrNull,
+          unit: freeOrNull,
+          blank_means: freeOrNull,
+        })
+        .partial(),
       refuse,
     ),
     async (c) =>

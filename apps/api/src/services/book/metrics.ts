@@ -62,6 +62,7 @@ import {
   checkCustom,
   checkMetric,
   type CheckResult,
+  exceptionIndex,
   LABELS_NAMED,
   wordsComparedWithOtherLabels,
 } from "./checks.js";
@@ -312,8 +313,22 @@ async function checksOf(
             ),
           )
           .orderBy(asc(metric.label));
-  const [bases] = await db
+  const [bases] = await liveVariants(db, eq(metric.id, row.id));
+  return checkMetric(row, {
+    conventions,
+    exceptions: exceptionIndex(conventions),
+    other_labels: others.map((other) => other.label),
+    live_base_variants: (bases?.live ?? 0) - (bases?.other ?? 0),
+    live_other_variants: bases?.other ?? 0,
+    advise,
+  });
+}
+
+/** For each metric `which` picks that has any, how many live variants it has at its base or filed `other`, and how many of them are `other`. */
+export const liveVariants = (db: Db, which: SQL | undefined) =>
+  db
     .select({
+      metric_id: metricVariant.metric_id,
       live: count(),
       other:
         sql<number>`count(*) filter (where ${metricVariant.period} = 'other')`.mapWith(
@@ -321,23 +336,17 @@ async function checksOf(
         ),
     })
     .from(metricVariant)
+    .innerJoin(metric, eq(metric.id, metricVariant.metric_id))
     .innerJoin(powerbiMeasure, toMeasure)
     .innerJoin(powerbiDataset, toDataset)
     .where(
       and(
-        eq(metricVariant.metric_id, row.id),
+        which,
         or(baseVariant, eq(metricVariant.period, "other")),
         liveMeasure,
       ),
-    );
-  return checkMetric(row, {
-    conventions,
-    other_labels: others.map((other) => other.label),
-    live_base_variants: (bases?.live ?? 0) - (bases?.other ?? 0),
-    live_other_variants: bases?.other ?? 0,
-    advise,
-  });
-}
+    )
+    .groupBy(metricVariant.metric_id);
 
 /** How many metrics, and how many datasets of each, a page of one metric names; its checks list every label. */
 const METRICS_NAMED = 5;
@@ -1017,7 +1026,7 @@ async function promote(
     const before = await lockMetric(tx, found.id);
     const failures = await verificationFailures(change, before);
     if (failures.length > 0) {
-      const problems = failures.map((f) => `${f.check}: ${f.message}`);
+      const problems = failures.map((f) => `${f.rule}: ${f.message}`);
       throw invalid(
         `${before.name} cannot be ${action === "verify" ? "verified" : "approved"} while a check fails. ${problems.join(" ")}`,
         { failures },
@@ -1221,10 +1230,11 @@ export async function getMetric(context: ServiceContext, reference: string) {
     failing_checks: await Promise.all(
       checks
         .filter((check) => !check.passed)
-        .map(async ({ check, message, other_labels }) => {
+        .map(async ({ check, rule, message, other_labels }) => {
           const labels = other_labels?.slice(0, LABELS_NAMED) ?? [];
           return {
             check,
+            rule,
             message,
             // Agents read this page, so each label costs them: metricChecks lists them all.
             other_labels: other_labels === undefined ? undefined : labels,

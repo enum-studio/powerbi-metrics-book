@@ -2,10 +2,11 @@
 
 import json
 import os
-import tempfile
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+
+from powerbi_metrics_book.atomic import atomic_file
 
 # The api registers this public client; `pbmb login` and the refresh both name it.
 CLIENT_ID = "pbmb-cli"
@@ -86,19 +87,10 @@ def save(login: Login) -> None:
     try:
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         path.parent.chmod(0o700)
-        # mkstemp creates the file 0600, so the token is never readable, even
-        # briefly.
-        descriptor, temporary = tempfile.mkstemp(
-            dir=path.parent, prefix=".credentials-"
-        )
-        try:
-            with os.fdopen(descriptor, "w") as file:
-                json.dump(document, file, indent=2)
-                file.flush()
-                os.fsync(file.fileno())
-            os.replace(temporary, path)
-        finally:
-            Path(temporary).unlink(missing_ok=True)
+        with atomic_file(path) as (file, _):
+            file.write(json.dumps(document, indent=2).encode("utf-8"))
+            file.flush()
+            os.fsync(file.fileno())
     except OSError as error:
         reason = error.strerror or str(error)
         raise CredentialsError(

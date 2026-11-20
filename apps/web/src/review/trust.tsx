@@ -72,9 +72,13 @@ export function Approve({ metric, me }: { metric: Metric; me: Me }) {
         <div className="text-ui text-ink-2">
           <p>Approve is off while a check fails:</p>
           <ul className="mt-1 flex list-disc flex-col gap-2 pl-5">
-            {failing.map(({ check, message, other_labels }) => (
-              <li key={check}>
-                <CheckMessage message={message} otherLabels={other_labels} />
+            {failing.map(({ check, rule, message, other_labels }) => (
+              <li key={`${check}:${rule}`}>
+                <CheckMessage
+                  message={message}
+                  rule={rule}
+                  otherLabels={other_labels}
+                />
               </li>
             ))}
           </ul>

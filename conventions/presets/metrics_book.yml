@@ -129,7 +129,24 @@ term_fields:
   definition: { required: true }
   values: { required: when_categorical }
   custom: []
-element_fields:
+dataset_fields:
+  definition: { required: true }
+  when_to_use: { required: true }
+  owner: { required: false }
+  freshness: { required: false }
+  caveats: { required: false }
+  custom: []
+table_fields:
+  definition: { required: true }
+  grain_and_filters: { required: when_fact }
+  caveats: { required: false }
+  custom: []
+column_fields:
+  definition: { required: when_visible_and_no_term }
+  unit:
+    required: when_numeric
+    values: [money, count, quantity, rate, ratio, duration]
+  blank_means: { required: false }
   custom: []
 variants:
   axes:
@@ -168,12 +185,15 @@ drafting:
     hidden_measures: false
     display_folders: []
     tables: []
-    name_patterns: []
+    name_prefixes: []
+    names: []
   dismiss:
-    - name_pattern: "^_"
+    - prefix: "_"
       reason: "Helper measure (name starts with an underscore)"
 trust:
   agent_verify_requires: all_checks
   human_verify_from: browser
-checks:
-  off: []
+# Rule ids, or check names for every rule of a check.
+off: []
+# Each lets one element keep failing one rule: { rule, reason, and its metric, term, dataset, table or column }.
+exceptions: []

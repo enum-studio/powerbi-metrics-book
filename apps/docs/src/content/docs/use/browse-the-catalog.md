@@ -65,7 +65,24 @@ Scroll to move through the diagram, pinch to zoom, or use its zoom controls. A t
 
 A table, a display folder and a column each have a page, reached by a link. Their addresses are `/catalog/datasets/<id>/tables/<table>`, `.../folders/<folder>` and `.../columns/<column>`. A line at the top says where you are: workspace, dataset, table, then the folders down to the page, such as Datasets / Commercial / Sales / Sales lines on the sample tenant.
 
-A dataset, a table and a column each show their documentation in the same order. **Description** is the book's description, or Power BI's when the book has none. **Description in Power BI** follows when the two differ. Then come the fields your conventions name under `element_fields`, with **Not written yet** where one is empty, and **Details**: the facts the book read from Power BI. Curators write the description and fields with `pbmb docs`.
+A dataset, a table and a column each show **Definition** first: the book's description, or Power BI's with **From Power BI** when the book has none. **Description in Power BI** follows when the two differ. Then come the kind's built-in fields, its custom fields, and **Details**, the facts read from Power BI. An empty field says **Not written yet**.
+
+| Kind | Built-in fields after Definition |
+|---|---|
+| Dataset | When to use, Owner, Freshness, Caveats. |
+| Table | Grain and filters, Caveats. |
+| Column | Unit, Blank means. |
+
+Custom fields come from `dataset_fields.custom`, `table_fields.custom` or `column_fields.custom` in the conventions. Details includes **Last documented** when the book has a documentation date. Curators write documentation through the CLI:
+
+```bash
+pbmb docs set dataset <id> --description "Sales and returns by product and day." --when-to-use "Use for sales questions. For campaign spend, use Marketing."
+pbmb docs set table <id> --grain "One order line. Test orders left out."
+pbmb docs set column <id> --unit money --blank-means "No price was recorded."
+pbmb docs check --dataset Sales
+```
+
+`--description` (or `--file` for a text file) writes Definition on any kind, including a measure. Datasets also take `--owner`, `--freshness` and `--caveats`; tables take `--caveats`. A flag for another kind is refused with `docs.field_not_on_kind`. A `--unit` outside `column_fields.unit.values` is refused with `docs.unit_not_allowed`. `pbmb docs check` lists missing required fields. For a curator, it also lists the conventions exceptions that are no longer used. It exits 1 when it lists anything. Add `--json` for findings with rule ids.
 
 A table page opens on **Documentation**, then has **Columns**, **Measures** and **Relationships**. It has no diagram; the dataset's page has that. **Columns** and **Measures** list every field A to Z with its display folder, format or data type, description and, for a measure, the metric that covers it. Type in the filter box to narrow the list; a long list shows its first 100 and **Show more**. **Relationships** lists the table's joins, and each column in them opens its page. A folder page lists the measures and columns of one display folder. Power BI nests folders with a backslash, so the address of `Margin` inside `Sales` ends in `folders/Sales%5CMargin`, one piece. A table, folder level or column named just `.` or `..` has no link; its name shows as text.
 

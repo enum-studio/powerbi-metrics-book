@@ -102,8 +102,9 @@ pbmb admin datasets on DATASET
 
 ### `pbmb admin export`
 
-Export the deployment as book.yml: settings, conventions, roles and
-service accounts. It never holds a secret or a key, so it can go in git.
+Export settings, roles and service accounts as book.yml, with the company
+conventions in conventions.yml beside the output file. These files never hold
+a secret or a key, so they can go in git.
 
 ```bash
 pbmb admin export [OPTIONS]
@@ -615,7 +616,8 @@ pbmb categories tree [OPTIONS]
 
 Check a deployment directory before you start it.
 
-Validates book.yml (when there is one) against the shipped schema, checks
+Validates book.yml and conventions.yml when present against the shipped
+schemas, checks
 that .env holds every bootstrap value and is readable by you only, then
 runs your Cerbos policy tests in the pinned Cerbos image through Docker,
 with the default policies underneath. Local: it does not call the api and
@@ -665,6 +667,25 @@ The company's rules for names, descriptions, variants and verification.
 pbmb conventions COMMAND
 ```
 
+### `pbmb conventions apply`
+
+Apply a conventions file, showing changed rules and how many targets now fail.
+
+```bash
+pbmb conventions apply [OPTIONS] FILE
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `file` | yes |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--dry-run` |   |   | Preview without saving. |
+| `--baseline` |   |   | Write exceptions for visible targets newly broken by the change. |
+| `--reason` | str |   | Why existing failures are excepted. |
+| `--yes` |   |   | Save without asking. |
+
 ### `pbmb conventions diff`
 
 Show what a file would change against the conventions in force. Saves nothing.
@@ -682,6 +703,7 @@ pbmb conventions diff FILE
 Open the conventions as YAML in $EDITOR, check them, show the difference,
 ask, then save them as the next version.
 
+Requires book:edit_conventions, which admins have by default.
 Needs a terminal, so it cannot be used with --json. Your file is removed once
 it is saved. If the api refuses it, the save fails or you abort, the file is
 kept and its path printed, so nothing you wrote is lost.
@@ -692,18 +714,22 @@ pbmb conventions edit
 
 ### `pbmb conventions export`
 
-Print the conventions in force as the YAML that `import` and `edit` take.
+Export the company part, or the resolved conventions including the preset.
+
+Requires book:edit_conventions, which admins have by default.
 
 ```bash
-pbmb conventions export
+pbmb conventions export [OPTIONS]
 ```
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--resolved` |   |   | Include preset values. |
+| `--output`, `-o` | path |   | Write YAML here. |
 
 ### `pbmb conventions import`
 
-Replace the conventions with a file: show the difference, ask, then save.
-
-With --json you must pass --yes, since there is nowhere to ask. The file must
-be a regular YAML file under 1 MiB without aliases.
+Alias for apply for one release; use `pbmb conventions apply`.
 
 ```bash
 pbmb conventions import [OPTIONS] FILE
@@ -715,12 +741,16 @@ pbmb conventions import [OPTIONS] FILE
 
 | Option | Takes | Default | What |
 | --- | --- | --- | --- |
+| `--dry-run` |   |   |   |
+| `--baseline` |   |   |   |
+| `--reason` | str |   |   |
 | `--yes` |   |   | Save without asking. |
 
 ### `pbmb conventions presets`
 
 List the presets the conventions can start from, and the one in force.
 
+Anyone signed in may run this command.
 Switch with `pbmb conventions set preset minimal`; the preset is the base
 that the rest of the document overrides. The list is fixed in the CLI: the
 two presets the conventions schema names.
@@ -729,10 +759,27 @@ two presets the conventions schema names.
 pbmb conventions presets
 ```
 
+### `pbmb conventions reset`
+
+Remove a company rule, its off entry and exceptions, then apply.
+
+```bash
+pbmb conventions reset [OPTIONS] [RULE]
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `rule` | no |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--yes` |   |   | Save without asking. |
+
 ### `pbmb conventions set`
 
 Change one rule and save the conventions as the next version.
 
+Requires book:edit_conventions, which admins have by default.
 The api checks the whole document and refuses what is not valid. It only
 accepts a change to a trust.* rule from a person in the browser (admin
 section), so `set` cannot make one.
@@ -752,7 +799,10 @@ Show the conventions: the guide in the company's words, then the rules.
 
 Read this before you name, describe, group or verify anything. The checks
 (`pbmb metrics check`) read these rules, and the company's rules win over
-any general naming advice.
+any general naming advice. Each rule is listed by its id, with its value,
+whether the company set it (source company) or kept the preset's, and
+whether it is off. --json lists them under `rules`, and the rules no company
+can change, with why, under `fixed`.
 
 ```bash
 pbmb conventions show
@@ -868,9 +918,28 @@ The descriptions you write for datasets, tables, columns and measures.
 pbmb docs COMMAND
 ```
 
+### `pbmb docs check`
+
+List missing required documentation and, to a curator, unused exceptions.
+
+Exits 1 when anything fails. --json combines every page of checks.
+
+```bash
+pbmb docs check [OPTIONS]
+```
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--dataset` | str |   | Check only this dataset, by name or id. |
+
 ### `pbmb docs set`
 
-Set an element's description. It replaces the one written before.
+Set an element's description and, for a dataset, table or column, its fields.
+
+A description replaces the one written before. Give --description or
+--file, and the flags of the element's kind: a dataset takes
+--when-to-use, --owner, --freshness and --caveats, a table --grain and
+--caveats, a column --unit and --blank-means.
 
 Example: pbmb docs set measure 7c9e6679-7425-40de-944b-e07fc1f90ae7 --file net.md
 
@@ -887,10 +956,17 @@ pbmb docs set [OPTIONS] KIND ELEMENT_ID
 | --- | --- | --- | --- |
 | `--description` | str |   | The description, as plain text or Markdown. |
 | `--file` | path |   | Read the description from this UTF-8 text file. |
+| `--when-to-use` | str |   | Dataset: when to use it, and when not. |
+| `--owner` | str |   | Dataset: who owns it. |
+| `--freshness` | str |   | Dataset: how fresh its data is. |
+| `--caveats` | str |   | Dataset or table: what to watch for. |
+| `--grain` | str |   | Table: what a row is, and what the table leaves out. |
+| `--unit` | str |   | Column: its unit. |
+| `--blank-means` | str |   | Column: what a blank value means. |
 
 ### `pbmb docs show`
 
-Show an element's description, who wrote it, and its custom fields.
+Show an element's description, who wrote it, its fields and custom fields.
 
 Example: pbmb docs show column 7c9e6679-7425-40de-944b-e07fc1f90ae7
 

@@ -8,6 +8,7 @@ import {
   sampleTenant,
 } from "@powerbi-metrics-book/powerbi-mock";
 import { describe, expect, inject, it } from "vitest";
+import { ruleById } from "../src/services/conventions/rules.js";
 import { SAMPLE } from "../src/services/sample/tenant.js";
 import { SAMPLE_IDS } from "../../../packages/powerbi-mock/src/sample/tenant.js";
 import {
@@ -530,13 +531,20 @@ describe("Power BI Metrics Book end to end, on the mock", () => {
     });
     type Checked = {
       failing: number;
-      metrics: { name: string; checks: { check: string; passed: boolean }[] }[];
+      metrics: {
+        name: string;
+        checks: { check: string; rule: string; passed: boolean }[];
+      }[];
     };
     const checked = await curatorCli.json<Checked>(["metrics", "check", key]);
     expect(checked.failing, "failing checks").toBe(0);
     expect(checked.metrics.map((each) => each.name)).toEqual([key]);
     const checks = checked.metrics[0]?.checks ?? [];
     expect(checks.length, "the checks run").toBeGreaterThan(0);
+    expect(
+      checks.filter((each) => ruleById(each.rule) === undefined),
+      "results without a registered rule",
+    ).toEqual([]);
     expect(checks.filter((each) => !each.passed)).toEqual([]);
     await curatorCli.json(["metrics", "verify", key]);
     changed("metric.verified", netSales.id, "verify");

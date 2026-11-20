@@ -38,7 +38,7 @@ const SERVER_INFO = {
 
 /**
  * Keeps one request from becoming hundreds of database round trips. The body
- * is held to 1 MiB before any route reads it (bodySizeLimit, in
+ * on MCP requests is held to 1 MiB before this route reads it (bodySizeLimit, in
  * http/security-headers.ts).
  */
 const BATCH_LIMIT = 20;
@@ -54,9 +54,7 @@ const TOOL_CALL = z.object({
  * Said once, at initialize, and read from the conventions in force, so a
  * change to the guide reaches the next connection.
  */
-async function instructions(
-  context: Pick<ServiceContext, "db" | "settings">,
-): Promise<string> {
+async function instructions(context: ServiceContext): Promise<string> {
   const { guide } = await getConventionsForAgents(context);
   const sample = onTheMock(await context.settings.get("powerbi.authority"));
   return instructionsFor(
