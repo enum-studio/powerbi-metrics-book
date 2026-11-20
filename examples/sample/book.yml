@@ -1,4 +1,4 @@
-# The sample company's settings and conventions, as `pbmb admin export`
+# The sample company's settings, as `pbmb admin export`
 # writes them. Apply with `pbmb admin import book.yml`, which shows the
 # difference first. Never a secret: those are set with `pbmb admin secrets set`.
 format: 1
@@ -7,10 +7,3 @@ settings:
   powerbi.sync.schedule: "15 * * * *"
   # Results kept three days instead of seven.
   results.ttl_hours: 72
-conventions:
-  preset: metrics_book
-  drafting:
-    name_hints:
-      # The sample company reports in two currencies only, so the drafts
-      # read just these two words in a measure's name as a currency variant.
-      currency: [EUR, USD]

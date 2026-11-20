@@ -22,6 +22,14 @@ from powerbi_metrics_book.answers import (
 )
 from powerbi_metrics_book.calls import show_done, show_list, show_object
 from powerbi_metrics_book.client import ApiError, Json, api_path
+from powerbi_metrics_book.commands.conventions import preview_apply, print_applied
+from powerbi_metrics_book.conventions_file import (
+    YamlLoader,
+    check_output_paths,
+    read_conventions,
+    read_file,
+    write_conventions,
+)
 from powerbi_metrics_book.output import FAILED, JsonOption, open_session
 from powerbi_metrics_book.pii_ref import PiiReference, parse_ref
 from powerbi_metrics_book.tables import line, print_fields, print_table
@@ -345,7 +353,9 @@ def settings_get(
         return
     with open_session(context, json_output) as session:
         exported = object_of(session.client.get("/admin/export"), "the export")
-        saved = object_of(yaml.safe_load(text_of(exported.get("yaml"))), "book.yml")
+        saved = object_of(
+            yaml.load(text_of(exported.get("yaml")), Loader=YamlLoader), "book.yml"
+        )
         listing = object_of(saved.get("settings") or {}, "the settings")
         session.emit(
             {"settings": listing}, lambda console: print_fields(console, listing)
@@ -859,14 +869,22 @@ def export(
     ] = None,
     json_output: JsonOption = False,
 ) -> None:
-    """Export the deployment as book.yml: settings, conventions, roles and
-    service accounts. It never holds a secret or a key, so it can go in git."""
+    """Export settings, roles and service accounts as book.yml, with the company
+    conventions in conventions.yml beside the output file. These files never hold
+    a secret or a key, so they can go in git."""
     with open_session(context, json_output) as session:
         answer = object_of(session.client.get("/admin/export"), "the export")
         yaml_text = text_of(answer.get("yaml"))
+        company = object_of(
+            session.client.get("/conventions/company"), "the company part"
+        )
+        answer = {**answer, "yaml": yaml_text, "conventions": company}
         if output is not None:
             try:
+                check_output_paths({}, output)
+                check_output_paths(company, output.parent / "conventions.yml")
                 output.write_text(yaml_text, encoding="utf-8")
+                write_conventions(company, output.parent / "conventions.yml")
             except OSError as error:
                 typer.echo(f"Cannot write {output}: {error.strerror}.", err=True)
                 raise typer.Exit(FAILED) from error
@@ -895,7 +913,20 @@ def import_book(
 
     With --json and no --yes, prints the difference and changes nothing.
     """
-    yaml_text = file.read_text(encoding="utf-8")
+    yaml_text = read_file(file)
+    conventions_path = file.parent / "conventions.yml"
+    company = None
+    if conventions_path.exists():
+        try:
+            book = yaml.load(yaml_text, Loader=YamlLoader)
+        except yaml.YAMLError as error:
+            raise typer.BadParameter(f"{file}: {error}") from error
+        if isinstance(book, dict) and "conventions" in book:
+            raise typer.BadParameter(
+                f"{file} has conventions: and {conventions_path} exists; "
+                "keep only one source."
+            )
+        company = read_conventions(conventions_path)
     with open_session(context, json_output) as session:
         difference = object_of(
             session.client.request(
@@ -903,12 +934,22 @@ def import_book(
             ),
             "the difference",
         )
+        conventions_changes: list[Json] = []
+        if company is not None:
+            preview, conventions_changes = preview_apply(session, company)
+            difference["conventions"] = preview
+            if not session.as_json:
+                line(Console(), "Conventions:")
+                print_applied(Console(), preview, company, conventions_changes, True)
         if session.as_json and not yes:
             session.emit(difference, lambda console: None)
             return
         if not session.as_json:
+            line(Console(), "Book:")
             _show_difference(Console(), difference)
-        if not objects_in(difference, "changes"):
+        if not objects_in(difference, "changes") and not conventions_changes:
+            if not session.as_json:
+                line(Console(), "Nothing to change: the deployment already matches.")
             return
         if not yes:
             typer.confirm("Apply these changes?", abort=True)
@@ -918,12 +959,18 @@ def import_book(
             ),
             "the result",
         )
+        if company is not None and conventions_changes:
+            applied["conventions"] = session.client.request(
+                "POST",
+                "/conventions/apply",
+                body={"conventions": company, "dry_run": False},
+            )
         session.emit(applied, lambda console: console.print(Text("Applied.")))
 
 
 def _show_difference(console: Console, difference: dict[str, Json]) -> None:
     changes = objects_in(difference, "changes")
     if not changes:
-        console.print(Text("Nothing to change: the deployment already matches."))
+        line(console, "No change.")
         return
     print_table(console, changes, ["path", "before", "after"])

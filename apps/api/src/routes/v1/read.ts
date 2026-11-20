@@ -261,6 +261,7 @@ const DatasetItem = z.object({
   name: z.string(),
   icon: z.string().nullable(),
   description: z.string().nullable(),
+  when_to_use: z.string().nullable(),
   workspace: Ref,
   reached_through: z.array(reach),
   has_row_level_security: z.boolean(),
@@ -282,6 +283,10 @@ const DatasetDetail = z.object({
   name: z.string(),
   icon: z.string().nullable(),
   ...described,
+  when_to_use: z.string().nullable(),
+  owner: z.string().nullable(),
+  freshness: z.string().nullable(),
+  caveats: z.string().nullable(),
   workspace: anchor("workspace"),
   apps: z.array(reach),
   reached_through: z.array(reach),
@@ -320,6 +325,7 @@ const DatasetDetail = z.object({
       name: z.string(),
       is_hidden: z.boolean(),
       ...described,
+      grain_and_filters: z.string().nullable(),
       column_count: z.number(),
       measure_count: z.number(),
       custom,
@@ -337,6 +343,8 @@ const ColumnItem = z.object({
   column_type: z.enum(COLUMN_TYPES).nullable(),
   is_hidden: z.boolean(),
   ...described,
+  unit: z.string().nullable(),
+  blank_means: z.string().nullable(),
   display_folder: z.string().nullable(),
   terms: z.array(z.object({ id: z.string(), name: z.string() })),
   removed: z.boolean(),
@@ -422,7 +430,9 @@ const Conventions = z.object({
   preset: conventionsSchema.shape.preset,
   guide: z.string(),
   summary: z.array(z.string()),
-  rules: conventionsSchema.omit({ guide: true }),
+  rules: conventionsSchema.omit({ guide: true, exceptions: true }),
+  /** How many exceptions each rule has, by rule id; an element's checks show its own. */
+  exceptions: z.record(z.string(), z.number().int()),
 });
 
 /** The book and the mirror read: any principal, as far as it may describe. */
@@ -445,7 +455,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
   );
 
   const conventions = documented(
-    "The company's conventions: the guide in words and the rules as data",
+    "The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has",
     Conventions,
   );
   routes.get("/conventions", conventions.doc, credential, async (c) =>

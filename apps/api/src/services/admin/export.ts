@@ -19,7 +19,7 @@ import {
 } from "../auth/service-accounts.js";
 import { BOOK } from "../book/changes.js";
 import {
-  currentConventions,
+  conventionsInForce,
   diffConventions,
   resolve,
   setConventions,
@@ -42,6 +42,8 @@ import {
  * book.yml, format 1, a public interface, never holding a secret or a key.
  * book.schema.json, shipped for the CLI, is bookSchema as JSON Schema; a test
  * keeps them the same. Settings and conventions have their own schemas.
+ * The conventions travel in conventions.yml beside it; an import still takes
+ * a book.yml that holds them, and an export leaves them out.
  */
 
 // custom: a role the deployment's own policies name, assigned on purpose.
@@ -183,7 +185,6 @@ async function currentBook(context: ServiceContext) {
         .filter((s) => s.source === "database" && exported(s.key))
         .map((listing) => [listing.key, listing.value]),
     ),
-    conventions: await currentConventions(context.db),
     role_assignments: (await listAssignments(context.db))
       .map(entryOf)
       .sort((a, b) => keyOf(a).localeCompare(keyOf(b))),
@@ -248,7 +249,9 @@ export type BookChange = {
  * `customer[email]` in the file is the held `Customer[Email]`; rules the
  * file lacks are kept, never removed.
  * Conventions in the file replace the deployment's whole: a key left out
- * falls back to the preset, and the changes show it.
+ * falls back to the preset, and the changes show it. A company part is
+ * stored as given; a complete document, from before the company's part was
+ * stored, as what differs from its preset.
  */
 export async function importBook(
   context: ServiceContext,
@@ -279,10 +282,11 @@ export async function importBook(
     const check = await checkSetting(context, setting.key, setting.value);
     settings.push({ ...setting, before: before?.value ?? null, check });
   }
-  const conventions = diffConventions(
-    current.conventions,
-    resolve(file.conventions ?? current.conventions),
-  );
+  const inForce = (await conventionsInForce(context.db)).conventions;
+  const conventions =
+    file.conventions === undefined
+      ? []
+      : diffConventions(inForce, resolve(file.conventions));
   const inFile = new Set((file.role_assignments ?? []).map(keyOf));
   const held = new Set(current.role_assignments.map(keyOf));
   const assignments = (file.role_assignments ?? []).filter(

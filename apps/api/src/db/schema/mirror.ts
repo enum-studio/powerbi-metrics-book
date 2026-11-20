@@ -130,6 +130,11 @@ export const powerbiDataset = pgTable(
     created_date: timestamptz("created_date"),
     /** Ours, like the description: the sync never writes it. */
     icon: text("icon"),
+    /** Ours, like the description: the sync never writes them. */
+    when_to_use: text("when_to_use"),
+    owner: text("owner"),
+    freshness: text("freshness"),
+    caveats: text("caveats"),
     ...mirrorColumns(),
   },
   (t) => [
@@ -163,6 +168,9 @@ export const powerbiTable = pgTable(
     name: text("name").notNull(),
     is_hidden: boolean("is_hidden").notNull().default(false),
     description_pbi: text("description_pbi"),
+    /** Ours, like the description: the sync never writes them. */
+    grain_and_filters: text("grain_and_filters"),
+    caveats: text("caveats"),
     ...mirrorColumns(),
   },
   (t) => [
@@ -189,6 +197,9 @@ export const powerbiColumn = pgTable(
     format_string: text("format_string"),
     description_pbi: text("description_pbi"),
     display_folder: text("display_folder"),
+    /** Ours, like the description: the sync never writes them. */
+    unit: text("unit"),
+    blank_means: text("blank_means"),
     ...mirrorColumns(),
   },
   (t) => [
@@ -375,11 +386,21 @@ declareGrants({
       "relationships_source",
       "relationships_read_at",
       "enabled",
+      "when_to_use",
+      "owner",
+      "freshness",
+      "caveats",
     ),
     ...worker,
   },
-  powerbi_table: { api_rw: apiUpdates(), ...worker },
-  powerbi_column: { api_rw: apiUpdates("display_folder"), ...worker },
+  powerbi_table: {
+    api_rw: apiUpdates("grain_and_filters", "caveats"),
+    ...worker,
+  },
+  powerbi_column: {
+    api_rw: apiUpdates("display_folder", "unit", "blank_means"),
+    ...worker,
+  },
   powerbi_measure: { api_rw: apiUpdates("display_folder"), ...worker },
   powerbi_relationship: { api_rw: ALL, ...worker },
   powerbi_access: { api_rw: ["select"], ...worker },

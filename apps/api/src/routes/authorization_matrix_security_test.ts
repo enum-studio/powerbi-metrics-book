@@ -174,7 +174,7 @@ const CLI_POLL = {
   client_id: "pbmb-cli",
 };
 const VIEWER = { role: "viewer", subject_kind: "person" } as const;
-const checksOff = () => ({ checks: { off: [...METRIC_CHECK_NAMES] } });
+const checksOff = () => ({ off: [...METRIC_CHECK_NAMES] });
 
 let f: SignInFixture;
 let deps: AppDeps;
@@ -513,6 +513,8 @@ type Spec = {
   missing?: Record<string, string>;
   /** As `missing`, where the body names the target. */
   missingBody?: unknown;
+  /** As `missing`, where the query names the target. */
+  missingQuery?: string;
   /** Whose answer to the missing call it must equal, when not the caller's own. */
   missingBy?: RouteCaller;
   query?: string;
@@ -672,6 +674,14 @@ const ROUTE_REQUESTS: Partial<
   "DELETE /api/v1/elements/:kind/:id/icon": () => salesDocs(),
   "PUT /api/v1/conventions": () => ({ body: checksOff() }),
   "POST /api/v1/conventions/diff": () => ({ body: checksOff() }),
+  "POST /api/v1/conventions/apply": () => ({
+    body: { conventions: { format: 1, ...checksOff() }, dry_run: true },
+  }),
+  "GET /api/v1/docs/checks": () => ({}),
+  "GET /api/v1/conventions/exceptions/unused": () => ({
+    query: `metric=${encodeURIComponent(at.metric)}`,
+    missingQuery: `metric=${MISSING}`,
+  }),
   "POST /api/v1/queries": () => ({
     body: { dataset: at.sales, dax: at.salesDax },
     missingBody: { dataset: nobody(), dax: at.salesDax },
@@ -847,23 +857,38 @@ async function routeTarget(key: RouteKey, who: RouteCaller) {
   const spec =
     (await ROUTE_REQUESTS[key]?.(who)) ??
     (step ? setup({ settings: "none" }) : {});
-  const query = spec.query === undefined ? "" : `?${spec.query}`;
   const segments = spec.segments ?? {};
-  const call = (values: Record<string, string>, body: unknown): Call => ({
+  const call = (
+    values: Record<string, string>,
+    body: unknown,
+    query = spec.query,
+  ): Call => ({
     method,
-    path: `${fill(pattern, values)}${query}`,
+    path: `${fill(pattern, values)}${query === undefined ? "" : `?${query}`}`,
     body,
     ...(spec.form === undefined ? {} : { form: spec.form }),
   });
-  const named = spec.missing !== undefined || spec.missingBody !== undefined;
+  const named =
+    spec.missing !== undefined ||
+    spec.missingBody !== undefined ||
+    spec.missingQuery !== undefined;
+  const params = (query?: string) =>
+    Object.fromEntries(new URLSearchParams(query));
   return {
     call: call(segments, spec.body),
     missing: named
-      ? call({ ...segments, ...spec.missing }, spec.missingBody ?? spec.body)
+      ? call(
+          { ...segments, ...spec.missing },
+          spec.missingBody ?? spec.body,
+          spec.missingQuery ?? spec.query,
+        )
       : null,
     missingBy: spec.missingBy ?? who,
     past: spec.past ?? [],
-    swaps: swapsOf(segments, spec.missing ?? {}),
+    swaps: [
+      ...swapsOf(segments, spec.missing ?? {}),
+      ...swapsOf(params(spec.query), params(spec.missingQuery)),
+    ],
   };
 }
 

@@ -1304,15 +1304,53 @@ Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's
 
 ## conventions
 
-### GET `/api/v1/conventions`
+### GET `/api/v1/conventions/rules`
 
-The company's conventions: the guide in words and the rules as data
+Every rule by its id: its value, where the value comes from, and whether it is off
 
 Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | The company's conventions: the guide in words and the rules as data | an object with preset, guide, summary, rules |
+| 200 | Every rule by its id: its value, where the value comes from, and whether it is off | an object with rules, fixed |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `rules` | a list of an object | yes |   |
+| `fixed` | a list of an object | yes |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### GET `/api/v1/conventions/company`
+
+What the company set over its preset, in the version in force
+
+Who may call it: An admin.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | What the company set over its preset, in the version in force | an object with format, preset |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `format` | 1 | yes |   |
+| `preset` | one of "metrics_book", "minimal" | no |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### GET `/api/v1/conventions`
+
+The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has | an object with preset, guide, summary, rules, exceptions |
 
 Fields of the first answer:
 
@@ -1321,7 +1359,8 @@ Fields of the first answer:
 | `preset` | one of "metrics_book", "minimal" | yes |   |
 | `guide` | text | yes |   |
 | `summary` | a list of text | yes |   |
-| `rules` | an object with preset, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, checks | yes |   |
+| `rules` | an object with preset, naming, metric_fields, term_fields, dataset_fields, table_fields, column_fields, variants, drafting, trust, off | yes |   |
+| `exceptions` | an object | yes |   |
 
 Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
 
@@ -1342,7 +1381,7 @@ Fields of the first answer:
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `version` | a number | yes |   |
-| `conventions` | an object with preset, guide, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, checks | yes |   |
+| `conventions` | an object with preset, guide, naming, metric_fields, term_fields, dataset_fields, table_fields, column_fields, variants, drafting, trust, off, exceptions | yes |   |
 | `changes` | a list of an object | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
@@ -1384,6 +1423,57 @@ Fields of the first answer:
 | `changes` | a list of an object | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### POST `/api/v1/conventions/apply`
+
+Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run
+
+Who may call it: An admin.
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `conventions` | an object | yes |   |
+| `dry_run` | true or false | yes |   |
+| `baseline_reason` | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Apply the company's part: the rules it changes, how many then fail each, and the save unless it is a dry run | an object with changed_rules, now_failing, exceptions_added, version |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `changed_rules` | a list of text | yes |   |
+| `now_failing` | an object | yes |   |
+| `exceptions_added` | a list of an object | yes |   |
+| `version` | a whole number, at least -9007199254740991 and at most 9007199254740991 or null | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
+
+### GET `/api/v1/conventions/exceptions/unused`
+
+The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `metric` | query | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them | an object with unused |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `unused` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
 ## datasets
 
@@ -1428,7 +1518,7 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | One dataset described: its tables, relationships and descriptions | an object with open_questions, accepted_answers, kind, id, name, icon, description, description_pbi, workspace, apps, reached_through, configured_by, target_storage_mode, has_row_level_security, endorsement, sensitivity_label, schema_error, schema_changed_at, created_date, synced_at, described_by, described_at, custom, relationships_source, relationships_read_at, relationships_note, relationships, date_tables, tables, pii_hidden |
+| 200 | One dataset described: its tables, relationships and descriptions | an object with open_questions, accepted_answers, kind, id, name, icon, description, description_pbi, when_to_use, owner, freshness, caveats, workspace, apps, reached_through, configured_by, target_storage_mode, has_row_level_security, endorsement, sensitivity_label, schema_error, schema_changed_at, created_date, synced_at, described_by, described_at, custom, relationships_source, relationships_read_at, relationships_note, relationships, date_tables, tables, pii_hidden |
 
 Fields of the first answer:
 
@@ -1442,6 +1532,10 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `description` | text or null | yes |   |
 | `description_pbi` | text or null | yes |   |
+| `when_to_use` | text or null | yes |   |
+| `owner` | text or null | yes |   |
+| `freshness` | text or null | yes |   |
+| `caveats` | text or null | yes |   |
 | `workspace` | an object with kind, id, name | yes |   |
 | `apps` | a list of an object | yes |   |
 | `reached_through` | a list of an object | yes |   |
@@ -1516,7 +1610,7 @@ Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
-| `column` | an object with kind, id, name, table, data_type, column_type, is_hidden, description, description_pbi, display_folder, terms, removed, pii, expression, format_string | yes |   |
+| `column` | an object with kind, id, name, table, data_type, column_type, is_hidden, description, description_pbi, unit, blank_means, display_folder, terms, removed, pii, expression, format_string | yes |   |
 | `table` | an object with id, name, description | yes |   |
 | `terms` | a list of an object | yes |   |
 | `relationships` | a list of an object | yes |   |
@@ -1554,6 +1648,35 @@ Fields of the first answer:
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
+## docs
+
+### GET `/api/v1/docs/checks`
+
+Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `dataset` | query | text | no |   |
+| `limit` | query | a whole number, at least 1 and at most 500 | no |   |
+| `cursor` | query | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more | an object with items, failing, unused_exceptions, next_cursor |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `items` | a list of an object | yes |   |
+| `failing` | a whole number, at least -9007199254740991 and at most 9007199254740991 | yes |   |
+| `unused_exceptions` | a list of an object | no |   |
+| `next_cursor` | text or null | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
 ## drafts
 
 ### GET `/api/v1/drafts/next`
@@ -1588,13 +1711,20 @@ Who may call it: A viewer; a curator; an admin; a service account with a grant; 
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | An element's description and custom fields | an object with element, description, description_pbi, described_by, described_at, custom |
+| 200 | An element's description and custom fields | an object with element, when_to_use, owner, freshness, caveats, grain_and_filters, unit, blank_means, description, description_pbi, described_by, described_at, custom |
 
 Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `element` | an object with kind, id, name | yes |   |
+| `when_to_use` | text or null | no |   |
+| `owner` | text or null | no |   |
+| `freshness` | text or null | no |   |
+| `caveats` | text or null | no |   |
+| `grain_and_filters` | text or null | no |   |
+| `unit` | text or null | no |   |
+| `blank_means` | text or null | no |   |
 | `description` | text or null | yes |   |
 | `description_pbi` | text or null | yes |   |
 | `described_by` | text or null | yes |   |
@@ -1620,16 +1750,30 @@ Body (JSON, optional):
 | --- | --- | --- | --- |
 | `description` | text or null | no |   |
 | `custom` | an object | no |   |
+| `when_to_use` | text or null | no |   |
+| `owner` | text or null | no |   |
+| `freshness` | text or null | no |   |
+| `caveats` | text or null | no |   |
+| `grain_and_filters` | text or null | no |   |
+| `unit` | text or null | no |   |
+| `blank_means` | text or null | no |   |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | Set an element's description and custom fields | an object with element, description, description_pbi, described_by, described_at, custom |
+| 200 | Set an element's description and custom fields | an object with element, when_to_use, owner, freshness, caveats, grain_and_filters, unit, blank_means, description, description_pbi, described_by, described_at, custom |
 
 Fields of the first answer:
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `element` | an object with kind, id, name | yes |   |
+| `when_to_use` | text or null | no |   |
+| `owner` | text or null | no |   |
+| `freshness` | text or null | no |   |
+| `caveats` | text or null | no |   |
+| `grain_and_filters` | text or null | no |   |
+| `unit` | text or null | no |   |
+| `blank_means` | text or null | no |   |
 | `description` | text or null | yes |   |
 | `description_pbi` | text or null | yes |   |
 | `described_by` | text or null | yes |   |

@@ -64,7 +64,7 @@ async function refusesServiceAccount(tx: Db): Promise<void> {
 /** Every metric check off, so only the rule under test decides. */
 const checksOff = (tx: Db, human_verify_from: "browser" | "any") =>
   setConventionsAsAdmin(asPerson(admin, { db: tx }), {
-    checks: { off: [...METRIC_CHECK_NAMES] },
+    off: [...METRIC_CHECK_NAMES],
     trust: { agent_verify_requires: "all_checks", human_verify_from },
   });
 
@@ -168,10 +168,8 @@ describe("setConventionsAsAdmin and the trust rules", () => {
           REFUSAL,
         );
         await expect(
-          setConventionsAsAdmin(context, {
-            checks: { off: ["metric_name_form"] },
-          }),
-        ).resolves.toMatchObject({ changes: [{ path: "checks.off" }] });
+          setConventionsAsAdmin(context, { off: ["metric_name_form"] }),
+        ).resolves.toMatchObject({ changes: [{ path: "off" }] });
         await setConventionsAsAdmin(asPerson(admin, { db: tx }), {});
       }
       const kept = await getConventionsForAgents(asPerson(admin, { db: tx }));

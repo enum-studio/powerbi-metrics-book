@@ -1,10 +1,20 @@
 # Documentation fields, and the conventions as a file
 
-Written on 2026-11-19 at Martin's asking, and built from the same day; its open questions were
+Built on 2026-11-19 and documented on 2026-11-20. Its open questions were
 settled with the defaults under "Decisions". It follows the Documentation
 tabs added the same day (`docs/decisions/look.md`, "A table, a folder and a column have pages"), and
 takes its file approach from Metrics Book's project conventions spec
 (`enum-studio/metrics-book`, `docs/specs/2026-11-18-project-conventions.md`).
+
+## Where the code differs
+
+- Off-rule and exception counts are on the MCP `whoami` tool, not `pbmb whoami`. The MCP handler calls `weakenedBy`; the CLI identity answer does not include those counts.
+- An exception's table target is the bare name, such as `table: Sales lines` with `dataset`, rather than `'<table>'`. A column stays `'<table>'[<column>]`. This matches how table names are stored. `pbmb docs check` prints a table as `table 'Sales lines' in Sales` to keep its kind and dataset clear.
+- The Documentation component fixes the built-in fields' order in code; the conventions set requirements and each kind's custom list. Built-in fields are part of the product's interface, so optional fields still appear.
+- `apply --baseline` adds only visible targets newly broken by the change. Existing failures and exception-only changes add none. This keeps a baseline from hiding unrelated failures. Failure counts stay whole.
+- Agents receive exception counts per rule, with an exception on its own element's check result, rather than an exception list. The stored company part remains whole for `book:edit_conventions` so export and apply round-trip the file.
+- The upgrade keeps `trust` in the stored company part even when it equals the preset. Later preset changes must never change who may verify or approve. Only stored documents without `format` are upgraded.
+- `reset` without a rule retains `format` and the selected `preset`, so resetting company settings does not switch presets.
 
 ## Goal
 
@@ -373,6 +383,12 @@ One migration per branch.
   when every deployment is run from its repository; then the API could read the file.
 - **No regular expressions.** Stops being right if companies need patterns that prefixes and names
   cannot say; then a linear-time engine, never JavaScript's.
+- **The stored company part is whole for `book:edit_conventions`**, exceptions the caller cannot
+  see included, so export and apply round-trip the file the deployment repository holds. Stops
+  being right if editing the conventions is given to people who may not see every dataset.
+- **Agents get exception counts per rule, not the list**, since a baseline over a large book holds
+  thousands, and an element's own checks show its exception and reason. Stops being right if
+  agents need to plan around exceptions they have not met on an element yet.
 
 - **`owner` is a built-in dataset field, not required.** Stops being right if companies mostly name
   a person or team in a custom field anyway.

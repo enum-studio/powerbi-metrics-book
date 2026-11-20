@@ -1,0 +1,1 @@
+Which dataset should I use to count purchases made in our shops yesterday? Read the documentation of Sales and Retail before choosing. In reason, quote the sentence of their documentation that settles it. Leave answer.json in this folder with two string keys: dataset (its exact name) and reason (your explanation). You do not need to run a query or change the book.

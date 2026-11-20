@@ -26,6 +26,9 @@ SOURCES = {
     "stack/postgres/init": "postgres/init",
     "access/policies": "policies",
     "apps/api/src/services/admin/book.schema.json": "book.schema.json",
+    "apps/api/src/services/conventions/conventions.schema.json": (
+        "conventions.schema.json"
+    ),
     "skills/curate_metrics_book/SKILL.md": "curation_brief.md",
 }
 

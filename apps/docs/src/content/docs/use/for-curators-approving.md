@@ -32,7 +32,7 @@ If something is wrong, do not approve. Ask the agent to fix it, or answer the op
 
 The Approve button sets the state to `human_verified`, and records who and when. It is refused while a check fails, the same as verifying. The REST route behind it is `POST /api/v1/metrics/{name}/approve`.
 
-Under the default conventions, `human_verified` is set only from a browser session. Setting `trust.human_verify_from` to `any` lets a person approve with the CLI or an MCP token too. That is a deliberate step: it lets an agent that holds a person's token approve its own work. The API accepts a change to any `trust.*` rule only from a person's browser session, so `pbmb conventions set` and `pbmb conventions import` cannot make it. A service account can never approve, whatever the setting.
+Under the default conventions, `human_verified` is set only from a browser session. Setting `trust.human_verify_from` to `any` lets a person approve with the CLI or an MCP token too. That is a deliberate step: it lets an agent that holds a person's token approve its own work. The API accepts a change to any `trust.*` rule only from a person's browser session, so `pbmb conventions set` and `pbmb conventions apply` cannot make it. A service account can never approve, whatever the setting.
 
 Who may approve is a policy decision on `book:approve`. By default curators and admins can. A company that wants only admins to approve narrows it in a Cerbos policy ([Roles and policies](/docs/make-it-yours/roles-and-policies/)).
 

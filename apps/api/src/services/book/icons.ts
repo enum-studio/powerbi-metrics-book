@@ -7,7 +7,7 @@ import { withEvents } from "../events/feed.js";
 import { visibleMetric } from "../mirror/read.js";
 import { readsPii } from "../pii/rules.js";
 import { recordBookChange, requireCurator } from "./changes.js";
-import { KINDS } from "./docs.js";
+import { docKind } from "./docs.js";
 import { ICON_COLORS, ICON_GLYPHS } from "./icon-glyphs.js";
 
 /*
@@ -100,7 +100,7 @@ async function reach(
       visibleMetric(db, allowed, !(await readsPii(context))),
     );
   }
-  const docsKind = KINDS[kind];
+  const docsKind = docKind(kind);
   if (docsKind === undefined) throw new Error(`No docs kind for ${kind}`);
   return and(
     isNull(TABLES[kind].removed_at),

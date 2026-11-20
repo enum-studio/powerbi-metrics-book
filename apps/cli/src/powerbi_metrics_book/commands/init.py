@@ -44,8 +44,8 @@ AGENTS = f"""# This deployment
 - Start: `docker compose up -d` here, after `PUBLIC_BASE_URL` in `.env` is the
   https address of the reverse proxy in front of the api (it listens on
   127.0.0.1 only).
-- Check: `pbmb check` (`.env`, `book.yml`, the policy tests in `access/tests/`);
-  `pbmb admin status` for the running deployment.
+- Check: `pbmb check` (`.env`, `book.yml`, `conventions.yml`, and the policy
+  tests in `access/tests/`); `pbmb admin status` for the running deployment.
 - Upgrade: change the image tag and its `@sha256:` digest in `compose.yml`
   together, read the release notes for changes to this directory, then
   `docker compose pull && docker compose up -d`. The api migrates at start.
@@ -217,6 +217,11 @@ def _write_files(directory: Path, compose: str, env: str) -> None:
         (directory / relative / "README.md").write_text(line, encoding="utf-8")
     (directory / ".gitignore").write_text(
         ".env\ncuration_progress.md\n", encoding="utf-8"
+    )
+    (directory / "conventions.yml").write_text(
+        "# https://powerbimetricsbook.io/docs/make-it-yours/conventions/\n"
+        "format: 1\npreset: metrics_book\n",
+        encoding="utf-8",
     )
     (directory / "AGENTS.md").write_text(AGENTS, encoding="utf-8")
     # Created with mode 0600, never made readable and then narrowed.

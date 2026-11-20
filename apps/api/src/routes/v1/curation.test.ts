@@ -11,7 +11,11 @@ import {
   testPool,
 } from "../../../test/deps.js";
 import { MemorySettings } from "../../../test/doubles.js";
-import { loadSampleMirror, setRole } from "../../../test/sample-mirror.js";
+import {
+  loadSampleMirror,
+  setRole,
+  type SampleMirror,
+} from "../../../test/sample-mirror.js";
 import { startOAuth } from "../../../test/sign-in-support.js";
 import { createApp } from "../../app.js";
 import { createDb } from "../../db/client.js";
@@ -37,10 +41,12 @@ const settings = new MemorySettings({
 });
 const oauth = startOAuth({ settings, access: cerbosAccess(settings) });
 
+let sample: SampleMirror;
+
 beforeAll(async () => {
   await createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
     await setRole(tx, "worker_rw");
-    const sample = await loadSampleMirror(tx);
+    sample = await loadSampleMirror(tx);
     await draftDatasets(
       createTestDeps({ container: "worker", db: tx }),
       sample.tenant.datasets.map((dataset) => dataset.id),
@@ -207,6 +213,96 @@ describe("the routes", () => {
         ).toBe(403);
   });
 
+  it("write each kind's built-in fields over PUT docs and show them in the REST answers", async () => {
+    const curator = await person("curator");
+    const agent = bearer((await oauth.login(curator.cookie)).access_token);
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("the sample has no dataset");
+    const detail = async () =>
+      (await send(agent, "GET", `/datasets/${dataset.id}`)).body as {
+        when_to_use: string | null;
+        owner: string | null;
+        freshness: string | null;
+        caveats: string | null;
+        tables: { id: string; grain_and_filters: string | null }[];
+      };
+    const table = (await detail()).tables[0];
+    const columns = (
+      await send(agent, "GET", `/datasets/${dataset.id}/columns`)
+    ).body as { items: { id: string }[] };
+    const column = columns.items[0];
+    if (table === undefined || column === undefined)
+      throw new Error("the sample dataset has no table or column");
+
+    const put = (kind: string, id: string, body: object) =>
+      send(agent, "PUT", `/elements/${kind}/${id}/docs`, body);
+    const datasetFields = {
+      when_to_use: "Daily traffic questions.",
+      owner: "Web team",
+      freshness: "Hourly",
+      caveats: "Bots are included.",
+    };
+    const done = await put("dataset", dataset.id, datasetFields);
+    expect(done.status).toBe(200);
+    expect(done.body).toMatchObject(datasetFields);
+    expect(
+      (await put("table", table.id, { grain_and_filters: "One row per day." }))
+        .body,
+    ).toMatchObject({ grain_and_filters: "One row per day." });
+    expect(
+      (
+        await put("column", column.id, {
+          unit: "money",
+          blank_means: "Unknown",
+        })
+      ).body,
+    ).toMatchObject({ unit: "money", blank_means: "Unknown" });
+
+    const read = await detail();
+    expect(read).toMatchObject(datasetFields);
+    expect(read.tables.find((t) => t.id === table.id)).toMatchObject({
+      grain_and_filters: "One row per day.",
+    });
+    const listed = (await send(agent, "GET", "/datasets?limit=100")).body as {
+      items: { id: string; when_to_use: string | null }[];
+    };
+    expect(listed.items.find((d) => d.id === dataset.id)).toMatchObject({
+      when_to_use: "Daily traffic questions.",
+    });
+    const columnList = (
+      (await send(agent, "GET", `/datasets/${dataset.id}/columns?limit=500`))
+        .body as { items: { id: string }[] }
+    ).items;
+    expect(columnList.find((c) => c.id === column.id)).toMatchObject({
+      unit: "money",
+      blank_means: "Unknown",
+    });
+    expect(
+      (await send(agent, "GET", `/datasets/${dataset.id}/columns/${column.id}`))
+        .body,
+    ).toMatchObject({ column: { unit: "money", blank_means: "Unknown" } });
+  });
+
+  it("refuse a field the kind does not have with the code docs.field_not_on_kind", async () => {
+    const curator = await person("curator");
+    const agent = bearer((await oauth.login(curator.cookie)).access_token);
+    const dataset = sample.tenant.datasets[0];
+    if (dataset === undefined) throw new Error("the sample has no dataset");
+    const refused = await send(
+      agent,
+      "PUT",
+      `/elements/dataset/${dataset.id}/docs`,
+      { unit: "money" },
+    );
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({
+      error: "invalid",
+      code: "docs.field_not_on_kind",
+    });
+    expect(JSON.stringify(refused.body)).toContain("unit");
+    expect(JSON.stringify(refused.body)).toContain("dataset");
+  });
+
   it("set, read and clear an icon on a metric, and refuse what is not an icon", async () => {
     const curator = await person("curator");
     const agent = bearer((await oauth.login(curator.cookie)).access_token);
@@ -354,7 +450,16 @@ describe("the routes", () => {
     const name = `number_of_checks_${randomUUID().slice(0, 8)}`;
     await send(agent, "POST", "/metrics", { name, label: "Number of checks" });
     const checked = await send(agent, "GET", `/metrics/${name}/checks`);
-    const results = (checked.body as { checks: { passed: boolean }[] }).checks;
+    const results = (
+      checked.body as {
+        checks: { check: string; rule: string; passed: boolean }[];
+      }
+    ).checks;
+    // One result for each rule, each naming its rule: a check with several rules answers several times.
+    expect(results.every((r) => r.rule.length > 0)).toBe(true);
+    expect(
+      results.find((r) => r.rule === "metric_fields.definition"),
+    ).toMatchObject({ check: "metric_fields", passed: false });
     expect(results.filter((r) => r.passed).length).toBeGreaterThan(0);
     expect(results.filter((r) => !r.passed).length).toBeGreaterThan(0);
     expect((await send(agent, "GET", "/metrics/sessions/checks")).status).toBe(
@@ -379,7 +484,7 @@ describe("the routes", () => {
     const admin = browser((await person("admin")).cookie);
     const name = `approved_${randomUUID().slice(0, 8)}`;
     await send(agent, "POST", "/metrics", { name, label: "Approved" });
-    const off = { checks: { off: [...METRIC_CHECK_NAMES] } };
+    const off = { off: [...METRIC_CHECK_NAMES] };
     const saved = await send(admin, "PUT", "/conventions", off);
     expect(saved.status, JSON.stringify(saved.body)).toBe(200);
     const url = `/metrics/${name}/approve`;

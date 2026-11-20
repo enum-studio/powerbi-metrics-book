@@ -138,7 +138,7 @@ def test_a_failed_write_leaves_the_saved_login_and_no_temporary_file(
     def fail(*args: object, **kwargs: object) -> None:
         raise OSError("disk full")
 
-    monkeypatch.setattr(json, "dump", fail)
+    monkeypatch.setattr(json, "dumps", fail)
     with pytest.raises(CredentialsError, match="disk full"):
         credentials.save(a_login(access_token="second"))
 
