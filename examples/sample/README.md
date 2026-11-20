@@ -41,7 +41,8 @@ The sample runs as its own Compose project, `powerbi-metrics-book-sample`, with 
 | `compose.yml`, `cerbos/`, `postgres/`, `AGENTS.md`, `.gitignore`, the two `README.md` files in `access/` | what `pbmb init` writes, unchanged |
 | `env.example` | the bootstrap values, filled in for the sample only. A real deployment gets new random ones from `pbmb init`. The name has no leading dot so that agents, which may not read `.env` files, can read and write it |
 | `compose.mock.yml` | the mock as the tenant, and the product image built from this checkout |
-| `book.yml` | settings and conventions changed from the defaults, as `pbmb admin export` writes them |
+| `book.yml` | settings changed from the defaults, as `pbmb admin export` writes them |
+| `conventions.yml` | conventions changed from the defaults, as `pbmb admin export` writes them |
 | `access/policies/query_log.yaml` | the company's own Cerbos rule: a viewer reads only their own query log entries |
 | `access/tests/query_log_test.yaml` | its test, which `pbmb check` runs |
 

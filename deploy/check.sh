@@ -120,6 +120,8 @@ sample="$repository/examples/sample"
 quiet pbmb init "$work/sample-init" --image "$(pinned ghcr.io/enum-studio/powerbi-metrics-book: "$sample/compose.yml")"
 rm "$work/sample-init/.env"
 for written in $(cd "$work/sample-init" && find . -type f); do
+  # The sample overrides drafting hints; pbmb check validates its conventions.
+  [ "$written" = "./conventions.yml" ] && continue
   quiet diff "$work/sample-init/$written" "$sample/$written"
 done
 

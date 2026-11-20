@@ -21,6 +21,14 @@ from powerbi_metrics_book.answers import (
     typed_value,
 )
 from powerbi_metrics_book.client import ApiError, Client, Json
+from powerbi_metrics_book.conventions_file import (
+    add_exceptions,
+    read_mapping,
+    write_conventions,
+)
+from powerbi_metrics_book.conventions_file import (
+    read_conventions as _read,
+)
 from powerbi_metrics_book.output import JsonOption, Session, open_session
 from powerbi_metrics_book.tables import line, print_table
 
@@ -35,9 +43,6 @@ PRESETS = {
     "minimal": "Asks only for a definition and a unit, checks no name, and still "
     "groups drafts by fingerprint. Start here for your own rules.",
 }
-
-# A conventions file is a few KiB; a larger one is not one.
-MAX_FILE_BYTES = 1024 * 1024
 
 FileArgument = Annotated[Path, typer.Argument(help="A conventions YAML file.")]
 Yes = Annotated[bool, typer.Option("--yes", help="Save without asking.")]
@@ -56,30 +61,6 @@ def _current(client: Client) -> dict[str, Json]:
         "guide": answer.get("guide"),
         **{name: value for name, value in rules.items() if name != "preset"},
     }
-
-
-class _NoAliasLoader(yaml.SafeLoader):
-    """SafeLoader without anchors and aliases, which can expand a small file
-    into a huge document."""
-
-    def compose_node(self, parent: yaml.Node | None, index: int) -> yaml.Node | None:
-        if self.check_event(yaml.AliasEvent):
-            raise yaml.YAMLError("aliases (*name) are not allowed")
-        return super().compose_node(parent, index)
-
-
-def _read(path: Path) -> dict[str, Json]:
-    if not path.is_file():
-        raise typer.BadParameter(f"{path} is not a regular file.")
-    if path.stat().st_size > MAX_FILE_BYTES:
-        raise typer.BadParameter(f"{path} is over 1 MiB; it is not a conventions file.")
-    try:
-        document: Json = yaml.load(path.read_text(), Loader=_NoAliasLoader)
-    except yaml.YAMLError as error:
-        raise typer.BadParameter(f"{path} is not valid YAML: {error}") from error
-    if not isinstance(document, dict):
-        raise typer.BadParameter(f"{path} must hold one YAML mapping.")
-    return document
 
 
 def _changes(client: Client, document: dict[str, Json]) -> dict[str, Json]:
@@ -172,14 +153,35 @@ def show(context: typer.Context, json_output: JsonOption = False) -> None:
 
 
 @app.command("export")
-def export(context: typer.Context, json_output: JsonOption = False) -> None:
-    """Print the conventions in force as the YAML that `import` and `edit` take."""
+def export(
+    context: typer.Context,
+    resolved: Annotated[
+        bool, typer.Option("--resolved", help="Include preset values.")
+    ] = False,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write YAML here.")
+    ] = None,
+    json_output: JsonOption = False,
+) -> None:
+    """Export the company part, or the resolved conventions including the preset."""
     with open_session(context, json_output) as session:
-        document = _current(session.client)
+        document = (
+            _current(session.client)
+            if resolved
+            else object_of(
+                session.client.get("/conventions/company"), "the company part"
+            )
+        )
+        document = {"format": 1, **document}
+        if output is not None:
+            write_conventions(document, output, inline_guide=resolved)
         session.emit(
             document,
             lambda console: typer.echo(
-                yaml.safe_dump(document, sort_keys=False, allow_unicode=True), nl=False
+                f"Wrote {output}."
+                if output
+                else yaml.safe_dump(document, sort_keys=False, allow_unicode=True),
+                nl=output is not None,
             ),
         )
 
@@ -210,14 +212,76 @@ def presets(context: typer.Context, json_output: JsonOption = False) -> None:
         session.emit(listed, render)
 
 
+def _company_changes(
+    before: dict[str, Json], after: dict[str, Json], rule_ids: set[str] | None = None
+) -> list[Json]:
+    changes: list[Json] = []
+
+    def exceptions_by_rule(value: Json) -> dict[str, list[Json]]:
+        grouped: dict[str, list[Json]] = {}
+        for item in sorted(
+            objects_in({"items": value or []}, "items"),
+            key=lambda item: (
+                str(item["rule"]),
+                json.dumps(
+                    {
+                        key: field
+                        for key, field in item.items()
+                        if key not in ("rule", "reason")
+                    },
+                    sort_keys=True,
+                ),
+                str(item["reason"]),
+            ),
+        ):
+            grouped.setdefault(str(item["rule"]), []).append(item)
+        return grouped
+
+    def compare(
+        before: dict[str, Json], after: dict[str, Json], prefix: str = ""
+    ) -> None:
+        for key in sorted(before.keys() | after.keys()):
+            left, right = before.get(key), after.get(key)
+            path = f"{prefix}.{key}" if prefix else key
+            if path == "exceptions":
+                compare(
+                    dict(exceptions_by_rule(left)),
+                    dict(exceptions_by_rule(right)),
+                    "exceptions",
+                )
+            elif path not in (rule_ids or set()) and (
+                (isinstance(left, dict) and bool(left))
+                or (isinstance(right, dict) and bool(right))
+            ):
+                compare(
+                    left if isinstance(left, dict) else {},
+                    right if isinstance(right, dict) else {},
+                    path,
+                )
+            elif left != right or (key in before) != (key in after):
+                changes.append({"path": path, "before": left, "after": right})
+
+    compare(before, after)
+    return changes
+
+
 @app.command("diff")
 def diff(
     context: typer.Context, file: FileArgument, json_output: JsonOption = False
 ) -> None:
     """Show what a file would change against the conventions in force. Saves nothing."""
     with open_session(context, json_output) as session:
-        difference = _changes(session.client, _read(file))
+        document = _read(file)
+        current = object_of(
+            session.client.get("/conventions/company"), "the company part"
+        )
+        listed = object_of(session.client.get("/conventions/rules"), "the rules")
+        rule_ids = {string_field(item, "id") for item in objects_in(listed, "rules")}
+        changes = _company_changes(current, document, rule_ids)
+        difference: dict[str, Json] = {"changes": changes}
         session.emit(difference, lambda console: _print_changes(console, difference))
+        if changes:
+            raise typer.Exit(1)
 
 
 @app.command("validate")
@@ -281,22 +345,235 @@ def set_value(
         _save(session, document)
 
 
+def _rule_value(document: dict[str, Json], rule: str) -> Json:
+    value: Json = document
+    for key in rule.split("."):
+        value = value.get(key) if isinstance(value, dict) else None
+    return value
+
+
+def print_applied(
+    console: Console,
+    answer: dict[str, Json],
+    document: dict[str, Json],
+    changes: list[Json] | None = None,
+    dry_run: bool = False,
+) -> None:
+    rules = answer["changed_rules"]
+    if changes == []:
+        line(console, "No change.")
+    if isinstance(rules, list):
+        failing = object_of(answer["now_failing"], "the failing counts")
+        for rule in rules:
+            name = text_of(rule)
+            line(
+                console,
+                f"{name}: {json.dumps(_rule_value(document, name))}; "
+                f"{failing.get(name, 0)} targets now fail.",
+            )
+    if changes:
+        covered = (
+            {str(rule).split(".")[0] for rule in rules}
+            if isinstance(rules, list)
+            else set()
+        )
+        for key in sorted(
+            {
+                str(change["path"]).split(".")[0]
+                for change in objects_in({"changes": changes}, "changes")
+            }
+            - covered
+        ):
+            line(console, f"{key}: changed.")
+    added = objects_in(answer, "exceptions_added")
+    if added:
+        line(
+            console,
+            f"Would add {len(added)} exception{'s' if len(added) != 1 else ''}."
+            if dry_run
+            else f"{len(added)} exceptions added.",
+        )
+        line(console, yaml.safe_dump(added, sort_keys=False))
+
+
+def preview_apply(
+    session: Session, document: dict[str, Json]
+) -> tuple[dict[str, Json], list[Json]]:
+    current = object_of(session.client.get("/conventions/company"), "the company part")
+    unchanged = {**document, "exceptions": None} == {
+        **current,
+        "exceptions": None,
+    } and sorted(
+        json.dumps(item, sort_keys=True)
+        for item in objects_in({"items": document.get("exceptions") or []}, "items")
+    ) == sorted(
+        json.dumps(item, sort_keys=True)
+        for item in objects_in({"items": current.get("exceptions") or []}, "items")
+    )
+    changes = [] if unchanged else _company_changes(current, document)
+    preview = (
+        object_of(
+            session.client.request(
+                "POST",
+                "/conventions/apply",
+                body={"conventions": document, "dry_run": True},
+            ),
+            "the apply result",
+        )
+        if not unchanged
+        else {"changed_rules": [], "now_failing": {}, "exceptions_added": []}
+    )
+    return preview, changes
+
+
+def _apply(
+    session: Session, document: dict[str, Json], yes: bool, dry_run: bool = False
+) -> tuple[dict[str, Json], list[Json]]:
+    preview, changes = preview_apply(session, document)
+    if dry_run or not changes:
+        return preview, changes
+    if session.as_json and not yes:
+        raise typer.BadParameter("--json cannot ask; add --yes.")
+    if not session.as_json:
+        print_applied(Console(), preview, document, changes, True)
+    if not yes and not typer.confirm("Save these as the next version?", err=True):
+        raise typer.Exit(1)
+    return object_of(
+        session.client.request(
+            "POST",
+            "/conventions/apply",
+            body={"conventions": document, "dry_run": False},
+        ),
+        "the apply result",
+    ), changes
+
+
+@app.command("apply")
+def apply_file(
+    context: typer.Context,
+    file: FileArgument,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Preview without saving.")
+    ] = False,
+    baseline: Annotated[
+        bool,
+        typer.Option(
+            "--baseline", help="Write exceptions for existing failures into the file."
+        ),
+    ] = False,
+    reason: Annotated[
+        str | None, typer.Option("--reason", help="Why existing failures are excepted.")
+    ] = None,
+    yes: Yes = False,
+    json_output: JsonOption = False,
+) -> None:
+    """Apply a conventions file, showing changed rules and how many targets now fail."""
+    if baseline and not reason:
+        raise typer.BadParameter("--baseline requires --reason.")
+    document = _read(file)
+    with open_session(context, json_output) as session:
+        if baseline and session.as_json and not yes and not dry_run:
+            raise typer.BadParameter("--json cannot ask; add --yes.")
+        if baseline:
+            preview = object_of(
+                session.client.request(
+                    "POST",
+                    "/conventions/apply",
+                    body={
+                        "conventions": document,
+                        "dry_run": True,
+                        "baseline_reason": reason,
+                    },
+                ),
+                "the apply result",
+            )
+            if dry_run:
+                session.emit(
+                    preview,
+                    lambda console: print_applied(
+                        console, preview, document, dry_run=True
+                    ),
+                )
+                return
+            added = objects_in(preview, "exceptions_added")
+            if added:
+                document = add_exceptions(file, document, added)
+        answer, changes = _apply(session, document, yes, dry_run)
+        if baseline:
+            answer["exceptions_added"] = preview["exceptions_added"]
+        session.emit(
+            answer,
+            lambda console: print_applied(console, answer, document, changes, dry_run),
+        )
+
+
 @app.command("import")
 def import_file(
     context: typer.Context,
     file: FileArgument,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+    baseline: Annotated[bool, typer.Option("--baseline")] = False,
+    reason: Annotated[str | None, typer.Option("--reason")] = None,
     yes: Yes = False,
     json_output: JsonOption = False,
 ) -> None:
-    """Replace the conventions with a file: show the difference, ask, then save.
+    """Alias for apply for one release; use `pbmb conventions apply`."""
+    typer.echo(
+        "conventions import is an alias for apply for one release; "
+        "use conventions apply.",
+        err=True,
+    )
+    apply_file(context, file, dry_run, baseline, reason, yes, json_output)
 
-    With --json you must pass --yes, since there is nowhere to ask. The file must
-    be a regular YAML file under 1 MiB without aliases.
-    """
+
+@app.command("reset")
+def reset(
+    context: typer.Context,
+    rule: Annotated[
+        str | None, typer.Argument(help="Rule id to reset, or all company settings.")
+    ] = None,
+    yes: Yes = False,
+    json_output: JsonOption = False,
+) -> None:
+    """Remove a company rule, its off entry and exceptions, then apply."""
     with open_session(context, json_output) as session:
-        document = _read(file)
-        if _confirm_changes(session, document, yes):
-            _save(session, document)
+        if rule is not None:
+            rules = object_of(session.client.get("/conventions/rules"), "the rules")
+            if rule not in [item["id"] for item in objects_in(rules, "rules")]:
+                raise typer.BadParameter(f"Unknown rule id: {rule}.")
+        document = object_of(
+            session.client.get("/conventions/company"), "the company part"
+        )
+        if rule is None:
+            document = {
+                key: value
+                for key, value in document.items()
+                if key in ("format", "preset")
+            }
+        else:
+
+            def remove(section: dict[str, Json], keys: list[str]) -> None:
+                key = keys[0]
+                if len(keys) == 1:
+                    section.pop(key, None)
+                elif isinstance(inner := section.get(key), dict):
+                    remove(inner, keys[1:])
+                    if not inner:
+                        section.pop(key)
+
+            remove(document, rule.split("."))
+            if isinstance(off := document.get("off"), list):
+                document["off"] = [item for item in off if item != rule]
+            if "exceptions" in document:
+                document["exceptions"] = [
+                    item
+                    for item in objects_in(document, "exceptions")
+                    if item["rule"] != rule
+                ]
+        answer, changes = _apply(session, document, yes)
+        session.emit(
+            answer, lambda console: print_applied(console, answer, document, changes)
+        )
 
 
 class _EditorNotStartedError(Exception):
@@ -351,7 +628,7 @@ def edit(context: typer.Context, json_output: JsonOption = False) -> None:
                 yaml.safe_dump(current, sort_keys=False, allow_unicode=True)
             )
             _run_editor(command, editor, path)
-            document = _read(path)
+            document = read_mapping(path)
             if _confirm_changes(session, document, yes=False):
                 _save(session, document)
             keep = False
