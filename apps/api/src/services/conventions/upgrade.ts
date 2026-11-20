@@ -1,5 +1,6 @@
 import type pg from "pg";
 import { createLogger, type Logger } from "../../log.js";
+import { isDocument } from "./rules.js";
 import { resolve, toSavablePart, validateConventions } from "./store.js";
 
 export type LegacyTransform = (
@@ -29,9 +30,6 @@ class DraftingPatternError extends Error {
   }
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 function textSelector(
   pattern: string,
   version: number,
@@ -57,15 +55,19 @@ function textSelector(
 }
 
 const replaceDraftingPatterns: LegacyTransform = (document, version) => {
-  if (!isRecord(document.drafting)) return document;
+  if (!isDocument(document.drafting)) return document;
   const drafting = { ...document.drafting };
-  if (isRecord(drafting.skip) && Array.isArray(drafting.skip.name_patterns)) {
+  if (
+    isDocument(drafting.skip) &&
+    Array.isArray(drafting.skip.name_patterns) &&
+    drafting.skip.name_patterns.every(
+      (pattern: unknown) => typeof pattern === "string",
+    )
+  ) {
     const { name_patterns, ...skip } = drafting.skip;
     const prefixes: string[] = [];
     const names: string[] = [];
     for (const pattern of name_patterns) {
-      if (typeof pattern !== "string")
-        throw new DraftingPatternError(String(pattern), version);
       const selector = textSelector(pattern, version);
       if ("prefix" in selector) prefixes.push(selector.prefix);
       else names.push(selector.name);
@@ -74,7 +76,8 @@ const replaceDraftingPatterns: LegacyTransform = (document, version) => {
   }
   if (Array.isArray(drafting.dismiss)) {
     drafting.dismiss = drafting.dismiss.map((rule: unknown) => {
-      if (!isRecord(rule) || typeof rule.name_pattern !== "string") return rule;
+      if (!isDocument(rule) || typeof rule.name_pattern !== "string")
+        return rule;
       const { name_pattern, ...rest } = rule;
       return { ...rest, ...textSelector(name_pattern, version) };
     });

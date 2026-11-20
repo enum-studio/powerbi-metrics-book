@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { conventionsSchema, PRESET_NAMES } from "./schema.js";
@@ -54,21 +54,48 @@ describe("text drafting rules", () => {
     expect(summary).toContain("name equals Helper (case-insensitive)");
   });
 
-  it("walks the schema and every preset without a regular expression input", () => {
-    const walk = (value: unknown): void => {
+  it("walks every schema property and preset key for pattern or regex inputs", () => {
+    const walk = (value: unknown, schema = false): void => {
       if (typeof value !== "object" || value === null) return;
-      for (const [key, child] of Object.entries(value)) {
-        expect(["name_pattern", "name_patterns"]).not.toContain(key);
-        walk(child);
+      const entries: [string, unknown][] = Object.entries(value);
+      for (const [key, child] of entries) {
+        if (!schema) expect(key).not.toMatch(/pattern|regex/i);
+        if (
+          schema &&
+          key === "properties" &&
+          typeof child === "object" &&
+          child !== null
+        )
+          for (const name of Object.keys(child))
+            expect(name).not.toMatch(/pattern|regex/i);
+        walk(child, schema);
       }
     };
-    walk(z.toJSONSchema(conventionsSchema));
+    walk(z.toJSONSchema(conventionsSchema), true);
     for (const preset of PRESET_NAMES) walk(resolve({ preset }));
-    for (const file of ["schema.ts", "../book/drafter.ts"]) {
-      expect(
-        readFileSync(new URL(file, import.meta.url), "utf8"),
-      ).not.toContain("new RegExp");
-    }
+  });
+
+  it("allows dynamic regular expressions only in the three reviewed modules", () => {
+    const source = new URL("../../", import.meta.url);
+    const allowed = [
+      "http/docs.ts",
+      "http/public-paths.ts",
+      "services/mirror/read.ts",
+    ];
+    const unexpected = readdirSync(source, {
+      recursive: true,
+      encoding: "utf8",
+    })
+      .filter((file) => file.endsWith(".ts"))
+      .filter(
+        (file) =>
+          !file.endsWith(".test.ts") && !file.endsWith("_security_test.ts"),
+      )
+      .filter((file) => !allowed.includes(file))
+      .filter((file) =>
+        readFileSync(new URL(file, source), "utf8").includes("new RegExp"),
+      );
+    expect(unexpected).toEqual([]);
   });
 });
 
@@ -95,6 +122,26 @@ describe("legacy drafting patterns", () => {
       },
     });
   });
+
+  it.each([null, 7, { prefix: "_" }])(
+    "leaves non-string skip and dismiss patterns for validation: %o",
+    (pattern) => {
+      const document = {
+        drafting: {
+          skip: { name_patterns: [pattern] },
+          dismiss: [{ name_pattern: pattern, reason: "Internal." }],
+        },
+      };
+      const upgraded = upgrade(document);
+      expect(upgraded).toEqual(document);
+      expect(validateConventions(upgraded).map(({ path }) => path)).toEqual(
+        expect.arrayContaining([
+          "drafting.skip.name_patterns",
+          "drafting.dismiss.0",
+        ]),
+      );
+    },
+  );
 
   it.each(["^a.b", "foo", "(a|b)"])(
     "refuses %s with recovery instructions",

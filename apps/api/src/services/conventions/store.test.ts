@@ -162,6 +162,20 @@ describe("resolve", () => {
     ).toContain(path);
   });
 
+  it.each([
+    { prefix: "_", name: "Test", reason: "Both." },
+    { reason: "Neither." },
+    { name_pattern: "^_", reason: "Old key." },
+  ])("explains how to fix an invalid dismiss rule: %o", (rule) => {
+    expect(
+      validateConventions({ drafting: { dismiss: [rule] } }),
+    ).toContainEqual({
+      path: "drafting.dismiss.0",
+      message:
+        'A dismiss rule gives a prefix or a name, not both, and a reason. `name_pattern` is gone: write `^_` as `prefix: "_"`.',
+    });
+  });
+
   it("refuses a document that is not a mapping", () => {
     expect(validateConventions("naming: none")).toEqual([
       { path: "", message: "The conventions are a mapping of keys." },

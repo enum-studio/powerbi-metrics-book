@@ -245,10 +245,16 @@ export const conventionsSchema = z.strictObject({
       names: z.array(z.string()),
     }),
     dismiss: z.array(
-      z.union([
-        z.strictObject({ prefix: z.string(), reason: z.string().min(1) }),
-        z.strictObject({ name: z.string(), reason: z.string().min(1) }),
-      ]),
+      z.union(
+        [
+          z.strictObject({ prefix: z.string(), reason: z.string().min(1) }),
+          z.strictObject({ name: z.string(), reason: z.string().min(1) }),
+        ],
+        {
+          error:
+            'A dismiss rule gives a prefix or a name, not both, and a reason. `name_pattern` is gone: write `^_` as `prefix: "_"`.',
+        },
+      ),
     ),
   }),
   trust: z.strictObject({
