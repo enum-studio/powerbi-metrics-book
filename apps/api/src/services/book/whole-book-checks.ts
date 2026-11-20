@@ -183,11 +183,19 @@ const targetsOf = (
       rule.target === kind && (rules === undefined || rules.has(rule.id)),
   );
 
-/** Every failing result in the book under `conventions`, exceptions applied, optionally only for `rules`. Metrics, terms, datasets, tables and columns. */
+/** The model as a caller is shown it: the datasets they may describe, and whether PII is left out. */
+export type ModelView = { allowed: SQL; hidesPii: boolean };
+
+/**
+ * Every failing result in the book under `conventions`, exceptions applied,
+ * optionally only for `rules`. Metrics, terms, datasets, tables and columns;
+ * with `view`, the elements only as that caller is shown them.
+ */
 export async function failuresInBook(
   deps: Deps,
   conventions: Conventions,
   rules?: ReadonlySet<string>,
+  view?: ModelView,
 ): Promise<Failure[]> {
   const run: Run = { conventions, exceptions: exceptionIndex(conventions) };
   const checked = [
@@ -196,7 +204,7 @@ export async function failuresInBook(
     ...((["dataset", "table", "column"] as const).some((kind) =>
       targetsOf(kind, rules),
     )
-      ? await checkedElements(deps, run)
+      ? await checkedElements(deps, run, view?.allowed, view?.hidesPii)
       : []),
   ];
   return checked.flatMap(({ target, results }) =>

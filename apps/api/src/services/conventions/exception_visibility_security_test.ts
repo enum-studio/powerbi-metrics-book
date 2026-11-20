@@ -88,37 +88,41 @@ const onTheConnector = async (tx: Db, principal: Principal) => {
   return answer?.content.map((block) => block.text).join("") ?? "";
 };
 
+/** Order date is numeric and joined only to the Date table's Date column, a PII column. */
+async function orderDateJoinedOnlyToPii(tx: Db): Promise<void> {
+  await setRole(tx, "worker_rw");
+  await tx
+    .update(powerbiRelationship)
+    .set({ cardinality: "many_to_one" })
+    .where(eq(powerbiRelationship.dataset_id, id.sales));
+  await tx
+    .update(powerbiColumn)
+    .set({ data_type: "Int64" })
+    .where(eq(powerbiColumn.id, id.order_date));
+  await tx.insert(powerbiColumn).values({
+    dataset_id: id.sales,
+    table_id: id.date_table,
+    name: "Date",
+    data_type: "DateTime",
+    column_type: "data",
+  });
+  await setRole(tx, "api_rw");
+  await tx.insert(piiRule).values({
+    kind: "column",
+    table_name: "Date",
+    name: "Date",
+    set_by_kind: "person",
+    set_by_id: principals.admin.id,
+    set_via: "browser",
+    pii: true,
+  });
+}
+
 describe("an unused exception on an element", () => {
   it("is judged on the model the curator is shown, so it never tells of a hidden PII column", () =>
     expect(
       createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
-        // Order date is numeric and joined only to the Date table's Date column, a PII column.
-        await setRole(tx, "worker_rw");
-        await tx
-          .update(powerbiRelationship)
-          .set({ cardinality: "many_to_one" })
-          .where(eq(powerbiRelationship.dataset_id, id.sales));
-        await tx
-          .update(powerbiColumn)
-          .set({ data_type: "Int64" })
-          .where(eq(powerbiColumn.id, id.order_date));
-        await tx.insert(powerbiColumn).values({
-          dataset_id: id.sales,
-          table_id: id.date_table,
-          name: "Date",
-          data_type: "DateTime",
-          column_type: "data",
-        });
-        await setRole(tx, "api_rw");
-        await tx.insert(piiRule).values({
-          kind: "column",
-          table_name: "Date",
-          name: "Date",
-          set_by_kind: "person",
-          set_by_id: principals.admin.id,
-          set_via: "browser",
-          pii: true,
-        });
+        await orderDateJoinedOnlyToPii(tx);
         const unit = {
           rule: "column_fields.unit",
           dataset: "Sales",
@@ -139,6 +143,61 @@ describe("an unused exception on an element", () => {
         ).toEqual([unit]);
         // To a curator who may not read PII it is no key: the exception is in use, and nothing is listed.
         expect(await unused(tx, curator)).toEqual([]);
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
+});
+
+describe("a baseline run by an admin who cannot read PII", () => {
+  it("excepts a column joined only to a PII column exactly when that admin's docs check shows it failing", () =>
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        await orderDateJoinedOnlyToPii(tx);
+        const salesAdmin = reaching(
+          { powerbi_app_ids: [id.sales_app] },
+          "admin",
+        );
+        const reader: Principal = {
+          ...salesAdmin,
+          roles: [...salesAdmin.roles, "pii_reader"],
+        };
+        // To the admin Order date is no key and fails; to a PII reader it is a key and passes.
+        for (const [principal, fails] of [
+          [salesAdmin, true],
+          [reader, false],
+        ] as const) {
+          await setConventions({ db: tx }, principals.admin, {
+            format: 1,
+            column_fields: { unit: { required: false } },
+          });
+          // The preset's when_numeric comes back on.
+          const answer = await applyAsAdmin(asPerson(principal, { db: tx }), {
+            conventions: { format: 1 },
+            dry_run: true,
+            baseline_reason: "Measured before units.",
+          });
+          // The docs check under the same change, before any exception.
+          await setConventions({ db: tx }, principals.admin, { format: 1 });
+          const checks = await docsChecks(asPerson(principal, { db: tx }), {
+            dataset: "Sales",
+            limit: 500,
+          });
+          const failing = checks.items.some(
+            (item) =>
+              item.id === id.order_date &&
+              item.results.some(
+                (result) =>
+                  result.rule === "column_fields.unit" && !result.passed,
+              ),
+          );
+          const excepted = answer.exceptions_added.some(
+            (item) =>
+              item.rule === "column_fields.unit" &&
+              item.column === "'Sales'[Order date]",
+          );
+          expect(failing).toBe(fails);
+          expect(excepted).toBe(fails);
+        }
         tx.rollback();
       }),
     ).rejects.toThrow(TransactionRollbackError));

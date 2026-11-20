@@ -903,7 +903,11 @@ catalog. The new documentation columns follow the element's visibility.
 Checks work out a column's key status and a table's kind from what the
 caller is shown, as the table page does. A non-reader's documentation
 failures can therefore differ from an admin's; using hidden columns would
-otherwise reveal PII through which fields fail.
+otherwise reveal PII through which fields fail. A baseline works out its
+element failures, before and after the change, the same way, as the admin
+applying it is shown the model, so which columns it excepts never tells of
+a PII column they may not read; `now_failing` still counts the whole book
+(`services/conventions/exception_visibility_security_test.ts`).
 
 Exception targets on element checks, apply results and unused lists are
 shown only to a caller who can see the target, including `pii_reader` for a

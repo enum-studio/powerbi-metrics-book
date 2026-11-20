@@ -206,7 +206,7 @@ For a book with thousands of drafts, preview a stricter rule before applying it.
 pbmb conventions apply conventions.yml --baseline --reason "Names in use before the house style"
 ```
 
-The CLI writes exceptions into the file before applying it. A target must fail the proposed rule, have passed that rule under the version in force, and be visible to the person applying. Existing failures get no exception. Only changes to a rule's value, keys it reads or off state can add exceptions; changing exceptions alone adds none. Omitting exceptions from the file drops them even with `--baseline`. `--dry-run` previews without writing or saving. Review the added exceptions in git. New targets still have to pass the rule.
+The CLI writes exceptions into the file before applying it. A target must fail the proposed rule, have passed that rule under the version in force, and be visible to the person applying. Datasets, tables and columns fail as that person's `pbmb docs check` shows them, so a column joined only to a PII column they cannot read is no key to them. Existing failures get no exception. Only changes to a rule's value, keys it reads or off state can add exceptions; changing exceptions alone adds none. Omitting exceptions from the file drops them even with `--baseline`. `--dry-run` previews without writing or saving. Review the added exceptions in git. New targets still have to pass the rule.
 
 `show --json` and the MCP `whoami` tool report off rules and exception counts so reviewers can see weakened checks. Whole-book counts can include targets the caller cannot see.
 
