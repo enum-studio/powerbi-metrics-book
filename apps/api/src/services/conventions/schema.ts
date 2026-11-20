@@ -38,13 +38,17 @@ export type MetricCheckName = (typeof METRIC_CHECK_NAMES)[number];
 export type TermCheckName = (typeof TERM_CHECK_NAMES)[number];
 export type CheckName = (typeof CHECK_NAMES)[number];
 
-const key = z
-  .string()
-  .regex(
-    /^[a-z][a-z0-9_]*$/,
-    "Use lowercase letters, digits and underscores, starting with a letter.",
-  );
-const words = z.array(z.string().min(1));
+/*
+ * Every name, word and exception target is held to 500 characters, and none
+ * is read with a pattern in conventions.schema.json: a refinement checks it
+ * here, so Python's re, which backtracks, never reads one offline.
+ */
+const short = z.string().max(500);
+const key = short.refine(
+  (text) => /^[a-z][a-z0-9_]*$/.test(text),
+  "Use lowercase letters, digits and underscores, starting with a letter.",
+);
+const words = z.array(short.min(1));
 const required = z.strictObject({ required: z.boolean() });
 
 const hasUniqueKeys = (items: { key: string }[]): boolean =>
@@ -54,9 +58,9 @@ const UNIQUE = "Each key is used once.";
 export const customFieldSchema = z
   .strictObject({
     key,
-    label: z.string().min(1),
+    label: short.min(1),
     type: z.enum(["text", "number", "boolean", "date", "choice"]),
-    values: z.array(z.string().min(1)).min(1).optional(),
+    values: words.min(1).optional(),
     required: z.boolean().default(false),
   })
   .refine(
@@ -71,12 +75,10 @@ export type CustomFieldSpec = z.infer<typeof customFieldSchema>;
 
 const customFields = z.array(customFieldSchema).refine(hasUniqueKeys, UNIQUE);
 
-const kind = z
-  .string()
-  .refine(
-    (text) => text.length > 1 && text.startsWith("_") !== text.endsWith("_"),
-    "A kind ends with an underscore when it opens the key (total_) or starts with one when it follows what it counts (_rate).",
-  );
+const kind = short.refine(
+  (text) => text.length > 1 && text.startsWith("_") !== text.endsWith("_"),
+  "A kind ends with an underscore when it opens the key (total_) or starts with one when it follows what it counts (_rate).",
+);
 
 const naming = z
   .strictObject({
@@ -109,7 +111,10 @@ const BUILT_IN_AXES = ["period", "comparison", "currency"];
 
 export const currencyCode = z
   .string()
-  .regex(/^(?:[A-Z]{3}|local)$/, "Use an ISO 4217 code (EUR) or local.");
+  .refine(
+    (code) => code === "local" || /^[A-Z]{3}$/.test(code),
+    "Use an ISO 4217 code (EUR) or local.",
+  );
 
 const variants = z.strictObject({
   axes: z
@@ -159,6 +164,20 @@ export const exceptionReason = z
     "A reason is one line.",
   );
 
+const LINE_BREAKS = ["\n", "\r", "\u2028", "\u2029"];
+
+/** '<table>'[<column>], as columnTarget writes it: neither part empty, and one line. */
+function isColumnTarget(text: string): boolean {
+  const at = text.lastIndexOf("'[");
+  return (
+    text.startsWith("'") &&
+    text.endsWith("]") &&
+    at > 1 &&
+    at + 2 < text.length - 1 &&
+    !LINE_BREAKS.some((line) => text.includes(line))
+  );
+}
+
 const exception = z
   .strictObject({
     rule: z.enum(RULES.map((rule) => rule.id) as [string, ...string[]], {
@@ -166,13 +185,12 @@ const exception = z
         `${String(issue.input)} is not a rule id. An exception names one rule, never a check.`,
     }),
     reason: exceptionReason,
-    metric: z.string().min(1).optional(),
-    term: z.string().min(1).optional(),
-    dataset: z.string().min(1).optional(),
-    table: z.string().min(1).optional(),
-    column: z
-      .string()
-      .regex(/^'.+'\[.+\]$/u, "Write a column as '<table>'[<column>].")
+    metric: short.min(1).optional(),
+    term: short.min(1).optional(),
+    dataset: short.min(1).optional(),
+    table: short.min(1).optional(),
+    column: short
+      .refine(isColumnTarget, "Write a column as '<table>'[<column>].")
       .optional(),
   })
   .superRefine((item, context) => {
@@ -274,16 +292,16 @@ export const conventionsSchema = z.strictObject({
     name_hints: z.strictObject({ period: words, currency: words }),
     skip: z.strictObject({
       hidden_measures: z.boolean(),
-      display_folders: z.array(z.string()),
-      tables: z.array(z.string()),
-      name_prefixes: z.array(z.string()),
-      names: z.array(z.string()),
+      display_folders: z.array(short),
+      tables: z.array(short),
+      name_prefixes: z.array(short),
+      names: z.array(short),
     }),
     dismiss: z.array(
       z.union(
         [
-          z.strictObject({ prefix: z.string(), reason: z.string().min(1) }),
-          z.strictObject({ name: z.string(), reason: z.string().min(1) }),
+          z.strictObject({ prefix: short, reason: z.string().min(1) }),
+          z.strictObject({ name: short, reason: z.string().min(1) }),
         ],
         {
           error:

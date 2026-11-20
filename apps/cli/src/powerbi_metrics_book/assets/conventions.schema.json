@@ -23,14 +23,16 @@
         "kinds": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500
           }
         },
         "forbidden_words": {
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 500
           }
         },
         "money_qualifier": {
@@ -43,14 +45,16 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             },
             "units": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             }
           },
@@ -60,20 +64,21 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$"
+            "maxLength": 500
           }
         },
         "qualifiers": {
           "type": "object",
           "propertyNames": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*$"
+            "maxLength": 500
           },
           "additionalProperties": {
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 500
             }
           }
         },
@@ -132,7 +137,8 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             }
           },
@@ -157,7 +163,8 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             }
           },
@@ -179,11 +186,12 @@
             "properties": {
               "key": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "maxLength": 500
               },
               "label": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "type": {
                 "type": "string",
@@ -194,7 +202,8 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 500
                 }
               },
               "required": {
@@ -245,11 +254,12 @@
             "properties": {
               "key": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "maxLength": 500
               },
               "label": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "type": {
                 "type": "string",
@@ -260,7 +270,8 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 500
                 }
               },
               "required": {
@@ -330,11 +341,12 @@
             "properties": {
               "key": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "maxLength": 500
               },
               "label": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "type": {
                 "type": "string",
@@ -345,7 +357,8 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 500
                 }
               },
               "required": {
@@ -405,11 +418,12 @@
             "properties": {
               "key": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "maxLength": 500
               },
               "label": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "type": {
                 "type": "string",
@@ -420,7 +434,8 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 500
                 }
               },
               "required": {
@@ -473,7 +488,8 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             }
           },
@@ -495,11 +511,12 @@
             "properties": {
               "key": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
+                "maxLength": 500
               },
               "label": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "type": {
                 "type": "string",
@@ -510,7 +527,8 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 500
                 }
               },
               "required": {
@@ -538,7 +556,8 @@
                   "type": "array",
                   "items": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 500
                   }
                 }
               },
@@ -569,8 +588,7 @@
                     {
                       "type": "array",
                       "items": {
-                        "type": "string",
-                        "pattern": "^(?:[A-Z]{3}|local)$"
+                        "type": "string"
                       }
                     }
                   ]
@@ -585,14 +603,14 @@
                 "properties": {
                   "key": {
                     "type": "string",
-                    "pattern": "^[a-z][a-z0-9_]*$"
+                    "maxLength": 500
                   },
                   "values": {
                     "minItems": 1,
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "pattern": "^[a-z][a-z0-9_]*$"
+                      "maxLength": 500
                     }
                   }
                 },
@@ -625,35 +643,40 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             },
             "previous_quarter": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             },
             "previous_month": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             },
             "previous_week": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             },
             "previous_day": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             }
           },
@@ -666,14 +689,16 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             },
             "currency": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               }
             }
           },
@@ -688,25 +713,29 @@
             "display_folders": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               }
             },
             "tables": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               }
             },
             "name_prefixes": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               }
             },
             "names": {
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               }
             }
           },
@@ -720,7 +749,8 @@
                 "type": "object",
                 "properties": {
                   "prefix": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500
                   },
                   "reason": {
                     "type": "string",
@@ -734,7 +764,8 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 500
                   },
                   "reason": {
                     "type": "string",
@@ -887,23 +918,27 @@
           },
           "metric": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 500
           },
           "term": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 500
           },
           "dataset": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 500
           },
           "table": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 500
           },
           "column": {
             "type": "string",
-            "pattern": "^'.+'\\[.+\\]$"
+            "maxLength": 500
           }
         },
         "required": ["rule", "reason"],
