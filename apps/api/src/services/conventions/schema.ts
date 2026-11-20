@@ -151,17 +151,19 @@ const off = z.array(
 );
 
 /**
- * One line, so a reason reads as text where it is shown and cannot pass for
- * an instruction of its own. A refinement, not a pattern: Python's re, which
- * reads conventions.schema.json offline, has no \p{Cc}.
+ * One line of visible text, so a reason reads as text where it is shown and
+ * cannot pass for an instruction of its own: no control or format character
+ * (\p{Cf}, such as a right-to-left override), which could hide what it says.
+ * A refinement, not a pattern: Python's re, which reads
+ * conventions.schema.json offline, has no \p{Cc}.
  */
 export const exceptionReason = z
   .string()
   .min(1)
   .max(200)
   .refine(
-    (reason) => !/[\p{Cc}\u2028\u2029]/u.test(reason),
-    "A reason is one line.",
+    (reason) => !/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(reason),
+    "A reason is one line of visible text.",
   );
 
 const LINE_BREAKS = ["\n", "\r", "\u2028", "\u2029"];

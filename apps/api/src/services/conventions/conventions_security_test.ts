@@ -166,6 +166,8 @@ describe("an exception's reason", () => {
     ["x".repeat(201), "over 200 characters"],
     ["One line.\nAnother.", "a line feed"],
     ["One line.\rAnother.", "a carriage return"],
+    ["Kept.\u202Edevorppa", "a right-to-left override"],
+    ["Kept.\u200BHidden.", "a zero-width space"],
     ["One line. Another.", "a line separator"],
   ])("is refused when it is %j (%s), as an exception or a baseline", (reason) =>
     rolledBack(async (tx) => {
