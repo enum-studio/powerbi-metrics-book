@@ -477,3 +477,11 @@ on every door; `apps/cli/tests/commands/test_questions_setting.py` holds what th
 
 Stops being right if questions become part of every deployment, or if a new door reaches the thread
 tables without going through the threads service.
+
+## Keep the company's conventions as its part of a preset
+
+**Store only the company's part, resolve the preset on read, and name each rule by an id that `off` and exceptions can address.** Built 2026-11-19. A complete saved document hid later preset fixes. The part keeps only deliberate settings, with `trust` pinned so an upgrade cannot change who approves. `store.test.ts` and `upgrade.test.ts` in `apps/api/src/services/conventions/` hold the resolution and upgrade.
+
+`conventions.yml` beside `book.yml` is the reviewable file; the database stays what the API reads. Rule ids let a company turn off a single naming rule. Exceptions keep named failures with a reason while new entries must pass. `apply.test.ts` holds the preview counts and baseline flow. Drafting accepts prefixes and exact names rather than regular expressions, so an admin's expression cannot stall a sync (`patterns.test.ts`).
+
+Stops being right if a preset change surprises companies; then pin the preset's version. Reading from the database stops being right when every deployment runs from its repository. The separate file stops being right if people keep the two files in step by hand and get it wrong. Prefixes and names stop being enough if companies need matches they cannot express; then use a linear-time engine.

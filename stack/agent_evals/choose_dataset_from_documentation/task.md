@@ -1,0 +1,1 @@
+Which dataset should I use to compare campaign spend by month? Read the datasets' documentation and tell me why that model fits. Leave answer.json in this folder with two string keys: dataset (its exact name) and reason (your explanation). You do not need to run a query or change the book.

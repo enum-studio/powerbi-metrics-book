@@ -1,6 +1,6 @@
 ---
 title: Custom fields
-description: Add your own fields to metrics, terms, datasets, tables, columns and measures, and your own axes to variants.
+description: Add your own fields to metrics, terms, datasets, tables and columns, and your own axes to variants.
 sidebar:
   order: 2
 ---
@@ -8,6 +8,8 @@ sidebar:
 Custom fields let the book carry facts that are yours: who owns a metric, which system it comes from, whether a dataset may be queried. You declare a field in the conventions, set it on elements, and then read it in every answer and filter by it. No code changes.
 
 ## Declare a field
+
+Each kind has its own list. A field declared for datasets does not appear on tables or columns. Measures keep their description and have no custom field list.
 
 A field has a key, a label and a type. The key is lowercase letters, digits and underscores, starting with a letter, and unique in its list.
 
@@ -27,18 +29,21 @@ Where you declare it decides what it attaches to:
 |---|---|
 | `metric_fields.custom` | Metrics. |
 | `term_fields.custom` | Terms. |
-| `element_fields.custom` | Datasets, tables, columns and measures. |
+| `dataset_fields.custom` | Datasets. |
+| `table_fields.custom` | Tables. |
+| `column_fields.custom` | Columns. |
 | `variants.axes.custom` | Variants, as an axis (below). |
 
 This file adds an owner team, a source system and a review date to metrics, a switch to datasets, and a market axis to variants:
 
 ```yaml
+format: 1
 metric_fields:
   custom:
     - { key: owner_team, label: Owner team, type: text }
     - { key: source_system, label: Source system, type: choice, values: [erp, webshop, crm], required: true }
     - { key: reviewed_on, label: Reviewed on, type: date }
-element_fields:
+dataset_fields:
   custom:
     - { key: queries_off, label: Queries off, type: boolean }
 variants:
@@ -51,7 +56,7 @@ Apply it without losing your other rules by changing one list at a time. A list 
 
 ```bash
 pbmb conventions set metric_fields.custom '[{"key":"owner_team","label":"Owner team","type":"text"},{"key":"source_system","label":"Source system","type":"choice","values":["erp","webshop","crm"],"required":true}]'
-pbmb conventions set element_fields.custom '[{"key":"queries_off","label":"Queries off","type":"boolean"}]'
+pbmb conventions set dataset_fields.custom '[{"key":"queries_off","label":"Queries off","type":"boolean"}]'
 ```
 
 For several changes, use `pbmb conventions edit`. [Conventions](/docs/make-it-yours/conventions/) has the other commands.
@@ -63,11 +68,11 @@ For several changes, use `pbmb conventions edit`. [Conventions](/docs/make-it-yo
 | A metric | `pbmb metrics update total_net_sales_excl_vat --custom owner_team=finance --custom source_system=erp` |
 | A term | `pbmb terms update Channel --custom owner_team=marketing` |
 | A variant, for an axis | `pbmb variants move <id> --to <metric> --axis market_scope=home_market` |
-| A dataset, table, column or measure | The REST route below. |
+| A dataset, table or column | The REST route below. |
 
 `--custom` reads a value as JSON when it is JSON (`true`, `3`, `["a"]`) and as text otherwise. Write `"42"` for the text 42.
 
-A dataset, table, column or measure takes its custom fields through `PUT /api/v1/elements/{kind}/{id}/docs`, with a JSON body. The `custom` object you send replaces the whole old one:
+A dataset, table or column takes its custom fields through `PUT /api/v1/elements/{kind}/{id}/docs`, with a JSON body. The `custom` object you send replaces the whole old one:
 
 ```bash
 curl -X PUT "$PBMB_URL/api/v1/elements/dataset/<dataset id>/docs" \
@@ -78,7 +83,7 @@ curl -X PUT "$PBMB_URL/api/v1/elements/dataset/<dataset id>/docs" \
 
 The key (`PBMB_API_KEY`) is a curator's [service account key](/docs/make-it-yours/building-on-the-api/). The same body can carry `description` too.
 
-A write is refused when it names a key the conventions do not declare, or a value of the wrong type, and the message says which. A required field left empty does not block the write, because changing the conventions must not make every existing element unwritable. The check `metric_fields` (or `term_fields`) fails instead, and the agent fills it in.
+A write is refused when it names a key the conventions do not declare, or a value of the wrong type, and the message says which. A required field left empty does not block the write, because changing the conventions must not make every existing element unwritable. The kind's check (`metric_fields`, `term_fields`, `dataset_fields`, `table_fields` or `column_fields`) fails instead, and the agent fills it in.
 
 ## Read and filter
 
@@ -99,7 +104,7 @@ The MCP tools take a `custom` object (`{"owner_team": "finance"}`; a search take
 A dataset's custom fields reach Cerbos as `R.attr.custom`. The default dataset policy already reads one: a dataset whose `queries_off` is `true` cannot be queried, though people can still see and search its metadata. Declare the field and set it:
 
 ```bash
-pbmb conventions set element_fields.custom '[{"key":"queries_off","label":"Queries off","type":"boolean"}]'
+pbmb conventions set dataset_fields.custom '[{"key":"queries_off","label":"Queries off","type":"boolean"}]'
 ```
 
 Then the `curl` above turns queries off for one dataset. Your own rules can read other fields the same way ([Roles and policies](/docs/make-it-yours/roles-and-policies/)).

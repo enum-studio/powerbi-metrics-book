@@ -508,3 +508,11 @@ back: on a metric with many variants, Open questions and History sit below a lon
 
 Stops being right if that run of DAX hides Open questions from the people who need them; then those
 move above the variants, rather than the DAX going back behind a click.
+
+## Definition and each kind's fields come before Details
+
+**Documentation shows Definition, Power BI's description when it differs, the kind's built-in fields, its custom fields, then Details.** Built 2026-11-19. This replaces the shared `element_fields` list above. Datasets answer which model to use; tables say what one row is; columns explain values. Definition uses the book's description, with Power BI's as a fallback labelled "From Power BI". Model facts stay in Details. `apps/web/src/catalog/datasets/documentation.test.tsx` holds the order and the fallback.
+
+The built-in fields keep the same words as metric fields. Each kind has its own custom list in the conventions. The fields remain readable when optional; the conventions decide which are required. Curators write them through `pbmb docs set`, and `pbmb docs check` finds gaps.
+
+Stops being right if most companies turn off the built-in requirements. The table definition rule stops being right if agents misread date tables without one; it currently exempts date and measures tables. An optional built-in dataset owner stops being right if companies mostly use their own owner field anyway.
