@@ -25,7 +25,7 @@ exist yet either.
 | Stored results | `query_result`, `query_result_page`, until they expire | data read under one person's row-level security seen by another |
 | Credentials | Better Auth's tables (sessions, OAuth grants); `service_account_key` (API key digests); the CLI's `~/.config/pbmb/credentials.json` (mode 0600) | an attacker gets a person's or a service account's access |
 | The mirror | workspaces, datasets, tables, columns, measures with their DAX, `powerbi_access` | names, DAX and access lists of a dataset seen by someone Power BI does not let reach it |
-| The book, the conventions and their history | metrics, variants, terms, categories, the conventions, `book_change` | a metric redefined or verified without a person seeing it |
+| The book, the conventions and their history | metrics, variants, terms, categories, the conventions (including named exception targets), `book_change` | a metric redefined or verified without a person seeing it |
 | The records | `audit_event`, `query_log`, `book_change`, `event` | who saw or changed what can no longer be shown |
 | Requests and search text | `request`, `search_log`, kept 180 days by default (`usage.retention_days`, at most 365) | personal questions, search text and gaps exposed to someone who may not read them; records planted to steer curation |
 | The setup link, its setup session and sign-in marker | the output of `server setup-link`, never the log; `setup_link` keeps only SHA-256 digests, until the first admin exists | whoever holds it becomes the first admin |
@@ -551,6 +551,12 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   initialize, is cut at 1,000 characters. A `ServiceError` reaches the
   client as its sentence; any other error as a fixed sentence with the
   request id.
+- `GET /api/v1/conventions` and MCP `get_conventions` give exception counts
+  per rule, never the list. An element's own check results carry its
+  `exception` and reason. Exception reasons and the guide are text agents
+  read as data, never instructions. Targets and names are at most 500
+  characters; reasons at most 200, on one line, without control or format
+  characters.
 - An unexpected error, from a route, a tool or Better Auth
   (`onAPIError.throw`), is logged by one function, `http/error-log.ts`:
   its name, message and stack, except a failed query, which is logged as
@@ -572,6 +578,9 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   so a save that lands in between cannot make a stale check pass
   (`approval_browser_only_security_test`, `store.test.ts`, which holds the
   lock from a second connection, and the import test in `export.test.ts`).
+  The stored company part pins `trust`, including when the start upgrades
+  a document without `format`. A preset change cannot change who may verify
+  or approve. Documents with `format: 1` are never upgraded again.
 
 - Demo mode (`DEMO_MODE=1`) serves the public demo on the invented sample
   tenant, with no sign-in. It opens only when five locks hold. The api and
@@ -735,7 +744,9 @@ Crossing: authorization questions, the api's reads and writes.
   enabled)`, and `update(display_folder)` on `powerbi_column` and on
   `powerbi_measure`, each on top of the
   descriptive columns it already updated (`description`, `described_by`,
-  `described_at`, `custom`). The relationship and `enabled` columns are the ones
+  `described_at`, `custom`), plus `when_to_use`, `owner`, `freshness` and
+  `caveats` on datasets, `grain_and_filters` and `caveats` on tables, and
+  `unit` and `blank_means` on columns. The relationship and `enabled` columns are the ones
   the api writes after a person's model read and an admin's switch. A curator's
   icon write now reaches mirror workspaces and datasets, only their icon, and
   `book_change` records the kinds `workspace` and `dataset`. The sync never
@@ -789,7 +800,8 @@ Crossing: authorization questions, the api's reads and writes.
     caller without `pii_reader` sees it only when the measure is not PII;
   - a thread event as `findThread` shows the thread, by its element, and
     none while questions are off;
-  - term and conventions events to everyone, as they are readable by all;
+  - term and conventions events to everyone; conventions events carry
+    changed paths only, never values or exception targets;
   - `sync.*` events only with `admin:read_sync_events`, which a service
     account is refused in code, and their `error` only with
     `admin:manage_settings`;
@@ -883,6 +895,23 @@ caller may see, and a hidden measure's id orders nothing. A draft's own
 too, so it says how many datasets hold a measure of this name. For a caller who
 may not read PII it leaves out a dataset holding only a PII copy. A measure's DAX can name a PII
 column, but never shows its values.
+
+Documentation reads and checks use the same dataset and PII gates as the
+catalog. The new documentation columns follow the element's visibility.
+Checks work out a column's key status and a table's kind from what the
+caller is shown, as the table page does. A non-reader's documentation
+failures can therefore differ from an admin's; using hidden columns would
+otherwise reveal PII through which fields fail.
+
+Exception targets on element checks, apply results and unused lists are
+shown only to a caller who can see the target, including `pii_reader` for a
+PII column. Counts stay whole. The stored company part is returned whole to
+a principal with `book:edit_conventions`: export and apply must round-trip
+the file, and the deployment repository already holds those targets.
+`GET /api/v1/conventions` and `get_conventions` return counts instead of
+that list. This is a separate door from the company-part export requiring
+`book:edit_conventions`
+(`services/conventions/exception_visibility_security_test.ts`).
 
 The admin dataset list exposes dataset names and counts beyond the admin's
 Power BI rights. This is the names-only exception in spec decision 8; it
@@ -991,7 +1020,13 @@ Crossing: jobs, through Postgres only.
   only, so neither can change or remove what was spent) and its token and
   cost columns cannot be negative.
 - No volume is mounted by both. The mirror tables are written only by
-  `worker_rw`, except our own description and custom fields.
+  `worker_rw`, except our own description, custom fields and built-in
+  documentation columns, which `api_rw` may update. The worker has grants
+  on the mirror, so grants alone do not protect a curator's words. The
+  sync's upserts never name `when_to_use`, `owner`, `freshness`, dataset or
+  table `caveats`, `grain_and_filters`, `unit` or `blank_means`, just as they
+  never name our `description` or `custom`. A sync leaves each as written
+  (`apps/api/src/services/sync/isolation_security_test.ts`).
 - Both containers run non-root, with read-only roots and tmpfs where a
   process writes, `no-new-privileges`, every capability dropped, memory
   and CPU limits and health checks.
@@ -1187,10 +1222,24 @@ Tests: `apps/api/src/services/secrets/secret_write_only_security_test.ts`,
 
 ### B6a: `book.yml` export and import
 
-Crossing: a file an admin brings in, and one they take out.
+Crossing: files an admin brings in, and ones they take out.
+
+- `conventions.yml` sits beside `book.yml`; book export leaves conventions
+  out of its answer and the CLI writes the separate file and guide.
+  Import still accepts older inline conventions. A guide path must resolve
+  inside the deployment folder; a symlink pointing outside it is refused.
+  The CLI refuses to write the conventions or guide through a symlink.
+  Conventions YAML refuses anchors and aliases
+  (`apps/cli/tests/commands/test_conventions_file.py`).
+- Saving, diffing and applying conventions need `book:edit_conventions`.
+  `PUT /api/v1/conventions`, `POST /api/v1/conventions/diff` and
+  `POST /api/v1/conventions/apply` accept up to 8 MiB so a baseline on a
+  large book fits. Drafting uses case-insensitive prefixes and exact names;
+  no conventions key accepts a regular expression that could stall a sync
+  (`services/conventions/patterns.test.ts`).
 
 - Export holds settings saved in the database (never `setup.*`), the
-  conventions, role assignments and service accounts picked field by field
+  role assignments and service accounts picked field by field
   by the schema, so no secret, key or digest leaves.
 - Import reads plain YAML only: at most 256 KiB, no aliases, merge keys or
   unknown tags, any error answered with its line and column alone. The
@@ -1512,7 +1561,7 @@ What the controls above do not close, and why it is accepted for now:
 | Gaps in the change feed's event ids show how much hidden activity there was | ids are one sequence for every reader, and a reader asks for what comes after the last id it saw | a gap says that something happened, never what, where or by whom; the feed filters before it cuts the page, so a hidden event never costs a reader a slot |
 | Text indexes can miss, and unique checks let a duplicate in, from when glibc or Postgres moves until the api next starts | `collation.sql` runs only at a start, and a server can move under a running api: a managed Postgres's upgrade, or a Postgres image changed on its own under compose. Nothing here sees a move between starts | PII rule lookups read no fold index, so they hold throughout. What can miss is a row found by a text key. A `setting` does not: the store reads the whole table, one row per setting, and matches the key in code, so the store's reads never go through `setting_pkey` (the setup link's row lock still does, and on a stale index it can lock nothing, never another row, because a text key matches byte for byte; the settings it then reads are the whole table) and a saved `access.default_role`, `powerbi.connection_requires_matching_email` or sync filter is never answered as its default (`store.test.ts` fails if a read filters by key again). If a stale index let a second row in for one key, the store answers the newest by `set_at`, so an admin's tightening is not ignored. A rate limit's count reads as absent and starts again. A delete by text key can miss and leave its row. A dataset found by name, a session or a token reads as absent, which refuses. A second PII rule can get in, and PII wins between the two. A move that changes the fold reaches only names holding a changed character (27 code points from glibc 2.36 to 2.41, 36 from Postgres 17 to 18); a move that reorders text reaches ordinary names (34 of 41 from glibc 2.24 to 2.31). The next start of the api closes it. A worker's start does not rebuild, so restarting the worker alone leaves it open. If a duplicate got in, the start fails naming the index, and no new api starts until a person removes the row. That start has rebuilt every other index it reached, and a worker still running goes on reading through the ones left. If a minute passes with no index rebuilt, the start fails naming what is left, and the restart rebuilds again. Stored `tsvector`s are not rebuilt, which costs search recall and hides nothing |
 | A customer's agent follows official skills installed from `main` | no release is tagged to pin to, so a commit on `main` reaches whoever next updates, and a skill instructs an agent that may hold an admin's login. GitHub enforces no review on this repository | an update is a step a person takes: a marketplace added by hand does not update itself by default, a copy in `~/.agents/skills` changes only when copied again, and the guide says to read what changed first. Pinning to the first tag is planned, not done (`docs/decisions/docs_and_skills.md`) |
-| Metadata reaches the embedding provider | search embeds names, descriptions, display folders and term values | the company's own account; never DAX, a result or a thread's text; a text is cut at 8,000 bytes; `search.provider: none` turns it off |
+| Metadata reaches the embedding provider | search embeds names, descriptions, display folders, term values and built-in documentation, including the dataset `owner` | the company's own account; never DAX, a result or a thread's text; a text is cut at 8,000 bytes; `search.provider: none` turns it off |
 | A search query's text reaches the embedding provider | an agent can paste anything into `query`, a result's values included, and a link a person opens can carry a term in `/?q=`, which Home runs on load under the person's own limit (`/catalog/search` only redirects there) | the company's own account; at most 500 characters; 60 searches a minute per principal; `search.provider: none` turns it off |
 | Whoever can publish a model can leave a person's meaning search empty | the vector walk stops after 20,000 index tuples (`hnsw.max_scan_tuples`), so someone who can publish a model can fill that cap with hidden rows near a query they chose, and the victim's meaning side then comes back empty with no note | it fails closed: the page shows less, never more, because the filter is in the scan itself. Words and exact matches do not use the vector index and still work. Accepted while one deployment's books stay small. It stops being right if a book grows to hundreds of thousands of documents, or if a hostile publisher shows up in practice: then rank per dataset, or raise the cap and say so in the answer's note. `search_visibility_security_test` fails if the cap is removed or lowered |
 | The ID token from Microsoft's token endpoint is read without a signature check | OpenID Connect Core 3.1.3.7 allows it over TLS from the token endpoint | `https` to a fixed host only, outside development and test; at sign-in `iss`, `aud` and `tid` checked against the settings, at the connection `tid` and `oid` |
@@ -1528,7 +1577,8 @@ What the controls above do not close, and why it is accepted for now:
 | Passkey user verification is checked after Better Auth verifies the response, not by the WebAuthn library | Better Auth's passkey plugin verifies with `requireUserVerification: false` and has no option to change it | its `afterVerification` hooks refuse a registration or a sign-in without the UV flag before a passkey is stored or a session made, from the flags the signature covers |
 | Better Auth is a young OAuth server | advisories in 2026, some critical, all fixed | pinned exact, advisories read on every bump, our own flow tests with the refresh-reuse test written first |
 | A person presses Allow for a deceptive client | consent cannot read intent | the consent screen names the client and the redirect host; grants are revocable; audit records `via` and `client_id` |
-| A token with `edit_conventions` turns checks off (`checks.off`, or a field's `required: false`), so `agent_verified` then means less | the token's role is the company's decision, and the conventions are one document an admin may change | accepted: `agent_verified` is the agent's own tier; `human_verified` still needs a browser session, and `trust.*` itself changes only from one; every conventions change and every verification is in `book_change`, with who and through what |
+| A token with `book:edit_conventions` weakens checks through `off`, exceptions, baselines or `required: false`, so `agent_verify_requires` means less in effect | the token's role is the company's decision; a baseline excepts only a target the change newly breaks and the caller can see, not existing failures or changes to exceptions alone | accepted: `agent_verified` is the agent's own tier; `trust.*` changes only from a browser; `show --json` and the MCP `whoami` tool report off rules and exception counts; every change and verification is in `book_change` |
+| Conventions give hints about hidden elements | whole exception and failure counts, and `no_such_target`, give hints to someone holding the deployment's `conventions.yml`; a dataset addressed by id in an exception or check target says another dataset shares its name, even when that other dataset is hidden | accepted: apply and unused lists name only visible targets; element checks show only their own exception; company-part export requires `book:edit_conventions` and must round-trip the file |
 | Text in data steers an agent's answer | the connector returns what Power BI, the book and threads say | the connector cannot change the book; approval needs a browser; agent rule 5 |
 | A question or search holds personal data the server cannot redact | free text may name a customer or colleague; the server has no model to identify it | owner, curator and admin readers only by default; 180-day retention, at most 365; request deletion and deletion with the principal; capture can be turned off; tool instructions forbid copying result values |
 | A planted question steers a curator's agent into changing the book | one person's agent records text that another person's agent later reads in the report | the report tool and curation skill mark text as data, never instructions; the skill requires showing proposals to the person before filing them; the connector cannot change the book |

@@ -456,10 +456,13 @@ columns open their pages too. A measure in the tree opens its table's page on Me
 marked (`?tab=measures&field=...`). A table page has Documentation, Columns, Measures and Relationships
 tabs and opens on Documentation; a dataset page gains a Documentation tab after Diagram.** Taken at
 Martin's asking: a table and a column are read like a catalog's entries, as Secoda shows them, and a
-click that lands in the diagram loses the page a person meant to open. Documentation reads
-`GET /api/v1/elements/:kind/:id/docs` and the conventions, and shows the description, Power BI's
-description where it differs, each `element_fields` custom field, then the mirror's facts, in that order
-on every kind, so the structure is the company's (rule 11) and no field is named in code. The Columns
+click that lands in the diagram loses the page a person meant to open.
+
+**Replaced in part, 2026-11-19: "Definition and each kind's fields come before Details" below replaces
+the shared `element_fields` list and its order with built-in fields and per-kind custom lists.**
+Documentation reads `GET /api/v1/elements/:kind/:id/docs` and the conventions, and shows the
+description, Power BI's description where it differs, each `element_fields` custom field, then the
+mirror's facts, in that order on every kind, so the structure is the company's (rule 11) and no field is named in code. The Columns
 and Measures tabs list every field flat, A to Z, with its folder, so the filter searches the whole table;
 the first 100 show, as in the tree. "Show Order lines in the diagram" on a variant and "Show in the
 diagram" on a term still open the diagram, since they say so.
@@ -508,3 +511,11 @@ back: on a metric with many variants, Open questions and History sit below a lon
 
 Stops being right if that run of DAX hides Open questions from the people who need them; then those
 move above the variants, rather than the DAX going back behind a click.
+
+## Definition and each kind's fields come before Details
+
+**Documentation shows Definition, Power BI's description when it differs, the kind's built-in fields, its custom fields, then Details.** Built 2026-11-19. This replaces the shared `element_fields` list above. Datasets answer which model to use; tables say what one row is; columns explain values. Definition uses the book's description, with Power BI's as a fallback labelled "From Power BI". Model facts stay in Details. `apps/web/src/catalog/datasets/documentation.test.tsx` holds the order and the fallback.
+
+The built-in fields keep the same words as metric fields. Each kind has its own custom list in the conventions. Optional built-in fields still show, as Not written yet. The conventions decide which are required. Curators write them through `pbmb docs set`, and `pbmb docs check` finds gaps.
+
+Stops being right if most companies turn off the built-in requirements. The table definition rule stops being right if agents misread date tables without one; it currently exempts date and measures tables. An optional built-in dataset owner stops being right if companies mostly use their own owner field anyway.
