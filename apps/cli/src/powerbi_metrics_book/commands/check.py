@@ -7,6 +7,7 @@ import jsonschema
 import typer
 import yaml
 
+from powerbi_metrics_book.conventions_file import read_conventions
 from powerbi_metrics_book.deployment import ASSETS, REQUIRED_ENV
 from powerbi_metrics_book.output import FAILED, JsonOption, Settings
 
@@ -26,7 +27,8 @@ def command(
 ) -> None:
     """Check a deployment directory before you start it.
 
-    Validates book.yml (when there is one) against the shipped schema, checks
+    Validates book.yml and conventions.yml when present against the shipped
+    schemas, checks
     that .env holds every bootstrap value and is readable by you only, then
     runs your Cerbos policy tests in the pinned Cerbos image through Docker,
     with the default policies underneath. Local: it does not call the api and
@@ -34,6 +36,7 @@ def command(
     """
     steps: list[Step] = [
         ("book.yml", _check_book(directory / "book.yml")),
+        ("conventions.yml", _check_conventions(directory / "conventions.yml")),
         (".env", _check_env(directory / ".env")),
         ("policy tests", _check_policies(directory)),
     ]
@@ -72,6 +75,23 @@ def _check_book(path: Path) -> list[str]:
         f"book.yml{''.join(f'.{step}' for step in error.absolute_path)}: "
         f"{error.message}"
         for error in sorted(validator.iter_errors(document), key=str)
+    ]
+
+
+def _check_conventions(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    try:
+        document = read_conventions(path)
+    except typer.BadParameter as error:
+        return [str(error)]
+    schema = json.loads((ASSETS / "conventions.schema.json").read_text())
+    return [
+        f"conventions.yml{''.join(f'.{step}' for step in error.absolute_path)}: "
+        f"{error.message}"
+        for error in sorted(
+            jsonschema.Draft202012Validator(schema).iter_errors(document), key=str
+        )
     ]
 
 

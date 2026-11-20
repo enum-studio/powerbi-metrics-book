@@ -102,8 +102,9 @@ pbmb admin datasets on DATASET
 
 ### `pbmb admin export`
 
-Export the deployment as book.yml: settings, conventions, roles and
-service accounts. It never holds a secret or a key, so it can go in git.
+Export settings, roles and service accounts as book.yml, with the company
+conventions in conventions.yml beside the output file. These files never hold
+a secret or a key, so they can go in git.
 
 ```bash
 pbmb admin export [OPTIONS]
@@ -615,7 +616,8 @@ pbmb categories tree [OPTIONS]
 
 Check a deployment directory before you start it.
 
-Validates book.yml (when there is one) against the shipped schema, checks
+Validates book.yml and conventions.yml when present against the shipped
+schemas, checks
 that .env holds every bootstrap value and is readable by you only, then
 runs your Cerbos policy tests in the pinned Cerbos image through Docker,
 with the default policies underneath. Local: it does not call the api and
@@ -665,6 +667,25 @@ The company's rules for names, descriptions, variants and verification.
 pbmb conventions COMMAND
 ```
 
+### `pbmb conventions apply`
+
+Apply a conventions file, showing changed rules and how many targets now fail.
+
+```bash
+pbmb conventions apply [OPTIONS] FILE
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `file` | yes |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--dry-run` |   |   | Preview without saving. |
+| `--baseline` |   |   | Write exceptions for existing failures into the file. |
+| `--reason` | str |   | Why existing failures are excepted. |
+| `--yes` |   |   | Save without asking. |
+
 ### `pbmb conventions diff`
 
 Show what a file would change against the conventions in force. Saves nothing.
@@ -692,18 +713,20 @@ pbmb conventions edit
 
 ### `pbmb conventions export`
 
-Print the conventions in force as the YAML that `import` and `edit` take.
+Export the company part, or the resolved conventions including the preset.
 
 ```bash
-pbmb conventions export
+pbmb conventions export [OPTIONS]
 ```
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--resolved` |   |   | Include preset values. |
+| `--output`, `-o` | path |   | Write YAML here. |
 
 ### `pbmb conventions import`
 
-Replace the conventions with a file: show the difference, ask, then save.
-
-With --json you must pass --yes, since there is nowhere to ask. The file must
-be a regular YAML file under 1 MiB without aliases.
+Alias for apply for one release; use `pbmb conventions apply`.
 
 ```bash
 pbmb conventions import [OPTIONS] FILE
@@ -715,6 +738,9 @@ pbmb conventions import [OPTIONS] FILE
 
 | Option | Takes | Default | What |
 | --- | --- | --- | --- |
+| `--dry-run` |   |   |   |
+| `--baseline` |   |   |   |
+| `--reason` | str |   |   |
 | `--yes` |   |   | Save without asking. |
 
 ### `pbmb conventions presets`
@@ -728,6 +754,22 @@ two presets the conventions schema names.
 ```bash
 pbmb conventions presets
 ```
+
+### `pbmb conventions reset`
+
+Remove a company rule, its off entry and exceptions, then apply.
+
+```bash
+pbmb conventions reset [OPTIONS] [RULE]
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `rule` | no |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--yes` |   |   | Save without asking. |
 
 ### `pbmb conventions set`
 

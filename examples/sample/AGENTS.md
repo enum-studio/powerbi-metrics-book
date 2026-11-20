@@ -6,8 +6,8 @@
 - Start: `docker compose up -d` here, after `PUBLIC_BASE_URL` in `.env` is the
   https address of the reverse proxy in front of the api (it listens on
   127.0.0.1 only).
-- Check: `pbmb check` (`.env`, `book.yml`, the policy tests in `access/tests/`);
-  `pbmb admin status` for the running deployment.
+- Check: `pbmb check` (`.env`, `book.yml`, `conventions.yml`, and the policy
+  tests in `access/tests/`); `pbmb admin status` for the running deployment.
 - Upgrade: change the image tag and its `@sha256:` digest in `compose.yml`
   together, read the release notes for changes to this directory, then
   `docker compose pull && docker compose up -d`. The api migrates at start.
