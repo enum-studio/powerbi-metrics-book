@@ -1233,9 +1233,10 @@ Crossing: files an admin brings in, and ones they take out.
   The CLI refuses to write the conventions or guide through a symlink.
   Conventions YAML refuses anchors and aliases
   (`apps/cli/tests/commands/test_conventions_file.py`).
-- Saving, diffing, applying and exporting conventions need `book:edit_conventions`.
-  CLI `set`, `edit` and `export --resolved` preserve the whole company
-  exception list; `presets` reads only the signed-in conventions view.
+- Saving, diffing, applying and exporting conventions need
+  `book:edit_conventions`. The CLI's `set`, `edit` and `export --resolved`
+  keep the whole company exception list; `presets` reads only the
+  conventions anyone signed in may read.
   A saved part is stored as the schema reads it, dropping keys such as
   `__proto__` under `naming.qualifiers`.
   `PUT /api/v1/conventions`, `POST /api/v1/conventions/diff` and
