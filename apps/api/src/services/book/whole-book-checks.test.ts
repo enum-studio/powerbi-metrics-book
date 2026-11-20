@@ -6,6 +6,9 @@ import { asPerson } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
 import { metric, term } from "../../db/schema/book.js";
 import * as schema from "../../db/schema/index.js";
+import { useMirror } from "../../../test/mirror-fixtures.js";
+import { applyConventions } from "../conventions/apply.js";
+import { exceptionKey } from "../conventions/schema.js";
 import { resolve } from "../conventions/store.js";
 import { METRICS, TERMS } from "../sample/book.js";
 import { metricChecks } from "./metrics.js";
@@ -201,5 +204,90 @@ describe("unusedExceptions", () => {
       expect(await unusedExceptions({ db: tx }, conventions)).toMatchObject([
         { why: "passes", target: { metric: "draft_0" } },
       ]);
+    }));
+});
+
+describe("whole-book element checks", () => {
+  useMirror();
+  it("includes element failures and unused exceptions, with a constant number of reads", () =>
+    rolledBack(async (tx) => {
+      const conventions = resolve({
+        exceptions: [
+          {
+            rule: "dataset_fields.definition",
+            dataset: "Sales",
+            reason: "Already documented.",
+          },
+          {
+            rule: "table_fields.definition",
+            dataset: "Sales",
+            table: "Sales",
+            reason: "Kept.",
+          },
+          {
+            rule: "column_fields.definition",
+            dataset: "Sales",
+            column: "'Sales'[Missing]",
+            reason: "Gone.",
+          },
+        ],
+      });
+      statements.length = 0;
+      const failures = await failuresInBook(
+        { db: tx },
+        conventions,
+        new Set([
+          "dataset_fields.when_to_use",
+          "table_fields.definition",
+          "column_fields.definition",
+        ]),
+      );
+      expect(statements).toHaveLength(6);
+      expect(failures).toContainEqual({
+        rule: "dataset_fields.when_to_use",
+        target: { dataset: "Sales" },
+      });
+      expect(failures).not.toContainEqual({
+        rule: "table_fields.definition",
+        target: { dataset: "Sales", table: "Sales" },
+      });
+      expect(failures).toContainEqual({
+        rule: "column_fields.definition",
+        target: { dataset: "Sales", column: "'Sales'[Channel]" },
+      });
+      expect(await unusedExceptions({ db: tx }, conventions)).toEqual([
+        {
+          rule: "dataset_fields.definition",
+          target: { dataset: "Sales" },
+          reason: "Already documented.",
+          why: "passes",
+        },
+        {
+          rule: "column_fields.definition",
+          target: { dataset: "Sales", column: "'Sales'[Missing]" },
+          reason: "Gone.",
+          why: "no_such_target",
+        },
+      ]);
+    }));
+
+  it("includes element failures in apply and sorts the baseline's exceptions", () =>
+    rolledBack(async (tx) => {
+      const answer = await applyConventions({ db: tx }, principals.admin, {
+        conventions: {
+          format: 1,
+          dataset_fields: { owner: { required: true } },
+        },
+        dry_run: true,
+        baseline_reason: "Document later.",
+      });
+      expect(answer.now_failing["dataset_fields.owner"]).toBeGreaterThan(0);
+      expect(answer.exceptions_added).toContainEqual({
+        rule: "dataset_fields.owner",
+        dataset: "Sales",
+        reason: "Document later.",
+      });
+      const keys = answer.exceptions_added.map(exceptionKey);
+      expect(keys).toEqual([...keys].sort());
     }));
 });

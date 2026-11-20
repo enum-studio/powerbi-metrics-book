@@ -129,7 +129,24 @@ term_fields:
   definition: { required: true }
   values: { required: when_categorical }
   custom: []
-element_fields:
+dataset_fields:
+  definition: { required: true }
+  when_to_use: { required: true }
+  owner: { required: false }
+  freshness: { required: false }
+  caveats: { required: false }
+  custom: []
+table_fields:
+  definition: { required: true }
+  grain_and_filters: { required: when_fact }
+  caveats: { required: false }
+  custom: []
+column_fields:
+  definition: { required: when_visible_and_no_term }
+  unit:
+    required: when_numeric
+    values: [money, count, quantity, rate, ratio, duration]
+  blank_means: { required: false }
   custom: []
 variants:
   axes:

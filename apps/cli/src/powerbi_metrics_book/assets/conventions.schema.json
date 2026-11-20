@@ -275,9 +275,219 @@
       },
       "additionalProperties": false
     },
-    "element_fields": {
+    "dataset_fields": {
       "type": "object",
       "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "when_to_use": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "owner": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "freshness": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "caveats": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": ["text", "number", "boolean", "date", "choice"]
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": ["key", "label", "type", "required"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "table_fields": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "grain_and_filters": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "const": "when_fact"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "caveats": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": ["text", "number", "boolean", "date", "choice"]
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": ["key", "label", "type", "required"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "column_fields": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "const": "when_visible_and_no_term"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "unit": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "const": "when_numeric"
+                }
+              ]
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "blank_means": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
         "custom": {
           "type": "array",
           "items": {
@@ -562,7 +772,10 @@
                   "metric_fields",
                   "metric_not_the_same_as",
                   "metric_base_variant",
-                  "term_fields"
+                  "term_fields",
+                  "dataset_fields",
+                  "table_fields",
+                  "column_fields"
                 ]
               }
             }
@@ -598,6 +811,23 @@
           "metric_fields.unit",
           "metric_fields.category",
           "metric_fields.custom",
+          "dataset_fields.definition",
+          "dataset_fields",
+          "dataset_fields.when_to_use",
+          "dataset_fields.owner",
+          "dataset_fields.freshness",
+          "dataset_fields.caveats",
+          "dataset_fields.custom",
+          "table_fields.definition",
+          "table_fields",
+          "table_fields.grain_and_filters",
+          "table_fields.caveats",
+          "table_fields.custom",
+          "column_fields.definition",
+          "column_fields",
+          "column_fields.unit",
+          "column_fields.blank_means",
+          "column_fields.custom",
           "metric_fields.not_the_same_as",
           "metric_not_the_same_as",
           "metric_base_variant",
@@ -629,6 +859,20 @@
               "metric_fields.unit",
               "metric_fields.category",
               "metric_fields.custom",
+              "dataset_fields.definition",
+              "dataset_fields.when_to_use",
+              "dataset_fields.owner",
+              "dataset_fields.freshness",
+              "dataset_fields.caveats",
+              "dataset_fields.custom",
+              "table_fields.definition",
+              "table_fields.grain_and_filters",
+              "table_fields.caveats",
+              "table_fields.custom",
+              "column_fields.definition",
+              "column_fields.unit",
+              "column_fields.blank_means",
+              "column_fields.custom",
               "metric_fields.not_the_same_as",
               "metric_base_variant",
               "term_fields.definition",

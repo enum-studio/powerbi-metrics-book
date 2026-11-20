@@ -1120,6 +1120,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/docs/checks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Missing required documentation on visible datasets, tables and columns */
+    get: operations["getApiV1DocsChecks"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/events": {
     parameters: {
       query?: never;
@@ -5798,7 +5815,10 @@ export interface operations {
                 | "metric_fields"
                 | "metric_not_the_same_as"
                 | "metric_base_variant"
-                | "term_fields";
+                | "term_fields"
+                | "dataset_fields"
+                | "table_fields"
+                | "column_fields";
               /** @enum {string} */
               target: "metric" | "term" | "dataset" | "table" | "column";
               value: unknown;
@@ -5971,7 +5991,63 @@ export interface operations {
                   required: boolean;
                 }[];
               };
-              element_fields: {
+              dataset_fields: {
+                definition: {
+                  required: boolean;
+                };
+                when_to_use: {
+                  required: boolean;
+                };
+                owner: {
+                  required: boolean;
+                };
+                freshness: {
+                  required: boolean;
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              table_fields: {
+                definition: {
+                  required: boolean;
+                };
+                grain_and_filters: {
+                  required: boolean | "when_fact";
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              column_fields: {
+                definition: {
+                  required: boolean | "when_visible_and_no_term";
+                };
+                unit: {
+                  required: boolean | "when_numeric";
+                  values: string[];
+                };
+                blank_means: {
+                  required: boolean;
+                };
                 custom: {
                   key: string;
                   label: string;
@@ -6045,6 +6121,9 @@ export interface operations {
                       | "metric_not_the_same_as"
                       | "metric_base_variant"
                       | "term_fields"
+                      | "dataset_fields"
+                      | "table_fields"
+                      | "column_fields"
                     )[];
                 /** @enum {string} */
                 human_verify_from: "browser" | "any";
@@ -6068,6 +6147,23 @@ export interface operations {
                 | "metric_fields.unit"
                 | "metric_fields.category"
                 | "metric_fields.custom"
+                | "dataset_fields.definition"
+                | "dataset_fields"
+                | "dataset_fields.when_to_use"
+                | "dataset_fields.owner"
+                | "dataset_fields.freshness"
+                | "dataset_fields.caveats"
+                | "dataset_fields.custom"
+                | "table_fields.definition"
+                | "table_fields"
+                | "table_fields.grain_and_filters"
+                | "table_fields.caveats"
+                | "table_fields.custom"
+                | "column_fields.definition"
+                | "column_fields"
+                | "column_fields.unit"
+                | "column_fields.blank_means"
+                | "column_fields.custom"
                 | "metric_fields.not_the_same_as"
                 | "metric_not_the_same_as"
                 | "metric_base_variant"
@@ -6092,6 +6188,20 @@ export interface operations {
                   | "metric_fields.unit"
                   | "metric_fields.category"
                   | "metric_fields.custom"
+                  | "dataset_fields.definition"
+                  | "dataset_fields.when_to_use"
+                  | "dataset_fields.owner"
+                  | "dataset_fields.freshness"
+                  | "dataset_fields.caveats"
+                  | "dataset_fields.custom"
+                  | "table_fields.definition"
+                  | "table_fields.grain_and_filters"
+                  | "table_fields.caveats"
+                  | "table_fields.custom"
+                  | "column_fields.definition"
+                  | "column_fields.unit"
+                  | "column_fields.blank_means"
+                  | "column_fields.custom"
                   | "metric_fields.not_the_same_as"
                   | "metric_base_variant"
                   | "term_fields.definition"
@@ -6223,7 +6333,63 @@ export interface operations {
                   required: boolean;
                 }[];
               };
-              element_fields: {
+              dataset_fields: {
+                definition: {
+                  required: boolean;
+                };
+                when_to_use: {
+                  required: boolean;
+                };
+                owner: {
+                  required: boolean;
+                };
+                freshness: {
+                  required: boolean;
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              table_fields: {
+                definition: {
+                  required: boolean;
+                };
+                grain_and_filters: {
+                  required: boolean | "when_fact";
+                };
+                caveats: {
+                  required: boolean;
+                };
+                custom: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "date" | "choice";
+                  values?: string[];
+                  /** @default false */
+                  required: boolean;
+                }[];
+              };
+              column_fields: {
+                definition: {
+                  required: boolean | "when_visible_and_no_term";
+                };
+                unit: {
+                  required: boolean | "when_numeric";
+                  values: string[];
+                };
+                blank_means: {
+                  required: boolean;
+                };
                 custom: {
                   key: string;
                   label: string;
@@ -6297,6 +6463,9 @@ export interface operations {
                       | "metric_not_the_same_as"
                       | "metric_base_variant"
                       | "term_fields"
+                      | "dataset_fields"
+                      | "table_fields"
+                      | "column_fields"
                     )[];
                 /** @enum {string} */
                 human_verify_from: "browser" | "any";
@@ -6320,6 +6489,23 @@ export interface operations {
                 | "metric_fields.unit"
                 | "metric_fields.category"
                 | "metric_fields.custom"
+                | "dataset_fields.definition"
+                | "dataset_fields"
+                | "dataset_fields.when_to_use"
+                | "dataset_fields.owner"
+                | "dataset_fields.freshness"
+                | "dataset_fields.caveats"
+                | "dataset_fields.custom"
+                | "table_fields.definition"
+                | "table_fields"
+                | "table_fields.grain_and_filters"
+                | "table_fields.caveats"
+                | "table_fields.custom"
+                | "column_fields.definition"
+                | "column_fields"
+                | "column_fields.unit"
+                | "column_fields.blank_means"
+                | "column_fields.custom"
                 | "metric_fields.not_the_same_as"
                 | "metric_not_the_same_as"
                 | "metric_base_variant"
@@ -6344,6 +6530,20 @@ export interface operations {
                   | "metric_fields.unit"
                   | "metric_fields.category"
                   | "metric_fields.custom"
+                  | "dataset_fields.definition"
+                  | "dataset_fields.when_to_use"
+                  | "dataset_fields.owner"
+                  | "dataset_fields.freshness"
+                  | "dataset_fields.caveats"
+                  | "dataset_fields.custom"
+                  | "table_fields.definition"
+                  | "table_fields.grain_and_filters"
+                  | "table_fields.caveats"
+                  | "table_fields.custom"
+                  | "column_fields.definition"
+                  | "column_fields.unit"
+                  | "column_fields.blank_means"
+                  | "column_fields.custom"
                   | "metric_fields.not_the_same_as"
                   | "metric_base_variant"
                   | "term_fields.definition"
@@ -6547,6 +6747,20 @@ export interface operations {
                 | "metric_fields.unit"
                 | "metric_fields.category"
                 | "metric_fields.custom"
+                | "dataset_fields.definition"
+                | "dataset_fields.when_to_use"
+                | "dataset_fields.owner"
+                | "dataset_fields.freshness"
+                | "dataset_fields.caveats"
+                | "dataset_fields.custom"
+                | "table_fields.definition"
+                | "table_fields.grain_and_filters"
+                | "table_fields.caveats"
+                | "table_fields.custom"
+                | "column_fields.definition"
+                | "column_fields.unit"
+                | "column_fields.blank_means"
+                | "column_fields.custom"
                 | "metric_fields.not_the_same_as"
                 | "metric_base_variant"
                 | "term_fields.definition"
@@ -9193,6 +9407,93 @@ export interface operations {
       };
       /** @description The caller's role or credential does not allow it. */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1DocsChecks: {
+    parameters: {
+      query?: {
+        dataset?: string;
+        limit?: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Missing required documentation on visible datasets, tables and columns */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            items: {
+              /** @enum {string} */
+              kind: "dataset" | "table" | "column";
+              id: string;
+              name: string;
+              dataset: string;
+              table?: string;
+              results: {
+                check: string;
+                rule: string;
+                passed: boolean;
+                message: string;
+                exception?: string;
+              }[];
+            }[];
+            failing: number;
+            unused_exceptions: {
+              rule: string;
+              target: {
+                [key: string]: string;
+              };
+              reason: string;
+              /** @enum {string} */
+              why: "no_such_target" | "passes";
+            }[];
+            next_cursor: string | null;
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
         headers: {
           [name: string]: unknown;
         };

@@ -184,14 +184,14 @@ describe("setDocs", () => {
       expect(row?.description).toBe("Every order line since 2024.");
     }));
 
-  it("checks the custom fields against element_fields, and replaces them whole", () =>
+  it("checks the custom fields against dataset_fields, and replaces them whole", () =>
     rolledBack(async (tx) => {
       const admin = as(
         tx,
         reaching({ powerbi_app_ids: [id.sales_app] }, "admin"),
       );
       await setConventionsAsAdmin(admin, {
-        element_fields: {
+        dataset_fields: {
           custom: [
             {
               key: "tier",
@@ -257,9 +257,12 @@ describe("the built-in fields", () => {
       const column = await setDocs(
         context,
         { kind: "column", id: id.channel },
-        { unit: "EUR", blank_means: "Not priced" },
+        { unit: "money", blank_means: "Not priced" },
       );
-      expect(column).toMatchObject({ unit: "EUR", blank_means: "Not priced" });
+      expect(column).toMatchObject({
+        unit: "money",
+        blank_means: "Not priced",
+      });
       expect(
         await getDocs(context, { kind: "measure", id: id.net_sales }),
       ).not.toHaveProperty("unit");
@@ -363,3 +366,25 @@ describe("docs of PII elements", () => {
       ).toMatchObject({ element: { name: "Net sales" } });
     }));
 });
+
+it("validates column units against their own convention and gives the allowed units", () =>
+  rolledBack(async (tx) => {
+    const context = as(tx);
+    await expect(
+      setDocs(context, { kind: "column", id: id.channel }, { unit: "USD" }),
+    ).rejects.toMatchObject({
+      detail: {
+        code: "docs.unit_not_allowed",
+        values: ["money", "count", "quantity", "rate", "ratio", "duration"],
+      },
+    });
+    expect(
+      (
+        await setDocs(
+          context,
+          { kind: "column", id: id.channel },
+          { unit: "count" },
+        )
+      ).unit,
+    ).toBe("count");
+  }));

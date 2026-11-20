@@ -6,6 +6,7 @@ import {
   type CheckableMetric,
   type CheckableTerm,
   checkMetric,
+  checkElement,
   checkTerm,
   exceptionIndex,
   METRIC_CHECKS,
@@ -688,5 +689,156 @@ describe("term_fields", () => {
     expect(passes({ custom: { owner_team: "Data team" } }, 1, owned)).toBe(
       true,
     );
+  });
+});
+
+describe("element field conventions", () => {
+  it("resolves independent requirements for each element kind", () => {
+    const rules = resolve({
+      dataset_fields: { owner: { required: true } },
+      table_fields: { grain_and_filters: { required: "when_fact" } },
+      column_fields: { unit: { required: "when_numeric" } },
+    });
+    expect(rules).toMatchObject({
+      dataset_fields: { owner: { required: true } },
+      table_fields: { grain_and_filters: { required: "when_fact" } },
+      column_fields: { unit: { required: "when_numeric" } },
+    });
+  });
+});
+
+// Every element rule returns one result, even when its condition asks nothing.
+describe("element checks", () => {
+  const element = {
+    kind: "column" as const,
+    name: "Amount",
+    description: null,
+    custom: {},
+    dataset: "Retail",
+    table: "Sales",
+    is_hidden: false,
+    data_type: "Decimal",
+    is_key: false,
+    has_term: false,
+  };
+  const results = (overrides = {}, conventions = metricsBook) =>
+    checkElement({ ...element, ...overrides }, context(conventions));
+  it("lists every missing custom field in one result per rule", () => {
+    const conventions = resolve({
+      dataset_fields: {
+        custom: [
+          OWNER_TEAM,
+          { ...OWNER_TEAM, key: "reviewer", label: "Reviewer" },
+        ],
+      },
+    });
+    const checked = checkElement(
+      {
+        kind: "dataset",
+        name: "Sales",
+        dataset: "Sales",
+        description: null,
+        custom: {},
+      },
+      context(conventions),
+    );
+    const custom = checked.filter(
+      (result) => result.rule === "dataset_fields.custom",
+    );
+    expect(custom).toHaveLength(1);
+    expect(custom[0]).toMatchObject({
+      passed: false,
+      message:
+        "Owner team (owner_team) is required. Reviewer (reviewer) is required.",
+    });
+    expect(new Set(checked.map((result) => result.rule)).size).toBe(
+      checked.length,
+    );
+  });
+  it("requires a definition and a numeric non-key unit", () => {
+    expect(
+      results()
+        .filter((r) => !r.passed)
+        .map((r) => r.rule),
+    ).toEqual(["column_fields.definition", "column_fields.unit"]);
+    expect(
+      results({ is_key: true, has_term: true }).every((r) => r.passed),
+    ).toBe(true);
+    expect(
+      results({ data_type: "String", has_term: true }).every((r) => r.passed),
+    ).toBe(true);
+  });
+  it("asks nothing of hidden columns, date tables or measures tables", () => {
+    expect(results({ is_hidden: true }).every((r) => r.passed)).toBe(true);
+    for (const table_kind of ["date", "measures"] as const)
+      expect(
+        checkElement(
+          {
+            kind: "table",
+            name: "Dates",
+            dataset: "Retail",
+            table_kind,
+            description: null,
+            custom: {},
+          },
+          context(metricsBook),
+        ).every((r) => r.passed),
+      ).toBe(true);
+  });
+  it("requires fact grain and applies custom requirements like definition", () => {
+    const rules = resolve({ column_fields: { custom: [OWNER_TEAM] } });
+    expect(
+      results({}, rules).find((r) => r.rule === "column_fields.custom")?.passed,
+    ).toBe(false);
+    expect(
+      results({ has_term: true }, rules).find(
+        (r) => r.rule === "column_fields.custom",
+      )?.passed,
+    ).toBe(true);
+    const table = {
+      kind: "table" as const,
+      name: "Sales",
+      dataset: "Retail",
+      table_kind: "fact" as const,
+      description: "Sales lines.",
+      custom: {},
+    };
+    expect(
+      checkElement(table, context(metricsBook))
+        .filter((r) => !r.passed)
+        .map((r) => r.rule),
+    ).toEqual(["table_fields.grain_and_filters"]);
+  });
+  it("honours off, exceptions, unconditional requirements and minimal", () => {
+    const rules = resolve({
+      off: ["column_fields.unit"],
+      exceptions: [
+        {
+          rule: "column_fields.definition",
+          dataset: "Retail",
+          column: "'Sales'[Amount]",
+          reason: "Defined upstream.",
+        },
+      ],
+    });
+    expect(
+      results({}, rules).find((r) => r.rule === "column_fields.definition")
+        ?.exception,
+    ).toBe("Defined upstream.");
+    expect(
+      results({}, rules).some((r) => r.rule === "column_fields.unit"),
+    ).toBe(false);
+    expect(results({}, minimal).every((r) => r.passed)).toBe(true);
+    const required = resolve({
+      column_fields: {
+        definition: { required: true },
+        unit: { required: true },
+      },
+    });
+    expect(
+      results({ has_term: true, is_key: true }, required).filter(
+        (r) => !r.passed,
+      ),
+    ).toHaveLength(2);
   });
 });

@@ -232,6 +232,7 @@ export const ROUTE_MATRIX = {
   "GET /api/v1/conventions/exceptions/unused": CURATES_SALES,
   // As GET /api/v1/conventions: the rules' values are the conventions'.
   "GET /api/v1/conventions/rules": SIGNED_IN,
+  "GET /api/v1/docs/checks": SIGNED_IN,
   // powerbi.service_account_queries is off by default.
   "POST /api/v1/queries": { ...SEES_SALES, service_account_granted: "refused" },
   "GET /api/v1/queries": SIGNED_IN,

@@ -250,9 +250,13 @@ describe("the routes", () => {
         .body,
     ).toMatchObject({ grain_and_filters: "One row per day." });
     expect(
-      (await put("column", column.id, { unit: "USD", blank_means: "Unknown" }))
-        .body,
-    ).toMatchObject({ unit: "USD", blank_means: "Unknown" });
+      (
+        await put("column", column.id, {
+          unit: "money",
+          blank_means: "Unknown",
+        })
+      ).body,
+    ).toMatchObject({ unit: "money", blank_means: "Unknown" });
 
     const read = await detail();
     expect(read).toMatchObject(datasetFields);
@@ -270,13 +274,13 @@ describe("the routes", () => {
         .body as { items: { id: string }[] }
     ).items;
     expect(columnList.find((c) => c.id === column.id)).toMatchObject({
-      unit: "USD",
+      unit: "money",
       blank_means: "Unknown",
     });
     expect(
       (await send(agent, "GET", `/datasets/${dataset.id}/columns/${column.id}`))
         .body,
-    ).toMatchObject({ column: { unit: "USD", blank_means: "Unknown" } });
+    ).toMatchObject({ column: { unit: "money", blank_means: "Unknown" } });
   });
 
   it("refuse a field the kind does not have with the code docs.field_not_on_kind", async () => {
@@ -288,7 +292,7 @@ describe("the routes", () => {
       agent,
       "PUT",
       `/elements/dataset/${dataset.id}/docs`,
-      { unit: "USD" },
+      { unit: "money" },
     );
     expect(refused.status).toBe(400);
     expect(refused.body).toMatchObject({

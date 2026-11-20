@@ -1359,7 +1359,7 @@ Fields of the first answer:
 | `preset` | one of "metrics_book", "minimal" | yes |   |
 | `guide` | text | yes |   |
 | `summary` | a list of text | yes |   |
-| `rules` | an object with preset, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, off, exceptions | yes |   |
+| `rules` | an object with preset, naming, metric_fields, term_fields, dataset_fields, table_fields, column_fields, variants, drafting, trust, off, exceptions | yes |   |
 
 Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
 
@@ -1380,7 +1380,7 @@ Fields of the first answer:
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
 | `version` | a number | yes |   |
-| `conventions` | an object with preset, guide, naming, metric_fields, term_fields, element_fields, variants, drafting, trust, off, exceptions | yes |   |
+| `conventions` | an object with preset, guide, naming, metric_fields, term_fields, dataset_fields, table_fields, column_fields, variants, drafting, trust, off, exceptions | yes |   |
 | `changes` | a list of an object | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
@@ -1644,6 +1644,35 @@ Fields of the first answer:
 | `next_cursor` | text or null | yes |   |
 | `pii_hidden` | a number | no |   |
 | `total` | a number | no |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
+## docs
+
+### GET `/api/v1/docs/checks`
+
+Missing required documentation on visible datasets, tables and columns
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `dataset` | query | text | no |   |
+| `limit` | query | a whole number, at least 1 and at most 500 | no |   |
+| `cursor` | query | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Missing required documentation on visible datasets, tables and columns | an object with items, failing, unused_exceptions, next_cursor |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `items` | a list of an object | yes |   |
+| `failing` | a whole number, at least -9007199254740991 and at most 9007199254740991 | yes |   |
+| `unused_exceptions` | a list of an object | yes |   |
+| `next_cursor` | text or null | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 

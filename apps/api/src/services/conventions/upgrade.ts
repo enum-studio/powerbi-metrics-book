@@ -85,10 +85,22 @@ const replaceDraftingPatterns: LegacyTransform = (document, version) => {
   return { ...document, drafting };
 };
 
+const splitElementFields: LegacyTransform = (document) => {
+  const { element_fields, ...rest } = document;
+  if (!isDocument(element_fields)) return document;
+  return {
+    ...rest,
+    dataset_fields: { custom: element_fields.custom },
+    table_fields: { custom: element_fields.custom },
+    column_fields: { custom: element_fields.custom },
+  };
+};
+
 /** Turns a pre-format document into the current shape. Later issues each append one transform. */
 export const LEGACY_TRANSFORMS: readonly LegacyTransform[] = [
   moveChecksOff,
   replaceDraftingPatterns,
+  splitElementFields,
 ];
 
 /**
