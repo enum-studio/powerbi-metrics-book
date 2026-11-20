@@ -753,9 +753,14 @@ describe("what a person without pii_reader does not get", () => {
         const seeing = await getDataset(asPerson(reader, { db: tx }), dataset);
         expect("pii_hidden" in seeing).toBe(false);
         expect(seeing.relationships).toHaveLength(1);
-        expect(viewer.tables.map(({ name, kind }) => [name, kind])).toEqual(
-          seeing.tables.map(({ name, kind }) => [name, kind]),
-        );
+        expect(viewer.tables.map(({ name, kind }) => [name, kind])).toEqual([
+          ["Date", "measures"],
+          ["Sales", "standalone"],
+        ]);
+        expect(seeing.tables.map(({ name, kind }) => [name, kind])).toEqual([
+          ["Date", "measures"],
+          ["Sales", "fact"],
+        ]);
         expect(seeing.tables.map((table) => table.column_count)).toEqual([
           0, 2,
         ]);

@@ -178,16 +178,13 @@ export function decodeCursor(
     .length(names + 1)
     .safeParse(decoded);
   const id = z.guid().safeParse(parsed.data?.at(-1));
-  if (
-    !parsed.success ||
-    !id.success ||
-    parsed.data.slice(0, -1).some((part) => !name.safeParse(part).success)
-  )
+  const parts = z.tuple([name]).rest(name).safeParse(parsed.data?.slice(0, -1));
+  if (!parsed.success || !id.success || !parts.success)
     throw new ServiceError(
       "invalid",
       "That cursor is not one a list gave. Ask again without it.",
     );
-  return { names: parsed.data.slice(0, -1), id: id.data };
+  return { names: parts.data, id: id.data };
 }
 
 /** `name` may be several columns, for a list ordered by each in turn before its id. */
@@ -471,21 +468,10 @@ async function resolveDataset(
   return found;
 }
 
-/** Keys and table kinds are model facts, independent of caller visibility. */
-export const columnTarget = (table: string, column: string) =>
-  `'${table}'[${column}]`;
-
+/** Keys and table kinds from the columns, measure counts and relationships shown to the caller. */
 export function modelKinds(
   columns: readonly { table: string; name: string; data_type: string | null }[],
-  relationships: readonly Pick<
-    typeof powerbiRelationship.$inferSelect,
-    | "from_table"
-    | "from_column"
-    | "to_table"
-    | "to_column"
-    | "cardinality"
-    | "is_active"
-  >[],
+  relationships: readonly (typeof powerbiRelationship.$inferSelect)[],
 ) {
   const many = new Set<string>();
   const one = new Set<string>();
@@ -563,12 +549,12 @@ export async function getDataset(context: ServiceContext, reference: string) {
     sql<number>`(select count(*) from ${source} s where s.table_id = ${powerbiTable}.id and s.removed_at is null)::int`;
   const [
     tables,
-    modelRelationships,
+    relationships,
     apps,
     questions,
     piiByTable,
     piiMeasures,
-    modelColumns,
+    columns,
   ] = await Promise.all([
     db
       .select({
@@ -587,17 +573,13 @@ export async function getDataset(context: ServiceContext, reference: string) {
       )
       .orderBy(asc(powerbiTable.name)),
     db
-      .select({
-        ...getTableColumns(powerbiRelationship),
-        visible: hides
-          ? sql<boolean>`${leavesOutPiiEnds()}`
-          : sql<boolean>`true`,
-      })
+      .select()
       .from(powerbiRelationship)
       .where(
         and(
           eq(powerbiRelationship.dataset_id, dataset.id),
           isNull(powerbiRelationship.removed_at),
+          hides ? leavesOutPiiEnds() : undefined,
         ),
       )
       .orderBy(
@@ -639,9 +621,6 @@ export async function getDataset(context: ServiceContext, reference: string) {
       : [],
     db
       .select({
-        visible: hides
-          ? not(piiColumn(powerbiColumn, powerbiTable))
-          : sql<boolean>`true`,
         table_id: powerbiColumn.table_id,
         table: powerbiTable.name,
         name: powerbiColumn.name,
@@ -655,25 +634,16 @@ export async function getDataset(context: ServiceContext, reference: string) {
           eq(powerbiColumn.dataset_id, dataset.id),
           isNull(powerbiColumn.removed_at),
           isNull(powerbiTable.removed_at),
+          hides ? not(piiColumn(powerbiColumn, powerbiTable)) : undefined,
         ),
       )
       .orderBy(asc(powerbiColumn.name)),
   ]);
-  const relationships = modelRelationships.flatMap(({ visible, ...row }) =>
-    visible ? [row] : [],
+  const columnsByTable = Map.groupBy(columns, (column) => column.table_id);
+  const { tableKind, ends, columnKey, dateTables } = modelKinds(
+    columns,
+    relationships,
   );
-  const columns = modelColumns.filter((row) => row.visible);
-  const columnsByTable = new Map<string, typeof columns>();
-  for (const column of columns) {
-    const own = columnsByTable.get(column.table_id) ?? [];
-    own.push(column);
-    columnsByTable.set(column.table_id, own);
-  }
-  const { tableKind, ends, columnKey } = modelKinds(
-    modelColumns,
-    modelRelationships,
-  );
-  const { dateTables } = modelKinds(columns, relationships);
   const hiddenIn = new Map(piiByTable.map((row) => [row.table_id, row.hidden]));
   const hiddenMeasuresIn = new Map(
     piiMeasures.map((row) => [row.table_id, row.hidden]),
@@ -693,7 +663,6 @@ export async function getDataset(context: ServiceContext, reference: string) {
       shownIn,
     ),
     tables: tables.map(({ pii, ...table }) => {
-      // Counts and names hide personal data; kind comes from the whole model.
       const shown = {
         column_count: table.column_count - (hiddenIn.get(table.id) ?? 0),
         measure_count:
@@ -701,7 +670,7 @@ export async function getDataset(context: ServiceContext, reference: string) {
       };
       return {
         ...table,
-        kind: tableKind(table),
+        kind: tableKind({ ...table, ...shown }),
         column_names: (columnsByTable.get(table.id) ?? [])
           .filter((c) => !c.is_hidden)
           .sort(
@@ -943,7 +912,7 @@ export async function listRelationships(
 }
 
 /** A relationship either of whose ends is a PII column is not shown to a person who may not read PII. */
-const leavesOutPiiEnds = () =>
+export const leavesOutPiiEnds = () =>
   and(
     not(
       piiColumnNamed(

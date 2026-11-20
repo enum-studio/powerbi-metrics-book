@@ -1,9 +1,9 @@
-import { columnTarget } from "../mirror/read.js";
 import { ServiceError } from "../../errors.js";
 import {
   type Conventions,
   type CustomFieldSpec,
   exceptionKey,
+  columnTarget,
   METRIC_CHECK_NAMES,
   type MetricCheckName,
   TERM_CHECK_NAMES,

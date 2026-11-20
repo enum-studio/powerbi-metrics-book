@@ -2,7 +2,7 @@ import { eq, TransactionRollbackError } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals, testPool } from "../../../test/deps.js";
-import { asPerson } from "../../../test/mirror-fixtures.js";
+import { appReader, asPerson } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
 import { metric, term, termColumn } from "../../db/schema/book.js";
 import * as schema from "../../db/schema/index.js";
@@ -11,6 +11,7 @@ import { applyConventions } from "../conventions/apply.js";
 import { exceptionKey } from "../conventions/schema.js";
 import { resolve } from "../conventions/store.js";
 import { METRICS, TERMS } from "../sample/book.js";
+import { getDataset } from "../mirror/read.js";
 import { metricChecks } from "./metrics.js";
 import {
   checkedElements,
@@ -238,6 +239,10 @@ describe("whole-book element checks", () => {
         .update(schema.powerbiColumn)
         .set({ data_type: "Int64" })
         .where(eq(schema.powerbiColumn.id, id.order_date));
+      await tx
+        .update(schema.powerbiTable)
+        .set({ is_hidden: false })
+        .where(eq(schema.powerbiTable.id, id.date_table));
       await tx.insert(schema.powerbiColumn).values({
         dataset_id: id.sales,
         table_id: id.date_table,
@@ -265,6 +270,27 @@ describe("whole-book element checks", () => {
       expect(passes(id.sales_table, "table_fields.grain_and_filters")).toBe(
         false,
       );
+    }));
+
+  it("checks the table kind and numeric keys shown on the caller's table page", () =>
+    rolledBack(async (tx) => {
+      await setRole(tx, "worker_rw");
+      await tx
+        .update(schema.powerbiRelationship)
+        .set({ cardinality: "many_to_one" })
+        .where(eq(schema.powerbiRelationship.dataset_id, id.sales));
+      await tx
+        .update(schema.powerbiColumn)
+        .set({ data_type: "Int64" })
+        .where(eq(schema.powerbiColumn.id, id.order_date));
+      await tx.insert(schema.powerbiColumn).values({
+        dataset_id: id.sales,
+        table_id: id.date_table,
+        name: "Date",
+        data_type: "DateTime",
+        column_type: "data",
+      });
+      await setRole(tx, "api_rw");
       await tx.insert(piiRule).values({
         kind: "column",
         table_name: "Date",
@@ -274,10 +300,46 @@ describe("whole-book element checks", () => {
         set_via: "browser",
         pii: true,
       });
-      const viewer = await checkedElements({ db: tx }, run, undefined, true);
-      expect(viewer).toEqual(
-        rows.filter((row) => !(row.kind === "column" && row.table === "Date")),
-      );
+      const run = {
+        conventions: metricsBook,
+        exceptions: exceptionIndex(metricsBook),
+      };
+      for (const readsPii of [false, true]) {
+        const context = asPerson(
+          {
+            ...appReader,
+            roles: readsPii
+              ? [...appReader.roles, "pii_reader"]
+              : appReader.roles,
+          },
+          { db: tx },
+        );
+        const page = await getDataset(context, id.sales);
+        const table = page.tables.find((row) => row.id === id.sales_table);
+        expect(table?.kind).toBe(readsPii ? "fact" : "standalone");
+        expect(table?.column_names).toEqual(
+          readsPii ? ["Order date", "Channel"] : ["Channel", "Order date"],
+        );
+        const rows = await checkedElements(
+          { db: tx },
+          run,
+          undefined,
+          !readsPii,
+        );
+        expect(
+          rows
+            .find((row) => row.id === id.sales_table)
+            ?.results.find(
+              (result) => result.rule === "table_fields.grain_and_filters",
+            )?.passed,
+        ).toBe(table?.kind !== "fact");
+        expect(
+          rows
+            .find((row) => row.id === id.order_date)
+            ?.results.find((result) => result.rule === "column_fields.unit")
+            ?.passed,
+        ).toBe(readsPii);
+      }
     }));
 
   it("asks nothing of hidden tables or their visible numeric columns", () =>

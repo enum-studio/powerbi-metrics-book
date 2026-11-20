@@ -198,6 +198,9 @@ export const exceptionKey = (
   item: Partial<Pick<ConventionsException, (typeof KEYED_BY)[number]>>,
 ): string => JSON.stringify(KEYED_BY.map((key) => item[key] ?? null));
 
+export const columnTarget = (table: string, column: string) =>
+  `'${table}'[${column}]`;
+
 const exceptions = z
   .array(exception)
   .refine(

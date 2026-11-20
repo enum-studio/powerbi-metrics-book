@@ -270,26 +270,28 @@ export async function setDocs(
       { code: "docs.field_not_on_kind", field, kind: element.kind },
     );
   }
-  const rules = await currentConventions(context.db);
-  if (input.custom !== undefined) {
-    const kind = element.kind;
-    const fields =
-      kind === "dataset" || kind === "table" || kind === "column"
-        ? rules[`${kind}_fields`].custom
-        : [];
-    checkCustom(fields, input.custom);
-  }
-  if (input.unit?.trim()) {
-    const { column_fields } = rules;
-    if (!column_fields.unit.values.includes(input.unit.trim()))
-      throw new ServiceError(
-        "invalid",
-        `Use one of these units: ${column_fields.unit.values.join(", ")}.`,
-        {
-          code: "docs.unit_not_allowed",
-          values: column_fields.unit.values,
-        },
-      );
+  if (input.custom !== undefined || input.unit !== undefined) {
+    const rules = await currentConventions(context.db);
+    if (input.custom !== undefined) {
+      const kind = element.kind;
+      const fields =
+        kind === "dataset" || kind === "table" || kind === "column"
+          ? rules[`${kind}_fields`].custom
+          : [];
+      checkCustom(fields, input.custom);
+    }
+    if (input.unit?.trim()) {
+      const { column_fields } = rules;
+      if (!column_fields.unit.values.includes(input.unit.trim()))
+        throw new ServiceError(
+          "invalid",
+          `Use one of these units: ${column_fields.unit.values.join(", ")}.`,
+          {
+            code: "docs.unit_not_allowed",
+            values: column_fields.unit.values,
+          },
+        );
+    }
   }
   return withEvents(context.db, async (tx) => {
     const { table, docs: before } = await load(tx, context, element);
@@ -376,7 +378,7 @@ export async function docsChecks(
     after === undefined
       ? failures
       : failures.filter((row) => {
-          const order = compare(nameOf(row), after.names[0] ?? "");
+          const order = compare(nameOf(row), after.names[0]);
           return order > 0 || (order === 0 && compare(row.id, after.id) > 0);
         });
   const exceptions = await visibleExceptions(

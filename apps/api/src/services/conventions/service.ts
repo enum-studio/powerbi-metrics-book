@@ -7,7 +7,7 @@ import {
 } from "../../db/schema/mirror.js";
 import { metric } from "../../db/schema/book.js";
 import { BOOK, requireCurator } from "../book/changes.js";
-import { columnTarget, visibleMetric } from "../mirror/read.js";
+import { visibleMetric } from "../mirror/read.js";
 import { resolveMetric } from "../book/metrics.js";
 import { unusedExceptions } from "../book/whole-book-checks.js";
 import { piiColumn, readsPii } from "../pii/rules.js";
@@ -15,6 +15,7 @@ import { type ApplyInput, applyConventions } from "./apply.js";
 import { FIXED_RULES, isRuleOff, RULES, valueAt } from "./rules.js";
 import {
   exceptionKey,
+  columnTarget,
   type Conventions,
   type CustomFieldSpec,
 } from "./schema.js";

@@ -1,4 +1,4 @@
-import { modelKinds } from "../mirror/read.js";
+import { leavesOutPiiEnds, modelKinds } from "../mirror/read.js";
 import {
   and,
   count,
@@ -18,7 +18,7 @@ import {
   powerbiMeasure,
   powerbiRelationship,
 } from "../../db/schema/mirror.js";
-import { piiColumn } from "../pii/rules.js";
+import { piiColumn, piiMeasure } from "../pii/rules.js";
 import { RULE_TARGETS, RULES } from "../conventions/rules.js";
 import { type Conventions, exceptionKey } from "../conventions/schema.js";
 import {
@@ -313,12 +313,7 @@ export async function checkedElements(
         ),
       ),
     db
-      .select({
-        row: powerbiColumn,
-        visible: hidesPii
-          ? not(piiColumn(powerbiColumn, powerbiTable))
-          : sql<boolean>`true`,
-      })
+      .select({ row: powerbiColumn })
       .from(powerbiColumn)
       .innerJoin(powerbiTable, eq(powerbiTable.id, powerbiColumn.table_id))
       .where(
@@ -326,6 +321,7 @@ export async function checkedElements(
           inArray(powerbiColumn.dataset_id, ids),
           isNull(powerbiColumn.removed_at),
           isNull(powerbiTable.removed_at),
+          hidesPii ? not(piiColumn(powerbiColumn, powerbiTable)) : undefined,
         ),
       ),
     db
@@ -335,6 +331,7 @@ export async function checkedElements(
         and(
           inArray(powerbiRelationship.dataset_id, ids),
           isNull(powerbiRelationship.removed_at),
+          hidesPii ? leavesOutPiiEnds() : undefined,
         ),
       ),
     db
@@ -344,6 +341,7 @@ export async function checkedElements(
         and(
           inArray(powerbiMeasure.dataset_id, ids),
           isNull(powerbiMeasure.removed_at),
+          hidesPii ? not(piiMeasure(powerbiMeasure)) : undefined,
         ),
       ),
     db
@@ -352,19 +350,13 @@ export async function checkedElements(
       .innerJoin(powerbiColumn, eq(powerbiColumn.id, termColumn.column_id))
       .where(inArray(powerbiColumn.dataset_id, ids)),
   ]);
-  const group = <T>(rows: T[], key: (row: T) => string) => {
-    const grouped = new Map<string, T[]>();
-    for (const row of rows) {
-      const own = grouped.get(key(row)) ?? [];
-      own.push(row);
-      grouped.set(key(row), own);
-    }
-    return grouped;
-  };
-  const tablesByDataset = group(tables, (row) => row.dataset_id);
-  const columnsByTable = group(columns, ({ row }) => row.table_id);
-  const relationshipsByDataset = group(relationships, (row) => row.dataset_id);
-  const measuresByTable = group(measures, (row) => row.table_id);
+  const tablesByDataset = Map.groupBy(tables, (row) => row.dataset_id);
+  const columnsByTable = Map.groupBy(columns, ({ row }) => row.table_id);
+  const relationshipsByDataset = Map.groupBy(
+    relationships,
+    (row) => row.dataset_id,
+  );
+  const measuresByTable = Map.groupBy(measures, (row) => row.table_id);
   const backed = new Set(links.map((row) => row.column_id));
   const result: CheckedElement[] = [];
   const add = (id: string, datasetId: string, element: CheckableElement) => {
@@ -412,8 +404,7 @@ export async function checkedElements(
         dataset: dataset.name,
         table_kind,
       });
-      for (const { row, visible } of own) {
-        if (!visible) continue;
+      for (const { row } of own) {
         add(row.id, dataset.id, {
           ...row,
           kind: "column",

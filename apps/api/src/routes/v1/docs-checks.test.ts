@@ -21,6 +21,7 @@ const settings = new MemorySettings({
 const oauth = startOAuth({ settings, access: cerbosAccess(settings) });
 afterAll(closeTestPools);
 let datasetName: string;
+let otherTable: { dataset: string; table: string };
 beforeAll(async () => {
   await createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
     await setRole(tx, "worker_rw");
@@ -28,6 +29,13 @@ beforeAll(async () => {
     const first = sample.tenant.datasets[0];
     if (first === undefined) throw new Error("The sample has no dataset.");
     datasetName = first.name;
+    const other = sample.tenant.datasets.find(
+      (row) => row.name !== first.name && row.tables.length > 0,
+    );
+    const table = other?.tables[0];
+    if (other === undefined || table === undefined)
+      throw new Error("The sample needs another dataset's table.");
+    otherTable = { dataset: other.name, table: table.name };
   });
   await setConventions(createTestDeps(), principals.admin, {
     format: 1,
@@ -36,6 +44,11 @@ beforeAll(async () => {
         rule: "dataset_fields.owner",
         dataset: datasetName,
         reason: "Optional.",
+      },
+      {
+        rule: "table_fields.caveats",
+        ...otherTable,
+        reason: "Optional table caveats.",
       },
     ],
   });
@@ -133,6 +146,32 @@ it("includes a visible element exception in the existing unused route", async ()
         reason: "Optional.",
         why: "passes",
       },
+      {
+        rule: "table_fields.caveats",
+        target: otherTable,
+        reason: "Optional table caveats.",
+        why: "passes",
+      },
     ],
   });
+});
+
+it("filters unused table exceptions by dataset", async () => {
+  const person = await oauth.person();
+  const get = async (dataset: string) => {
+    const answer = await oauth.request(
+      `/api/v1/docs/checks?dataset=${encodeURIComponent(dataset)}`,
+      { headers: { cookie: person.cookie } },
+    );
+    expect(answer.status).toBe(200);
+    return Page.parse(await answer.json()).unused_exceptions;
+  };
+  const exception = {
+    rule: "table_fields.caveats",
+    target: otherTable,
+    reason: "Optional table caveats.",
+    why: "passes",
+  };
+  expect(await get(otherTable.dataset)).toContainEqual(exception);
+  expect(await get(datasetName)).not.toContainEqual(exception);
 });
