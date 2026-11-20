@@ -106,7 +106,7 @@ export const LEGACY_TRANSFORMS: readonly LegacyTransform[] = [
 /**
  * Turns each stored complete document, one without `format`, into the
  * company's part: every value equal to its preset's is dropped, so the rules
- * in force stay as they were. Runs in the start's migration transaction, as
+ * in force stay as they were, except trust.*, which stays whole. Runs in the start's migration transaction, as
  * the migrator. A document with `format` is never read here, so a later
  * preset change is never taken for the company's. The newest version must
  * upgrade, or the start stops; an older one that no longer resolves is left
@@ -152,15 +152,17 @@ export async function upgradeStoredConventions(
       );
       continue;
     }
-    const { part, dropped } = toSavablePart(resolve(current));
+    const resolved = resolve(current);
+    const { part, dropped } = toSavablePart(resolved);
     if (dropped.length > 0)
       logger.warn(
         "a value set under a rule the conventions turn off had no effect and was dropped",
         { version, keys: dropped.join(", ") },
       );
+    // The document held every trust key, so its part pins them, as a save does: a later preset's trust.* reaches them only through a browser.
     await client.query(
       "update conventions set document = $1 where version = $2",
-      [JSON.stringify(part), version],
+      [JSON.stringify({ ...part, trust: resolved.trust }), version],
     );
     upgraded++;
   }

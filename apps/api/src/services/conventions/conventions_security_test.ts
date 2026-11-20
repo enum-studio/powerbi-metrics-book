@@ -1,4 +1,6 @@
+import pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
+import { roleUrl } from "../../../test/database.js";
 import { closeTestPools, principals } from "../../../test/deps.js";
 import {
   asPerson,
@@ -13,7 +15,14 @@ import {
   getConventionsForAgents,
   setConventionsAsAdmin,
 } from "./service.js";
-import { conventionsInForce, listVersions } from "./store.js";
+import { PRESET_NAMES } from "./schema.js";
+import {
+  type CompanyPart,
+  conventionsInForce,
+  listVersions,
+  resolve,
+} from "./store.js";
+import { upgradeStoredConventions } from "./upgrade.js";
 
 /*
  * `off` and exceptions loosen the book's checks, and apply writes exceptions
@@ -105,6 +114,41 @@ describe("off and exceptions from an admin's token", () => {
       expect(conventions.trust.human_verify_from).toBe("browser");
       expect(company).toEqual({ format: 1, ...weakened, ...pinned });
     }));
+});
+
+describe("trust.* across releases", () => {
+  const STRICT = {
+    agent_verify_requires: "all_checks",
+    human_verify_from: "browser",
+  };
+
+  it("is pinned in the part the upgrade writes, so a later preset's trust.* reaches it only through a browser", async () => {
+    const migrator = new pg.Client({ connectionString: roleUrl("migrator") });
+    await migrator.connect();
+    try {
+      await migrator.query("begin");
+      await migrator.query("delete from conventions");
+      await migrator.query(
+        "insert into conventions (version, document, set_by) values (1, $1, 'test-admin')",
+        [JSON.stringify(resolve({}))],
+      );
+      expect(await upgradeStoredConventions(migrator)).toBe(1);
+      const { rows } = await migrator.query<{ document: CompanyPart }>(
+        "select document from conventions",
+      );
+      expect(rows.map(({ document }) => document.trust)).toEqual([STRICT]);
+    } finally {
+      await migrator.query("rollback");
+      await migrator.end();
+    }
+  });
+
+  it.each(PRESET_NAMES)(
+    "stays strict in the %s preset: a change here moves rule 8 for every company that never set trust.*",
+    (preset) => {
+      expect(resolve({ preset }).trust).toEqual(STRICT);
+    },
+  );
 });
 
 describe("a fixed rule", () => {

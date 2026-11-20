@@ -21,6 +21,12 @@ const store = (version: number, document: object) =>
     [version, JSON.stringify(document)],
   );
 
+/** What every upgraded part holds: its format, and trust.* pinned as the document had it. */
+const upgraded = {
+  format: 1,
+  trust: { agent_verify_requires: "all_checks", human_verify_from: "browser" },
+};
+
 type Row = { version: number; document: object; text: string; xmin: string };
 const stored = async () =>
   (
@@ -270,7 +276,7 @@ exceptions: []
     await store(1, legacy);
     expect(await upgradeStoredConventions(migrator)).toBe(1);
     const [row] = await stored();
-    expect(row?.document).toEqual({ format: 1, preset: "metrics_book" });
+    expect(row?.document).toEqual({ ...upgraded, preset: "metrics_book" });
     expect(resolve(row?.document)).toEqual(resolve({ preset: "metrics_book" }));
   });
 
@@ -296,10 +302,10 @@ exceptions: []
 
     const rows = await stored();
     expect(rows.map((row) => row.document)).toEqual([
-      { format: 1, preset: "metrics_book" },
-      { format: 1, preset: "metrics_book", naming: { kinds } },
+      { ...upgraded, preset: "metrics_book" },
+      { ...upgraded, preset: "metrics_book", naming: { kinds } },
       {
-        format: 1,
+        ...upgraded,
         preset: "minimal",
         metric_fields: { when_to_use: { required: true } },
       },
@@ -320,7 +326,7 @@ exceptions: []
     expect(await upgradeStoredConventions(migrator)).toBe(1);
     expect(await upgradeStoredConventions(migrator)).toBe(0);
     const [first, after] = await stored();
-    expect(first?.document).toEqual({ format: 1, preset: "metrics_book" });
+    expect(first?.document).toEqual({ ...upgraded, preset: "metrics_book" });
     expect(after).toEqual(before);
   });
 
@@ -334,7 +340,7 @@ exceptions: []
     expect(await upgradeStoredConventions(migrator)).toBe(1);
     const [row] = await stored();
     expect(row?.document).toEqual({
-      format: 1,
+      ...upgraded,
       preset: "metrics_book",
       off: ["metric_base_variant"],
     });
@@ -361,7 +367,7 @@ exceptions: []
     expect(await upgradeStoredConventions(migrator, logger)).toBe(1);
     const [row] = await stored();
     const part = {
-      format: 1,
+      ...upgraded,
       preset: "metrics_book",
       naming: { kinds: ["total_"] },
       off: ["metric_fields"],
@@ -390,7 +396,7 @@ exceptions: []
     expect(await upgradeStoredConventions(migrator, logger)).toBe(1);
     expect((await stored()).map((row) => row.document)).toEqual([
       old,
-      { format: 1, preset: "metrics_book" },
+      { ...upgraded, preset: "metrics_book" },
     ]);
     expect(warnings).toEqual([
       { message: expect.any(String) as unknown, version: 1 },
