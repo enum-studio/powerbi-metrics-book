@@ -4,11 +4,12 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from powerbi_metrics_book.calls import show_object
-from powerbi_metrics_book.client import Json, api_path
+from powerbi_metrics_book.answers import object_of, objects_in, one_line, query_of
+from powerbi_metrics_book.calls import MAX_PAGES, show_object
+from powerbi_metrics_book.client import ApiError, Json, api_path
 from powerbi_metrics_book.files import read_text_file
-from powerbi_metrics_book.output import JsonOption
-from powerbi_metrics_book.tables import print_fields
+from powerbi_metrics_book.output import JsonOption, open_session
+from powerbi_metrics_book.tables import line, print_fields
 
 app = typer.Typer(
     help="The descriptions you write for datasets, tables, columns and measures.",
@@ -54,6 +55,114 @@ def print_docs(console: Console, docs: dict[str, Json]) -> None:
             if name not in FIELD_FLAGS or value is not None
         },
     )
+
+
+@app.command("check")
+def check(
+    context: typer.Context,
+    dataset: Annotated[
+        str | None, typer.Option(help="Check only this dataset, by name or id.")
+    ] = None,
+    json_output: JsonOption = False,
+) -> None:
+    """List missing required documentation and unused conventions exceptions.
+
+    Exits 1 when anything fails. --json combines every page of checks.
+    """
+    with open_session(context, json_output) as session:
+        answer = object_of(
+            session.client.get("/docs/checks", query_of(dataset=dataset, limit=500)),
+            "the documentation checks",
+        )
+        items = objects_in(answer, "items")
+        unused = objects_in(answer, "unused_exceptions")
+        page = answer
+        seen: set[str] = set()
+        for _ in range(MAX_PAGES):
+            cursor = page.get("next_cursor")
+            if not isinstance(cursor, str):
+                break
+            if cursor in seen:
+                raise ApiError(
+                    "upstream",
+                    "The api's documentation checks did not come to an end.",
+                    200,
+                )
+            seen.add(cursor)
+            page = object_of(
+                session.client.get(
+                    "/docs/checks", query_of(dataset=dataset, limit=500, cursor=cursor)
+                ),
+                "the documentation checks",
+            )
+            items += objects_in(page, "items")
+        else:
+            raise ApiError(
+                "upstream",
+                "The api's documentation checks did not come to an end.",
+                200,
+            )
+
+        failures: list[str] = []
+        for item in items:
+            path = one_line(item["dataset"])
+            if item["kind"] == "column":
+                path += f" / {one_line(item['table'])}"
+            if item["kind"] != "dataset":
+                path += f" / {one_line(item['name'])}"
+            for result in objects_in(item, "results"):
+                if result["passed"] is not True:
+                    failures.append(
+                        f"{path}: {one_line(result['rule'])}: "
+                        f"{one_line(result['message'])}"
+                    )
+        for exception in unused:
+            target = object_of(exception["target"], "the exception target")
+            if "column" in target or "table" in target:
+                kind = "column" if "column" in target else "table"
+                named = (
+                    f"{kind} {one_line(target[kind])} in {one_line(target['dataset'])}"
+                )
+            else:
+                named = " ".join(
+                    f"{key} {one_line(value)}" for key, value in target.items()
+                )
+            why = one_line(exception["why"])
+            if why == "ambiguous":
+                why = "the dataset name is ambiguous; use its id"
+            failures.append(
+                f"conventions.exception_unused: {one_line(exception['rule'])} "
+                f"on {named}: {why}"
+            )
+
+        total: Json = 1
+        if not failures and not json_output and dataset is None:
+            total = object_of(
+                session.client.get("/datasets", {"limit": 1}), "the datasets"
+            )["total"]
+
+        def render(console: Console) -> None:
+            for failure in failures:
+                line(console, failure)
+            if failures:
+                line(console, f"{len(failures)} checks fail.")
+            else:
+                noun = "dataset" if total == 1 else "datasets"
+                line(
+                    console,
+                    f"All documentation checks pass on {one_line(total)} {noun}.",
+                )
+
+        session.emit(
+            {
+                "items": list(items),
+                "failing": answer["failing"],
+                "unused_exceptions": list(unused),
+            },
+            render,
+        )
+    if failures:
+        raise typer.Exit(1)
 
 
 @app.command("show")

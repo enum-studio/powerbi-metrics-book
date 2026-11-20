@@ -913,6 +913,20 @@ The descriptions you write for datasets, tables, columns and measures.
 pbmb docs COMMAND
 ```
 
+### `pbmb docs check`
+
+List missing required documentation and unused conventions exceptions.
+
+Exits 1 when anything fails. --json combines every page of checks.
+
+```bash
+pbmb docs check [OPTIONS]
+```
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--dataset` | str |   | Check only this dataset, by name or id. |
+
 ### `pbmb docs set`
 
 Set an element's description and, for a dataset, table or column, its fields.
