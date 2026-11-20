@@ -1,0 +1,8 @@
+# https://powerbimetricsbook.io/docs/make-it-yours/conventions/
+format: 1
+preset: metrics_book
+drafting:
+  name_hints:
+    # The sample company reports in two currencies only, so the drafts
+    # read just these two words in a measure's name as a currency variant.
+    currency: [EUR, USD]

@@ -690,14 +690,22 @@ def test_roles_list_revoke_people_and_audit(serve: Serve) -> None:
 
 
 def test_export_writes_book_yml_or_prints_it(tmp_path: Path, serve: Serve) -> None:
-    serve(lambda request: json_response(200, {"yaml": "format: 1\n"}))
+    serve(
+        lambda request: json_response(
+            200,
+            {"format": 1}
+            if request.url.path.endswith("/company")
+            else {"yaml": "format: 1\n"},
+        )
+    )
     target = tmp_path / "book.yml"
 
     assert run("admin", "export", "-o", str(target)).exit_code == 0
     assert target.read_text() == "format: 1\n"
     assert run("admin", "export").stdout == "format: 1\n"
     assert json.loads(run("admin", "export", "--json").stdout) == {
-        "yaml": "format: 1\n"
+        "yaml": "format: 1\n",
+        "conventions": {"format": 1},
     }
 
 

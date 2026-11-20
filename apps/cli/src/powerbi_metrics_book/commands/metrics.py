@@ -533,6 +533,23 @@ def check(
                 if result.get("passed") is not True
             ]
 
+        unused_answer = object_of(
+            session.client.get(
+                "/conventions/exceptions/unused",
+                query={} if name is None else {"metric": name},
+            ),
+            "the unused exceptions",
+        )
+        unused = objects_in(unused_answer, "unused")
+        failures += [
+            (
+                str(item["target"]),
+                "conventions.exception_unused",
+                f"{one_line(item['rule'])}: {one_line(item['why'])}",
+            )
+            for item in unused
+        ]
+
         def render(console: Console) -> None:
             for metric, failed, sentence in failures:
                 line(console, f"{one_line(metric)}: {failed}: {sentence}")
@@ -541,6 +558,13 @@ def check(
             else:
                 line(console, f"All checks pass on {len(names)} metrics.")
 
-        session.emit({"metrics": metrics, "failing": len(failures)}, render)
+        session.emit(
+            {
+                "metrics": metrics,
+                "unused": unused_answer["unused"],
+                "failing": len(failures),
+            },
+            render,
+        )
     if failures:
         raise typer.Exit(1)
