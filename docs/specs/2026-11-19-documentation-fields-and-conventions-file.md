@@ -375,6 +375,9 @@ One migration per branch.
 
 ## Decisions, and when they stop being right
 
+- **The stored company part stays whole for `book:edit_conventions`**, because export and apply must round-trip the file held in the deployment repository.
+- **Agents get exception counts per rule**, because a large baseline holds thousands of exceptions and each element's own checks already show its exception and reason.
+
 - **Fixed fields for each kind, beside custom ones.** Stops being right if most companies turn
   the built-in fields off.
 - **The company's part is stored, and the preset resolved on read.** Stops being right if a preset

@@ -958,7 +958,7 @@ def test_conventions_set_inside_a_value_is_refused(serve: Serve) -> None:
     result = run("conventions", "set", "preset.name", "x")
 
     assert result.exit_code == 2
-    assert [request.method for request in seen] == ["GET"]
+    assert [request.method for request in seen] == ["GET", "GET"]
 
 
 def test_diff_shows_the_changes_and_saves_nothing(serve: Serve, tmp_path: Path) -> None:
@@ -1081,9 +1081,9 @@ def test_edit_opens_the_yaml_in_the_editor_checks_it_shows_the_difference_and_sa
 
     assert result.exit_code == 0
     assert yaml.safe_load(copy.read_text())["naming"]["case"] == "snake_case"
-    assert [request.method for request in seen] == ["GET", "POST", "PUT"]
-    assert sent(seen[1])["naming"]["case"] == "none"
-    assert sent(seen[2]) == sent(seen[1])
+    assert [request.method for request in seen] == ["GET", "GET", "POST", "PUT"]
+    assert sent(seen[2])["naming"]["case"] == "none"
+    assert sent(seen[3]) == sent(seen[2])
     assert 'naming.case: "snake_case" -> "none"' in result.stdout
     assert "Saved as version 4." in result.stdout
 
@@ -1492,3 +1492,44 @@ def test_show_says_who_accepted_each_answer(serve: Serve) -> None:
     assert "Answered: Q4? (acceptor unknown)" in text
     assert "Answered: Q5? (accepted by the asker, an agent)" in text
     assert "Answered: Q6? (accepted by someone else)" in text
+
+
+@pytest.mark.parametrize("command", ["set", "edit", "export", "presets"])
+def test_conventions_keep_company_exceptions(
+    command: str, monkeypatch: pytest.MonkeyPatch, serve: Serve, tmp_path: Path
+) -> None:
+    exceptions = [
+        {"rule": "naming.kinds", "metric": "gmv", "reason": "Name in use"},
+        {
+            "rule": "column_fields.unit",
+            "dataset": "Sample restricted data",
+            "column": "'Sales'[Amount]",
+            "reason": "Reviewed separately",
+        },
+    ]
+    handler = conventions_api()
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/company"):
+            return json_response(200, {"format": 1, "exceptions": exceptions})
+        return handler(request)
+
+    seen = serve(answer)
+    path = tmp_path / "conventions.yml"
+    arguments = {
+        "set": ["set", "naming.case", "none"],
+        "edit": ["edit"],
+        "export": ["export", "--resolved", "--output", str(path)],
+        "presets": ["presets"],
+    }
+    monkeypatch.setenv("EDITOR", fake_editor(tmp_path, "true"))
+    monkeypatch.setattr(conventions, "_has_terminal", lambda: True)
+    result = run("conventions", *arguments[command], input="y\n")
+    assert result.exit_code == 0, result.output
+    if command == "presets":
+        assert [request.url.path for request in seen] == [API + "/conventions"]
+    elif command == "export":
+        assert yaml.safe_load(path.read_text())["exceptions"] == exceptions
+    else:
+        assert seen[-1].method == "PUT"
+        assert sent(seen[-1])["exceptions"] == exceptions
