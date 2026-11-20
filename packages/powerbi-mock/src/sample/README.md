@@ -78,11 +78,11 @@ dataset, and `access.test.ts` runs it against the mock.
 
 The models hold Sales lines (about 3,000 order lines, 2024 to September
 2026), Product, Customer, Date, Channel, Exchange rate, Ad spend and Web
-sessions, as fits each. Date is a calculated table in each dataset; Web
-sessions[Bounce rate] is a calculated column. Columns cover String, Int64,
-Double, Decimal, DateTime, Boolean and Binary (Product[Image]); keys are
-hidden. Sales lines[Ship date] to Date is inactive, Ad spend to Channel
-filters both ways, and Exchange rate is disconnected.
+sessions, as fits each. Date is a calculated table in each dataset;
+'Web sessions'[Bounce rate] is a calculated column. Columns cover String,
+Int64, Double, Decimal, DateTime, Boolean and Binary (Product[Image]); keys
+are hidden. 'Sales lines'[Ship date] to Date is inactive, Ad spend to
+Channel filters both ways, and Exchange rate is disconnected.
 
 ## Measures and why each odd one is here
 

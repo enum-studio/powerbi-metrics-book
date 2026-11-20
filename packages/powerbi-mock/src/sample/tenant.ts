@@ -95,6 +95,8 @@ export const SAMPLE_IDS = {
     app_id: "c1000000-0000-4000-8000-000000000002",
     object_id: "c2000000-0000-4000-8000-000000000002",
   },
+  // The keys keep the workspaces' first names so the ids stay stable: sales is
+  // Commercial, finance is Management and marketing is Growth.
   workspaces: {
     sales: "d0000000-0000-4000-8000-000000000001",
     finance: "d0000000-0000-4000-8000-000000000002",
