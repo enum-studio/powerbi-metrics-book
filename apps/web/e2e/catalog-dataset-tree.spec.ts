@@ -67,16 +67,16 @@ test("the Datasets tree folds each level, workspace, dataset, table and display 
   await expect(measure).toHaveCount(0);
   await folder.click();
   await expect(measure).toBeVisible();
-  // A field's row opens its table's panel with the field marked.
+  // A measure's row opens its table's Measures tab with the measure marked.
   await measure.click();
   await expect(page).toHaveURL(
     new RegExp(
-      `/catalog/datasets/${SALES}\\?.*field=Net(\\+|%20)sales(\\+|%20)LY`,
+      `/catalog/datasets/${SALES}/tables/Sales(%20| )lines\\?.*field=Net(\\+|%20)sales(\\+|%20)LY`,
     ),
   );
   await expect(
-    page.getByRole("main").locator('[aria-current="true"]'),
-  ).toHaveText("Net sales LY");
+    page.getByRole("main").locator('tr[aria-current="true"]'),
+  ).toContainText("Net sales LY");
   await openColumn(page);
   await expect(measure).toHaveAttribute("data-status", "active");
 });
@@ -126,7 +126,22 @@ test("the dataset page's Tables and Measures tabs are the same tree", async ({
     main.getByRole("button", { name: "Open Time intelligence" }),
   ).toBeVisible();
   await expect(field(main, "Is returned")).toHaveCount(0);
-  // A table's name opens it in the diagram.
-  await main.getByTitle("Show Sales lines in the diagram").click();
-  await expect(page).toHaveURL(/tab=diagram/);
+  // A table's name opens its page, on its documentation, with no diagram tab.
+  await main.getByRole("link", { name: "Sales lines", exact: true }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/catalog/datasets/${SALES}/tables/Sales(%20| )lines$`),
+  );
+  const tabs = main.getByRole("navigation", { name: "Table" });
+  await expect(tabs.getByRole("button")).toHaveText([
+    "Documentation",
+    /^Columns \d+$/,
+    /^Measures \d+$/,
+    /^Relationships \d+$/,
+  ]);
+  await expect(main.getByRole("heading", { name: "Details" })).toBeVisible();
+  await tabs.getByRole("button", { name: /^Columns/ }).click();
+  await expect(page).toHaveURL(/tab=columns/);
+  await main.getByRole("link", { name: "Is returned", exact: true }).click();
+  await expect(page).toHaveURL(/\/columns\/Is(%20| )returned$/);
+  await expect(main.getByRole("heading", { name: "Details" })).toBeVisible();
 });

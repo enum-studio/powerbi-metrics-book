@@ -149,13 +149,7 @@ test.describe("as the curator", () => {
         variant.getByRole("link", { name: dataset.name, exact: true }),
       ).toBeVisible();
     }
-    // Variants open folded; the Analyst may read Sales measures' DAX.
-    await expect(main.getByRole("button", { name: "Copy DAX" })).toHaveCount(0);
-    await main
-      .getByRole("article")
-      .first()
-      .getByRole("button", { expanded: false })
-      .click();
+    // A variant's DAX shows without a click; the Analyst may read Sales measures' DAX.
     await expect(
       main.getByRole("button", { name: "Copy DAX" }).first(),
     ).toBeVisible();
@@ -287,11 +281,6 @@ test.describe("as the viewer", () => {
     if (datasetId === undefined)
       throw new Error("The Sales Orders metric has no visible variant.");
     await page.goto(`/catalog/metrics/${name}`);
-    await page
-      .getByRole("article", { name: new RegExp(` in ${SALES}$`) })
-      .first()
-      .getByRole("button", { expanded: false })
-      .click();
     await page
       .getByRole("link", { name: "Show Sales lines in the diagram" })
       .first()

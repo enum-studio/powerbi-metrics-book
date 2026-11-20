@@ -12,7 +12,7 @@ export type Folder<T> = {
 /** The folder tree of a table's measures: their display folders, and the measures in no folder, which come after them. */
 export type FolderTree<T> = { folders: Folder<T>[]; loose: T[] };
 
-const byName = (a: { name: string }, b: { name: string }) =>
+export const byName = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, "en", { numeric: true, sensitivity: "base" });
 
 /**

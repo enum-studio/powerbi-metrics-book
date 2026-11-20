@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Table2 } from "lucide-react";
 import { FoldArrow } from "../../shell/fold";
 import {
@@ -11,6 +12,7 @@ import {
 import { plural } from "../../shell/plural";
 import type { DiagramModel } from "../diagram/model";
 import { FieldRows } from "../tree/fields";
+import { hasDotName } from "../tree/folders";
 import { useOpenRows } from "../tree/open-rows";
 
 const ICON = { size: 16, strokeWidth: 1.5, "aria-hidden": true } as const;
@@ -18,8 +20,8 @@ const ICON = { size: 16, strokeWidth: 1.5, "aria-hidden": true } as const;
 /**
  * A dataset's tables as a tree, as the first lane has them: each table folds
  * out into its measures by display folder and its columns. A table's name
- * opens it in the diagram. The table in the address opens by itself; the
- * measures tab opens every table that holds a measure.
+ * opens its page. The table in the address opens by itself; the measures tab
+ * opens every table that holds a measure.
  */
 export function TableTree({
   datasetId,
@@ -27,14 +29,12 @@ export function TableTree({
   table,
   field,
   measuresOnly = false,
-  onOpenTable,
 }: {
   datasetId: string;
   tables: DiagramModel["tables"];
   table: string | undefined;
   field: string | undefined;
   measuresOnly?: boolean;
-  onOpenTable: (name: string) => void;
 }) {
   const shown = measuresOnly
     ? tables.filter((each) => each.measures.length > 0)
@@ -65,20 +65,25 @@ export function TableTree({
                   toggle(each.name);
                 }}
               />
-              <button
-                type="button"
-                title={`Show ${each.name} in the diagram`}
-                className={`${FOLD_LINK} text-left`}
-                {...(each.name === table && field === undefined
-                  ? STANDS_FOR_PAGE
-                  : {})}
-                onClick={() => {
-                  onOpenTable(each.name);
-                }}
-              >
-                <Table2 {...ICON} />
-                <span className="truncate">{each.name}</span>
-              </button>
+              {hasDotName(each.name) ? (
+                <span className={FOLD_LINK}>
+                  <Table2 {...ICON} />
+                  <span className="truncate">{each.name}</span>
+                </span>
+              ) : (
+                <Link
+                  to="/catalog/datasets/$id/tables/$table"
+                  params={{ id: datasetId, table: each.name }}
+                  title={each.name}
+                  className={FOLD_LINK}
+                  {...(each.name === table && field === undefined
+                    ? STANDS_FOR_PAGE
+                    : {})}
+                >
+                  <Table2 {...ICON} />
+                  <span className="truncate">{each.name}</span>
+                </Link>
+              )}
               <span className="shrink-0 pr-2 text-meta text-ink-3">
                 {count}
               </span>

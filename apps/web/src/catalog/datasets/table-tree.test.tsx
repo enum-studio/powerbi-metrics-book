@@ -58,7 +58,6 @@ async function mount(measuresOnly: boolean) {
         table="Sales"
         field={undefined}
         measuresOnly={measuresOnly}
-        onOpenTable={() => undefined}
       />
     ),
   });
@@ -67,6 +66,14 @@ async function mount(measuresOnly: boolean) {
       createRoute({
         getParentRoute: () => rootRoute,
         path: "/catalog/datasets/$id",
+      }),
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path: "/catalog/datasets/$id/tables/$table",
+      }),
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path: "/catalog/datasets/$id/tables/$table/columns/$column",
       }),
     ]),
     history: createMemoryHistory({ initialEntries: ["/catalog/datasets/d1"] }),
@@ -84,9 +91,8 @@ async function mount(measuresOnly: boolean) {
       (a) => a.querySelector("span")?.textContent === name,
     )?.textContent;
   const tableRow = (name: string) =>
-    [...host.querySelectorAll<HTMLElement>("button[title]")].find(
-      (b) => b.title === `Show ${name} in the diagram`,
-    )?.parentElement?.textContent;
+    host.querySelector(`a[href$="/tables/${name}"]`)?.parentElement
+      ?.textContent;
   return { host, row, tableRow };
 }
 
@@ -98,6 +104,20 @@ it("counts a table's columns and measures apart, and ends each field's row with 
   expect(view.row("Net sales")).toBe("Net sales, #,0.00");
   expect(view.row("Orders")).toBe("Orders");
   expect(view.row("Amount")).toBe("Amount, Decimal");
+});
+
+it("sends a table to its page, a column to its page and a measure to its table's Measures tab, never the diagram", async () => {
+  const { host } = await mount(false);
+  const href = (name: string) =>
+    host.querySelector(`a[title="${name}"]`)?.getAttribute("href");
+  expect(href("Date")).toBe("/catalog/datasets/d1/tables/Date");
+  expect(href("Amount")).toBe(
+    "/catalog/datasets/d1/tables/Sales/columns/Amount",
+  );
+  expect(href("Net sales")).toBe(
+    "/catalog/datasets/d1/tables/Sales?tab=measures&field=Net+sales",
+  );
+  expect(host.innerHTML).not.toContain("tab=diagram");
 });
 
 it("on the measures tab, counts only measures and lists no columns", async () => {

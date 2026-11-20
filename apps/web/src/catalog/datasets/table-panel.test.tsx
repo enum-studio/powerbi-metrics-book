@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { signInConfigQuery } from "../../access/api";
@@ -16,6 +16,28 @@ vi.mock("../../api/client", async (original) => ({
     Promise.resolve(
       path === "/api/v1/me" ? null : { items: [], next_cursor: null },
     ),
+}));
+
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...(await original<typeof import("@tanstack/react-router")>()),
+  Link: ({
+    children,
+    to,
+    params,
+  }: {
+    children: ReactNode;
+    to: string;
+    params: Record<string, string>;
+  }) => (
+    <a
+      href={Object.entries(params).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to,
+      )}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 const sales: DiagramTable = {
@@ -125,4 +147,17 @@ it("offers Mark PII to an admin, and not in the demo", () => {
   const demo = mount(true, true);
   demo.show(undefined);
   expect(demo.host.textContent).not.toContain("Mark PII");
+});
+
+it("links the table's name and each column to their pages", () => {
+  const view = mount();
+  view.show(undefined);
+  const hrefs = [...view.host.querySelectorAll("a")].map((a) =>
+    a.getAttribute("href"),
+  );
+  expect(hrefs).toEqual([
+    "/catalog/datasets/d1/tables/Sales",
+    "/catalog/datasets/d1/tables/Sales/columns/Amount",
+    "/catalog/datasets/d1/tables/Sales/columns/Date",
+  ]);
 });

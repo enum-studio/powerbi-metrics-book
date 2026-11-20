@@ -4,12 +4,14 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { api, read } from "../../api/client";
 import { Breadcrumb } from "../../shell/breadcrumb";
 import { EmptyState, ErrorState, Loading } from "../../shell/states";
+import { formatTime } from "../../shell/time";
 import type { DiagramSelection, Density } from "../diagram/model";
 import { diagramModel } from "./model";
 import { AcceptedAnswers } from "../../review/accepted-answers";
 import { allPages } from "../queries";
 import { DatasetHeader } from "./header";
 import { DiagramTab } from "./diagram-tab";
+import { Documentation } from "./documentation";
 import { RelationshipsTab } from "./relationships-tab";
 import { DatasetTabs, type DatasetTab } from "./tabs";
 import { TableTree } from "./table-tree";
@@ -146,7 +148,26 @@ export function DatasetPage({
       </div>
       <DatasetTabs counts={counts} current={currentTab} onChange={goTab} />
       <div className="min-w-0">
-        {model.tables.length === 0 ? (
+        {currentTab === "documentation" ? (
+          <Documentation
+            kind="dataset"
+            id={id}
+            details={[
+              ["Workspace", dataset.workspace.name],
+              ["Storage mode", dataset.target_storage_mode],
+              ["Endorsement", dataset.endorsement],
+              ["Sensitivity label", dataset.sensitivity_label],
+              [
+                "Row-level security",
+                dataset.has_row_level_security ? "Yes" : "No",
+              ],
+              ["Tables", counts.tables.toLocaleString("en")],
+              ["Measures", counts.measures.toLocaleString("en")],
+              ["Relationships", String(counts.relationships)],
+              ["Last synced", formatTime(dataset.synced_at)],
+            ]}
+          />
+        ) : model.tables.length === 0 ? (
           <EmptyState title="No tables to draw">
             Power BI could not give this dataset's schema, so there are no
             tables to draw. It is read again at the next sync after the model is
@@ -172,7 +193,6 @@ export function DatasetPage({
             tables={model.tables}
             table={table}
             field={field}
-            onOpenTable={openTable}
           />
         ) : currentTab === "measures" ? (
           counts.measures === 0 ? (
@@ -186,7 +206,6 @@ export function DatasetPage({
               table={table}
               field={field}
               measuresOnly
-              onOpenTable={openTable}
             />
           )
         ) : (
