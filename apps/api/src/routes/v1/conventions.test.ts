@@ -177,8 +177,10 @@ it("answers a metric's failure under an exception as passing with its reason, an
   const exceptions = [
     { rule: "metric_fields.definition", metric: name, reason },
   ];
+  // naming.kinds is off, so the name passes it until the part below turns it on.
   const saved = await admin("PUT", "/api/v1/conventions", {
     format: 1,
+    off: ["naming.kinds"],
     exceptions,
   });
   expect(saved.status).toBe(200);

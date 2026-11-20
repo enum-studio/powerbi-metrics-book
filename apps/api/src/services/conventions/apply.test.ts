@@ -17,9 +17,9 @@ const part = {
 } as const;
 const BASELINE = "Names in use before the house style";
 
-/** Three metrics with no word in common: two lack the kind total_. */
+/** Three metrics with no word in common, each with a kind of the preset: two lack the kind total_. */
 async function book(tx: Db): Promise<void> {
-  for (const name of ["orders", "total_visits", "margin"])
+  for (const name of ["number_of_orders", "total_visits", "average_margin"])
     await metricIn(tx, name);
 }
 
@@ -79,8 +79,12 @@ describe("applyConventions", () => {
         await apply(tx, { dry_run: true, baseline_reason: BASELINE }),
       ).toMatchObject({
         exceptions_added: [
-          { rule: "naming.kinds", metric: "margin", reason: BASELINE },
-          { rule: "naming.kinds", metric: "orders", reason: BASELINE },
+          { rule: "naming.kinds", metric: "average_margin", reason: BASELINE },
+          {
+            rule: "naming.kinds",
+            metric: "number_of_orders",
+            reason: BASELINE,
+          },
         ],
         version: null,
       });
@@ -106,8 +110,8 @@ describe("applyConventions", () => {
     rolledBack(async (tx) => {
       await book(tx);
       const exceptions = [
-        { rule: "naming.kinds", metric: "margin", reason: BASELINE },
-        { rule: "naming.kinds", metric: "orders", reason: BASELINE },
+        { rule: "naming.kinds", metric: "average_margin", reason: BASELINE },
+        { rule: "naming.kinds", metric: "number_of_orders", reason: BASELINE },
       ];
       expect(
         await apply(tx, { dry_run: false, baseline_reason: BASELINE }),
@@ -141,23 +145,90 @@ describe("applyConventions", () => {
             exceptions_added: [],
             version: 1,
           });
-      // A file without them, given the baseline again, ends equal: nothing changes, and the file is handed them.
+      expect(await listVersions(tx)).toHaveLength(1);
+      // A file without them is saved as given, and they are gone, with the baseline too: it changes only the rule's exceptions.
       expect(
         await apply(tx, { dry_run: false, baseline_reason: BASELINE }),
-      ).toEqual({
-        changed_rules: [],
-        now_failing: {},
-        exceptions_added: exceptions,
-        version: 1,
-      });
-      expect(await listVersions(tx)).toHaveLength(1);
-      // Without the baseline, a file without them is saved as given, and they are gone.
-      expect(await apply(tx, { dry_run: false })).toMatchObject({
+      ).toMatchObject({
         changed_rules: ["naming.kinds"],
+        now_failing: { "naming.kinds": 2 },
         exceptions_added: [],
         version: 2,
       });
       expect(await stored(tx)).toEqual(part);
+    }));
+
+  it("adds no baseline exception for a part that changes only a rule's exceptions", () =>
+    rolledBack(async (tx) => {
+      await book(tx);
+      const exceptions = [
+        {
+          rule: "metric_fields.definition",
+          metric: "total_visits",
+          reason: "Kept.",
+        },
+      ];
+      expect(
+        await apply(
+          tx,
+          { dry_run: false, baseline_reason: BASELINE },
+          { format: 1, exceptions },
+        ),
+      ).toMatchObject({
+        changed_rules: ["metric_fields.definition"],
+        now_failing: { "metric_fields.definition": 2 },
+        exceptions_added: [],
+      });
+      expect(await stored(tx)).toEqual({ format: 1, exceptions });
+    }));
+
+  it("excepts exactly the targets that fail a rule the part turns on", () =>
+    rolledBack(async (tx) => {
+      await book(tx);
+      await apply(
+        tx,
+        { dry_run: false },
+        { format: 1, off: ["metric_fields.definition"] },
+      );
+      expect(
+        await apply(
+          tx,
+          { dry_run: true, baseline_reason: BASELINE },
+          { format: 1 },
+        ),
+      ).toEqual({
+        changed_rules: ["metric_fields.definition"],
+        now_failing: { "metric_fields.definition": 3 },
+        exceptions_added: [
+          "average_margin",
+          "number_of_orders",
+          "total_visits",
+        ].map((metric) => ({
+          rule: "metric_fields.definition",
+          metric,
+          reason: BASELINE,
+        })),
+        version: null,
+      });
+    }));
+
+  it("leaves a metric that failed the rule before the change to keep failing", () =>
+    rolledBack(async (tx) => {
+      await book(tx);
+      await metricIn(tx, "orders");
+      // orders has no kind of the preset; total_visits has one this part leaves out.
+      expect(
+        await apply(
+          tx,
+          { dry_run: true, baseline_reason: BASELINE },
+          { format: 1, naming: { kinds: ["number_of_", "average_"] } },
+        ),
+      ).toMatchObject({
+        now_failing: { "naming.kinds": 2 },
+        exceptions_added: [
+          { rule: "naming.kinds", metric: "total_visits", reason: BASELINE },
+        ],
+      });
     }));
 
   it("saves nothing, and records nothing, for a part equal to the one in force", () =>

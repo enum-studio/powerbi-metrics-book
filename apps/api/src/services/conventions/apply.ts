@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import type { AppDeps } from "../../context.js";
 import { ServiceError } from "../../errors.js";
 import type { Principal } from "../../principal.js";
-import { failuresInBook } from "../book/whole-book-checks.js";
+import { type Failure, failuresInBook } from "../book/whole-book-checks.js";
 import { withEvents } from "../events/feed.js";
 import { isRuleOff, RULES, valueAt } from "./rules.js";
 import {
@@ -43,38 +43,79 @@ const byKey = (
   return Number(first > second) - Number(first < second);
 };
 
+/** Whether a rule's value, a value it reads or its off state differ: what decides which elements pass it. */
+function ruleDiffers(
+  rule: (typeof RULES)[number],
+  before: Conventions,
+  after: Conventions,
+): boolean {
+  const paths = [
+    ...(rule.path === null ? [] : [rule.path]),
+    ...rule.reads.map((id) => id.split(".")),
+  ];
+  return (
+    paths.some(
+      (path) => !isDeepStrictEqual(valueAt(before, path), valueAt(after, path)),
+    ) || isRuleOff(rule, before) !== isRuleOff(rule, after)
+  );
+}
+
 /** The ids of the rules whose value, the values it reads, off state or exceptions differ, sorted. */
 export function changedRules(
   before: Conventions,
   after: Conventions,
 ): string[] {
-  return RULES.filter((rule) => {
-    const paths = [
-      ...(rule.path === null ? [] : [rule.path]),
-      ...rule.reads.map((id) => id.split(".")),
-    ];
-    return (
-      paths.some(
-        (path) =>
-          !isDeepStrictEqual(valueAt(before, path), valueAt(after, path)),
-      ) ||
-      isRuleOff(rule, before) !== isRuleOff(rule, after) ||
+  return RULES.filter(
+    (rule) =>
+      ruleDiffers(rule, before, after) ||
       !isDeepStrictEqual(
         exceptionsTo(before, rule.id),
         exceptionsTo(after, rule.id),
-      )
-    );
-  })
+      ),
+  )
     .map((rule) => rule.id)
     .sort();
 }
 
 /**
+ * A baseline's exceptions, sorted: one for each target that fails a rule whose
+ * value, read values or off state the part changes, and passed that rule
+ * under the version in force, where a rule that is off passes. A failure the
+ * change did not cause keeps failing, so a part that only adds an exception
+ * excepts nothing more.
+ */
+async function baselineExceptions(
+  deps: Pick<AppDeps, "db">,
+  before: Conventions,
+  after: Conventions,
+  failures: readonly Failure[],
+  reason: string,
+) {
+  const rules = new Set(
+    RULES.filter((rule) => ruleDiffers(rule, before, after)).map(
+      ({ id }) => id,
+    ),
+  );
+  if (rules.size === 0) return [];
+  const key = ({ rule, target }: Failure) => exceptionKey({ rule, ...target });
+  const failedBefore = new Set(
+    (await failuresInBook(deps, before, rules)).map(key),
+  );
+  return failures
+    .filter(
+      (failure) => rules.has(failure.rule) && !failedBefore.has(key(failure)),
+    )
+    .map(({ rule, target }) => ({ rule, ...target, reason }))
+    .sort(byKey);
+}
+
+/**
  * Applies a company part: what it changes against the version in force, how
  * many metrics and terms then fail each changed rule, and, unless it is a dry
- * run, the save. A baseline reason first adds one exception for each of those
- * failures, so what exists is listed once and every new name is held to the
- * rule; the answer lists them, sorted, for the file to hold. It saves even
+ * run, the save. A baseline reason first adds one exception for each failure
+ * the change causes (baselineExceptions), so what exists is listed once and
+ * every new name is held to the rule; the answer lists them, sorted, for the
+ * file to hold. It saves even
  * when names now fail: the checks are the gate. A part equal to the one in
  * force saves nothing, so applying a file again is free.
  */
@@ -116,13 +157,13 @@ export async function applyConventions(
     const added =
       reason?.data === undefined
         ? []
-        : failures
-            .map(({ rule, target }) => ({
-              rule,
-              ...target,
-              reason: reason.data,
-            }))
-            .sort(byKey);
+        : await baselineExceptions(
+            { db: tx },
+            current.conventions,
+            proposed,
+            failures,
+            reason.data,
+          );
     const save =
       added.length === 0
         ? given
