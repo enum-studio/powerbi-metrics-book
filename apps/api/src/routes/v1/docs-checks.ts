@@ -43,7 +43,7 @@ export function docsChecksRoutes(deps: AppDeps): Hono<AppEnv> {
           rule: z.string(),
           target: z.partialRecord(z.enum(RULE_TARGETS), z.string()),
           reason: z.string(),
-          why: z.enum(["no_such_target", "passes"]),
+          why: z.enum(["no_such_target", "passes", "ambiguous"]),
         }),
       ),
       next_cursor: z.string().nullable(),

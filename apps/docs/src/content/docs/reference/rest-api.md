@@ -1454,7 +1454,7 @@ Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's
 
 ### GET `/api/v1/conventions/exceptions/unused`
 
-The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them
+The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them
 
 Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
 
@@ -1464,7 +1464,7 @@ Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them | an object with unused |
+| 200 | The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them | an object with unused |
 
 Fields of the first answer:
 

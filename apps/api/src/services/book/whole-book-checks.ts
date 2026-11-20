@@ -52,7 +52,7 @@ export interface UnusedException {
   rule: string;
   target: CheckTarget;
   reason: string;
-  why: "no_such_target" | "passes";
+  why: "no_such_target" | "passes" | "ambiguous";
 }
 
 type Checked = { target: CheckTarget; results: CheckResult[] };
@@ -231,18 +231,27 @@ export async function unusedExceptions(
   ];
   const metrics = namesOf("metric");
   const terms = namesOf("term");
+  const elements = exceptions.some(({ target }) => target.dataset !== undefined)
+    ? await checkedElements(deps, run)
+    : [];
   const checked = [
     ...(metrics.length > 0 ? await checkedMetrics(deps, run, metrics) : []),
     ...(terms.length > 0 ? await checkedTerms(deps, run, terms) : []),
-    ...(exceptions.some(({ target }) => target.dataset !== undefined)
-      ? await checkedElements(deps, run)
-      : []),
+    ...elements,
   ];
   const byTarget = new Map(
     checked.map((each) => [exceptionKey(each.target), each]),
   );
   return exceptions.flatMap(({ rule, reason, target }): UnusedException[] => {
-    const found = byTarget.get(exceptionKey(target));
+    const datasets = elements.filter((each) => each.kind === "dataset");
+    const named = datasets.filter((each) => each.name === target.dataset);
+    const dataset = datasets.find((each) => each.id === target.dataset);
+    if (dataset === undefined && named.length > 1)
+      return [{ rule, target, reason, why: "ambiguous" }];
+    const resolved = dataset ?? named[0];
+    const lookup =
+      resolved === undefined ? target : { ...target, ...resolved.target };
+    const found = byTarget.get(exceptionKey(lookup));
     if (found === undefined)
       return [{ rule, target, reason, why: "no_such_target" }];
     const result = found.results.find((each) => each.rule === rule);
@@ -267,10 +276,29 @@ export async function checkedElements(
   allowed?: SQL,
   hidesPii = false,
 ): Promise<CheckedElement[]> {
-  const datasets = await db
-    .select()
+  const live = await db
+    .select({ row: powerbiDataset, allowed: allowed ?? sql<boolean>`true` })
     .from(powerbiDataset)
-    .where(and(isNull(powerbiDataset.removed_at), allowed));
+    .where(isNull(powerbiDataset.removed_at));
+  const names = new Map<string, number>();
+  for (const { row } of live)
+    names.set(row.name, (names.get(row.name) ?? 0) + 1);
+  const targets = new Map<string, string>();
+  for (const { row } of live) {
+    const unique = names.get(row.name) === 1;
+    targets.set(row.id, unique ? row.name : row.id);
+    if (unique) targets.set(row.name, row.name);
+  }
+  const exceptions = new Map(
+    run.conventions.exceptions.flatMap((item) => {
+      if (item.dataset === undefined) return [];
+      const dataset = targets.get(item.dataset);
+      return dataset === undefined
+        ? []
+        : [[exceptionKey({ ...item, dataset }), item.reason] as const];
+    }),
+  );
+  const datasets = live.filter((each) => each.allowed).map((each) => each.row);
   if (datasets.length === 0) return [];
   const ids = datasets.map((row) => row.id);
   const [tables, columns, relationships, measures, links] = await Promise.all([
@@ -341,16 +369,17 @@ export async function checkedElements(
   ]);
   const backed = new Set(links.map((row) => row.column_id));
   const result: CheckedElement[] = [];
-  const add = (id: string, element: CheckableElement) => {
+  const add = (id: string, datasetId: string, element: CheckableElement) => {
+    const dataset = targets.get(datasetId) ?? datasetId;
     const target =
       element.kind === "column"
         ? {
-            dataset: element.dataset,
+            dataset,
             column: `'${element.table}'[${element.name}]`,
           }
         : element.kind === "table"
-          ? { dataset: element.dataset, table: element.name }
-          : { dataset: element.dataset };
+          ? { dataset, table: element.name }
+          : { dataset };
     result.push({
       kind: element.kind,
       id,
@@ -358,11 +387,15 @@ export async function checkedElements(
       dataset: element.dataset,
       ...(element.kind === "column" ? { table: element.table } : {}),
       target,
-      results: checkElement(element, run),
+      results: checkElement({ ...element, dataset }, { ...run, exceptions }),
     });
   };
   for (const dataset of datasets) {
-    add(dataset.id, { ...dataset, kind: "dataset", dataset: dataset.name });
+    add(dataset.id, dataset.id, {
+      ...dataset,
+      kind: "dataset",
+      dataset: dataset.name,
+    });
     const related = relationships.filter(
       (row) => row.dataset_id === dataset.id,
     );
@@ -419,7 +452,7 @@ export async function checkedElements(
               : one.has(table.name)
                 ? "dimension"
                 : "standalone";
-      add(table.id, {
+      add(table.id, dataset.id, {
         ...table,
         kind: "table",
         dataset: dataset.name,
@@ -427,7 +460,7 @@ export async function checkedElements(
       });
       for (const { row, pii } of own) {
         if (hidesPii && pii) continue;
-        add(row.id, {
+        add(row.id, dataset.id, {
           ...row,
           kind: "column",
           dataset: dataset.name,

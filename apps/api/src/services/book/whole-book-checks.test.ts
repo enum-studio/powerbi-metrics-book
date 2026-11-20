@@ -6,7 +6,7 @@ import { asPerson } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
 import { metric, term } from "../../db/schema/book.js";
 import * as schema from "../../db/schema/index.js";
-import { useMirror } from "../../../test/mirror-fixtures.js";
+import { id, useMirror } from "../../../test/mirror-fixtures.js";
 import { applyConventions } from "../conventions/apply.js";
 import { exceptionKey } from "../conventions/schema.js";
 import { resolve } from "../conventions/store.js";
@@ -278,7 +278,7 @@ describe("whole-book element checks", () => {
           format: 1,
           dataset_fields: { owner: { required: true } },
         },
-        dry_run: true,
+        dry_run: false,
         baseline_reason: "Document later.",
       });
       expect(answer.now_failing["dataset_fields.owner"]).toBeGreaterThan(0);
@@ -287,7 +287,64 @@ describe("whole-book element checks", () => {
         dataset: "Sales",
         reason: "Document later.",
       });
+      for (const dataset of [id.twin_a, id.twin_b]) {
+        expect(answer.exceptions_added).toContainEqual({
+          rule: "dataset_fields.owner",
+          dataset,
+          reason: "Document later.",
+        });
+      }
+      expect(answer.version).not.toBeNull();
       const keys = answer.exceptions_added.map(exceptionKey);
       expect(keys).toEqual([...keys].sort());
+    }));
+
+  it("ignores ambiguous dataset names but applies ids and unique names", () =>
+    rolledBack(async (tx) => {
+      const conventions = resolve({
+        dataset_fields: { owner: { required: true } },
+        exceptions: [
+          {
+            rule: "dataset_fields.owner",
+            dataset: "Twin",
+            reason: "Ambiguous.",
+          },
+          { rule: "dataset_fields.owner", dataset: "Sales", reason: "Unique." },
+        ],
+      });
+      const failures = await failuresInBook({ db: tx }, conventions);
+      for (const dataset of [id.twin_a, id.twin_b]) {
+        expect(failures).toContainEqual({
+          rule: "dataset_fields.owner",
+          target: { dataset },
+        });
+      }
+      expect(failures).not.toContainEqual({
+        rule: "dataset_fields.owner",
+        target: { dataset: "Sales" },
+      });
+      expect(await unusedExceptions({ db: tx }, conventions)).toEqual([
+        {
+          rule: "dataset_fields.owner",
+          target: { dataset: "Twin" },
+          reason: "Ambiguous.",
+          why: "ambiguous",
+        },
+      ]);
+      const byId = resolve({
+        dataset_fields: { owner: { required: true } },
+        exceptions: [
+          {
+            rule: "dataset_fields.owner",
+            dataset: id.sales,
+            reason: "By id.",
+          },
+        ],
+      });
+      expect(await failuresInBook({ db: tx }, byId)).not.toContainEqual({
+        rule: "dataset_fields.owner",
+        target: { dataset: "Sales" },
+      });
+      expect(await unusedExceptions({ db: tx }, byId)).toEqual([]);
     }));
 });

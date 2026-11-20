@@ -640,7 +640,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them */
+    /** The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them */
     get: operations["getApiV1ConventionsExceptionsUnused"];
     put?: never;
     post?: never;
@@ -6817,7 +6817,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, or passes the rule without them */
+      /** @description The exceptions nothing needs any more, reported as conventions.exception_unused: their target is gone, its dataset name is ambiguous, or it passes the rule without them */
       200: {
         headers: {
           [name: string]: unknown;
@@ -6831,7 +6831,7 @@ export interface operations {
               };
               reason: string;
               /** @enum {string} */
-              why: "no_such_target" | "passes";
+              why: "no_such_target" | "passes" | "ambiguous";
             }[];
           };
         };
@@ -9459,7 +9459,7 @@ export interface operations {
               };
               reason: string;
               /** @enum {string} */
-              why: "no_such_target" | "passes";
+              why: "no_such_target" | "passes" | "ambiguous";
             }[];
             next_cursor: string | null;
           };
