@@ -26,6 +26,24 @@ import { companyPartSchema, PRESET_NAMES } from "./schema.js";
 afterAll(closeTestPools);
 
 describe("resolve", () => {
+  it.each([
+    "metric_fields",
+    "term_fields",
+    "dataset_fields",
+    "table_fields",
+    "column_fields",
+  ])(
+    "keeps omitted custom field requirements out of the company part's %s",
+    (kind) => {
+      const field = { key: "owner_team", label: "Owner team", type: "text" };
+      const part = { format: 1, [kind]: { custom: [field] } };
+      expect(companyPartSchema.parse(part)).toEqual(part);
+      expect(resolve(part)).toHaveProperty(`${kind}.custom`, [
+        { ...field, required: false },
+      ]);
+    },
+  );
+
   it("merges the preset under the document: objects key by key, arrays whole", () => {
     const conventions = resolve({
       naming: {
@@ -369,6 +387,21 @@ describe("setConventions", () => {
         }),
       );
       expect((await listVersions(tx))[0]?.document).toEqual(saved.conventions);
+    }));
+
+  it("stores and returns custom fields without adding an omitted requirement", () =>
+    rolledBack(async (tx) => {
+      const field = { key: "owner_team", label: "Owner team", type: "text" };
+      const part = { format: 1, metric_fields: { custom: [field] } };
+      await setConventions({ db: tx }, principals.admin, part);
+      const [row] = await tx
+        .select()
+        .from(conventions)
+        .orderBy(desc(conventions.version));
+      expect(row?.document).toEqual(part);
+      expect((await conventionsInForce(tx)).company).toEqual(part);
+      await setConventions({ db: tx }, principals.admin, part);
+      expect((await conventionsInForce(tx)).company).toEqual(part);
     }));
 
   it("stores a part as validated, so a key the schema drops is neither stored nor given back", () =>

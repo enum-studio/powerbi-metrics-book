@@ -55,13 +55,13 @@ const hasUniqueKeys = (items: { key: string }[]): boolean =>
   new Set(items.map((item) => item.key)).size === items.length;
 const UNIQUE = "Each key is used once.";
 
-export const customFieldSchema = z
+const customFieldPartSchema = z
   .strictObject({
     key,
     label: short.min(1),
     type: z.enum(["text", "number", "boolean", "date", "choice"]),
     values: words.min(1).optional(),
-    required: z.boolean().default(false),
+    required: z.boolean().optional(),
   })
   .refine(
     (field) => (field.type === "choice") === (field.values !== undefined),
@@ -71,9 +71,15 @@ export const customFieldSchema = z
       path: ["values"],
     },
   );
+export const customFieldSchema = customFieldPartSchema.safeExtend({
+  required: z.boolean().default(false),
+});
 export type CustomFieldSpec = z.infer<typeof customFieldSchema>;
 
 const customFields = z.array(customFieldSchema).refine(hasUniqueKeys, UNIQUE);
+const customFieldsPart = z
+  .array(customFieldPartSchema)
+  .refine(hasUniqueKeys, UNIQUE);
 
 const kind = short.refine(
   (text) => text.length > 1 && text.startsWith("_") !== text.endsWith("_"),
@@ -333,7 +339,9 @@ const optionalShape = (shape: z.core.$ZodShape): z.core.$ZodShape =>
       z.optional(
         value instanceof z.ZodObject
           ? z.strictObject(optionalShape(value.shape))
-          : value,
+          : value === customFields
+            ? customFieldsPart
+            : value,
       ),
     ]),
   );

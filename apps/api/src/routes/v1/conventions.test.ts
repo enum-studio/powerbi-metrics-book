@@ -7,7 +7,10 @@ import {
   TEST_PUBLIC_BASE_URL,
 } from "../../../test/deps.js";
 import { MemorySettings } from "../../../test/doubles.js";
-import { MAX_BODY_BYTES } from "../../http/security-headers.js";
+import {
+  MAX_BODY_BYTES,
+  MAX_CONVENTIONS_BODY_BYTES,
+} from "../../http/security-headers.js";
 import { startOAuth } from "../../../test/sign-in-support.js";
 import { assignRole } from "../../services/auth/roles.js";
 import { FIXED_RULES, RULES } from "../../services/conventions/rules.js";
@@ -220,7 +223,7 @@ it("takes a part with 9,000 exceptions, over the 1 MiB other routes keep, and re
   expect(applied.status).toBe(200);
   const company = await admin("GET", "/api/v1/conventions/company");
   expect(await company.json()).toEqual(part);
-  const oversized = { ...part, guide: "x".repeat(8 * 1024 * 1024) };
+  const oversized = { ...part, guide: "x".repeat(MAX_CONVENTIONS_BODY_BYTES) };
   for (const [method, path, body] of [
     ["PUT", "/api/v1/conventions", oversized],
     ["POST", "/api/v1/conventions/diff", oversized],
