@@ -3,6 +3,7 @@ import { validator } from "hono-openapi";
 import { z } from "zod";
 import type { AppEnv } from "../../app.js";
 import type { AppDeps } from "../../context.js";
+import { conventionsBodySizeLimit } from "../../http/security-headers.js";
 import { BOOK } from "../../services/book/changes.js";
 import { RULE_TARGETS } from "../../services/conventions/rules.js";
 import {
@@ -103,6 +104,7 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     save.doc,
     credential,
     editConventions,
+    conventionsBodySizeLimit,
     validator("json", Document, refuse),
     async (c) =>
       save.answer(c, await setConventionsAsAdmin(as(c), c.req.valid("json"))),
@@ -135,6 +137,7 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     diff.doc,
     credential,
     editConventions,
+    conventionsBodySizeLimit,
     validator("json", Document, refuse),
     async (c) =>
       diff.answer(c, {
@@ -157,6 +160,7 @@ export function conventionsRoutes(deps: AppDeps): Hono<AppEnv> {
     apply.doc,
     credential,
     editConventions,
+    conventionsBodySizeLimit,
     validator(
       "json",
       z.strictObject({
