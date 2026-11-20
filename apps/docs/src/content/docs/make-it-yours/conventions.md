@@ -198,7 +198,7 @@ Names, words and exception targets have at most 500 characters. A reason has at 
 
 `get_conventions` gives agents exception counts per rule, rather than the list. An element's own check results show its `exception` and reason. Apply results and unused exception lists name only targets the caller can see. A principal with `book:edit_conventions` can export the whole stored company part so the file can round-trip through the deployment repository.
 
-An exception is unused if its target is gone, passes the rule without it, or names a dataset whose name is shared (`ambiguous`). For a shared name, use the dataset id instead. `pbmb metrics check` and `pbmb docs check` fail it as `conventions.exception_unused`. Remove it from the file and apply again. Only a curator gets the unused list: `pbmb docs check` run by anyone else lists missing documentation and says nothing of exceptions. `GET /api/v1/docs/checks` gives `unused_exceptions` to a curator on the first page alone.
+An exception is unused if its target is gone, passes the rule without it, or names a dataset whose name another live dataset shares, even one you cannot see (`ambiguous`). Such an exception applies to nothing. For a shared name, use the dataset id instead. `pbmb metrics check` and `pbmb docs check` fail it as `conventions.exception_unused`. Remove it from the file and apply again. Only a curator gets the unused list: `pbmb docs check` run by anyone else lists missing documentation and says nothing of exceptions. `GET /api/v1/docs/checks` gives `unused_exceptions` to a curator on the first page alone.
 
 For a book with thousands of drafts, preview a stricter rule before applying it. To add an exception for each target you can see that the stricter rule newly breaks:
 

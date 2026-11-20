@@ -255,11 +255,17 @@ export async function unusedExceptions(
   const byName = Map.groupBy(datasets, (each) => each.name);
   return exceptions.flatMap(({ rule, reason, target }): UnusedException[] => {
     const key = target.dataset;
-    const named = key === undefined ? [] : (byName.get(key) ?? []);
     const dataset = key === undefined ? undefined : byId.get(key);
-    if (dataset === undefined && named.length > 1)
+    const resolved =
+      dataset ?? (key === undefined ? undefined : byName.get(key)?.[0]);
+    // The checks address a dataset by its id when another live dataset, seen
+    // or not, shares its name: an exception by that name applies to nothing.
+    if (
+      dataset === undefined &&
+      resolved !== undefined &&
+      resolved.target.dataset !== key
+    )
       return [{ rule, target, reason, why: "ambiguous" }];
-    const resolved = dataset ?? named[0];
     const lookup =
       resolved === undefined ? target : { ...target, ...resolved.target };
     const found = byTarget.get(exceptionKey(lookup));

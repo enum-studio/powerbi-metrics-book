@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq, TransactionRollbackError } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TEST_RUNNER } from "../../../test/database.js";
@@ -18,7 +19,11 @@ import { createDb } from "../../db/client.js";
 import { setRole } from "../../../test/sample-mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
 import { term } from "../../db/schema/book.js";
-import { powerbiColumn, powerbiRelationship } from "../../db/schema/mirror.js";
+import {
+  powerbiColumn,
+  powerbiDataset,
+  powerbiRelationship,
+} from "../../db/schema/mirror.js";
 import type { Principal } from "../../principal.js";
 import { TOOLS } from "../../mcp/tools/index.js";
 import { docsChecks } from "../book/docs.js";
@@ -143,6 +148,37 @@ describe("an unused exception on an element", () => {
         ).toEqual([unit]);
         // To a curator who may not read PII it is no key: the exception is in use, and nothing is listed.
         expect(await unused(tx, curator)).toEqual([]);
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
+
+  it("is ambiguous when a dataset the curator cannot see shares its dataset's name, as it applies to nothing", () =>
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        const item = {
+          rule: "dataset_fields.definition",
+          dataset: "Sales",
+          reason: "Kept.",
+        };
+        await setRole(tx, "api_rw");
+        await setConventions({ db: tx }, principals.admin, {
+          format: 1,
+          exceptions: [item],
+        });
+        const why = async () =>
+          (await unusedExceptionsAsCurator(asPerson(curator, { db: tx }))).map(
+            (each) => each.why,
+          );
+        expect(await why()).toEqual(["passes"]);
+        // A second live Sales, in a workspace the curator does not reach.
+        await setRole(tx, "worker_rw");
+        await tx.insert(powerbiDataset).values({
+          id: randomUUID(),
+          workspace_id: id.twin_workspace,
+          name: "Sales",
+        });
+        await setRole(tx, "api_rw");
+        expect(await why()).toEqual(["ambiguous"]);
         tx.rollback();
       }),
     ).rejects.toThrow(TransactionRollbackError));
