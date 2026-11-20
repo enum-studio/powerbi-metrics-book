@@ -5,8 +5,8 @@ import typer
 from rich.console import Console
 
 from powerbi_metrics_book.answers import object_of, objects_in, one_line, query_of
-from powerbi_metrics_book.calls import MAX_PAGES, show_object
-from powerbi_metrics_book.client import ApiError, Json, api_path
+from powerbi_metrics_book.calls import every_page, show_object
+from powerbi_metrics_book.client import Json, api_path
 from powerbi_metrics_book.files import read_text_file
 from powerbi_metrics_book.output import JsonOption, open_session
 from powerbi_metrics_book.tables import line, print_fields
@@ -70,38 +70,17 @@ def check(
     Exits 1 when anything fails. --json combines every page of checks.
     """
     with open_session(context, json_output) as session:
-        answer = object_of(
-            session.client.get("/docs/checks", query_of(dataset=dataset, limit=500)),
-            "the documentation checks",
+        pages = list(
+            every_page(
+                session.client,
+                "/docs/checks",
+                query_of(dataset=dataset, limit=500),
+                "documentation checks",
+            )
         )
-        items = objects_in(answer, "items")
+        answer = pages[0]
+        items = [item for page in pages for item in objects_in(page, "items")]
         unused = objects_in(answer, "unused_exceptions")
-        page = answer
-        seen: set[str] = set()
-        for _ in range(MAX_PAGES):
-            cursor = page.get("next_cursor")
-            if not isinstance(cursor, str):
-                break
-            if cursor in seen:
-                raise ApiError(
-                    "upstream",
-                    "The api's documentation checks did not come to an end.",
-                    200,
-                )
-            seen.add(cursor)
-            page = object_of(
-                session.client.get(
-                    "/docs/checks", query_of(dataset=dataset, limit=500, cursor=cursor)
-                ),
-                "the documentation checks",
-            )
-            items += objects_in(page, "items")
-        else:
-            raise ApiError(
-                "upstream",
-                "The api's documentation checks did not come to an end.",
-                200,
-            )
 
         failures: list[str] = []
         for item in items:
@@ -118,10 +97,15 @@ def check(
                     )
         for exception in unused:
             target = object_of(exception["target"], "the exception target")
-            if "column" in target or "table" in target:
-                kind = "column" if "column" in target else "table"
+            if "column" in target:
                 named = (
-                    f"{kind} {one_line(target[kind])} in {one_line(target['dataset'])}"
+                    f"column {one_line(target['column'])} "
+                    f"in {one_line(target['dataset'])}"
+                )
+            elif "table" in target:
+                named = (
+                    f"table '{one_line(target['table'])}' "
+                    f"in {one_line(target['dataset'])}"
                 )
             else:
                 named = " ".join(
@@ -145,7 +129,11 @@ def check(
             for failure in failures:
                 line(console, failure)
             if failures:
-                line(console, f"{len(failures)} checks fail.")
+                count = len(failures)
+                line(
+                    console,
+                    f"{count} {'check fails' if count == 1 else 'checks fail'}.",
+                )
             else:
                 noun = "dataset" if total == 1 else "datasets"
                 line(

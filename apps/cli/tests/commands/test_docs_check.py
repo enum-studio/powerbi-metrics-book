@@ -75,7 +75,7 @@ def test_check_prints_only_failing_results_as_plain_one_line_text(serve: Serve) 
         ({"metric": "gmv"}, "metric gmv"),
         ({"dataset": "Sales"}, "dataset Sales"),
         (
-            {"dataset": "Sales", "table": "'Sales lines'"},
+            {"dataset": "Sales", "table": "Sales lines"},
             "table 'Sales lines' in Sales",
         ),
         (
@@ -102,7 +102,7 @@ def test_check_fails_on_an_unused_exception(
     assert result.exit_code == 1, result.stderr
     assert result.stdout.splitlines() == [
         f"conventions.exception_unused: column_fields.unit on {printed}: passes",
-        "1 checks fail.",
+        "1 check fails.",
     ]
     assert len(seen) == 1
 

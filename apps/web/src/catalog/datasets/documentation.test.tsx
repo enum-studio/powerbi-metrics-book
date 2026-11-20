@@ -91,7 +91,7 @@ for (const { kind, fields, values } of CASES) {
 
   it(`shows unwritten ${kind} fields even when optional`, () => {
     const html = render(kind, {
-      ...Object.fromEntries(Object.keys(values).map((key) => [key, ""])),
+      ...Object.fromEntries(Object.keys(values).map((key) => [key, null])),
       custom: {},
     });
     expect(html.match(/Not written yet/g)).toHaveLength(fields.length + 2);

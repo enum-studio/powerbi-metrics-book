@@ -23,7 +23,7 @@ const BUILT_IN_FIELDS = {
   ],
 } as const;
 
-/** A custom field's value in words; the conventions have already checked it against the field's type. */
+/** A documentation field's value in words; the conventions have already checked a custom field against its type. */
 function fieldText(value: unknown): string | null {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -54,8 +54,8 @@ function Part({
 
 /**
  * What the book says about a dataset, table or column, in the same order on
- * each: the description, Power BI's own where it differs, the fields the
- * company's conventions ask for, then the facts the mirror holds.
+ * each: the definition, Power BI's description where it differs, the kind's
+ * built-in fields, its custom fields, then the facts the mirror holds.
  */
 export function Documentation({
   kind,
