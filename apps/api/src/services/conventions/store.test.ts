@@ -143,8 +143,10 @@ describe("resolve", () => {
     [{ naming: { kinds: ["total"] } }, "naming.kinds.0"],
     [{ naming: { qualifier_order: ["vat", "channel"] } }, "naming.qualifiers"],
     [
-      { drafting: { dismiss: [{ name_pattern: "(", reason: "Broken" }] } },
-      "drafting.dismiss.0.name_pattern",
+      {
+        drafting: { dismiss: [{ prefix: "_", name: "Test", reason: "Both" }] },
+      },
+      "drafting.dismiss.0",
     ],
     [
       {
@@ -158,6 +160,20 @@ describe("resolve", () => {
     expect(
       validateConventions(document).map((problem) => problem.path),
     ).toContain(path);
+  });
+
+  it.each([
+    { prefix: "_", name: "Test", reason: "Both." },
+    { reason: "Neither." },
+    { name_pattern: "^_", reason: "Old key." },
+  ])("explains how to fix an invalid dismiss rule: %o", (rule) => {
+    expect(
+      validateConventions({ drafting: { dismiss: [rule] } }),
+    ).toContainEqual({
+      path: "drafting.dismiss.0",
+      message:
+        'A dismiss rule gives a prefix or a name, not both, and a reason. `name_pattern` is gone: write `^_` as `prefix: "_"`.',
+    });
   });
 
   it("refuses a document that is not a mapping", () => {

@@ -1,5 +1,6 @@
 import type pg from "pg";
 import { createLogger, type Logger } from "../../log.js";
+import { isDocument } from "./rules.js";
 import { resolve, toSavablePart, validateConventions } from "./store.js";
 
 export type LegacyTransform = (
@@ -18,8 +19,77 @@ const moveChecksOff: LegacyTransform = (document) => {
     : { ...rest, checks: others, off };
 };
 
+class DraftingPatternError extends Error {
+  constructor(
+    readonly pattern: string,
+    version: number,
+  ) {
+    super(
+      `Conventions version ${String(version)} has the drafting pattern ${pattern}, which this release cannot turn into a prefix or a name. Rewrite it as a prefix or a name with \`pbmb conventions edit\` on the release before this one, then deploy again. Nothing was applied.`,
+    );
+  }
+}
+
+function textSelector(
+  pattern: string,
+  version: number,
+): { prefix: string } | { name: string } {
+  const fail = (): never => {
+    throw new DraftingPatternError(pattern, version);
+  };
+  if (!pattern.startsWith("^")) return fail();
+  let text = "";
+  for (let at = 1; at < pattern.length; at++) {
+    const char = pattern.charAt(at);
+    if (char === "$" && at === pattern.length - 1) return { name: text };
+    if (char === "\\") {
+      const escaped = pattern.charAt(++at);
+      if (!escaped || !"^$\\.*+?()[]{}|/".includes(escaped)) return fail();
+      text += escaped;
+    } else {
+      if ("^$.*+?()[]{}|".includes(char)) return fail();
+      text += char;
+    }
+  }
+  return { prefix: text };
+}
+
+const replaceDraftingPatterns: LegacyTransform = (document, version) => {
+  if (!isDocument(document.drafting)) return document;
+  const drafting = { ...document.drafting };
+  if (
+    isDocument(drafting.skip) &&
+    Array.isArray(drafting.skip.name_patterns) &&
+    drafting.skip.name_patterns.every(
+      (pattern: unknown) => typeof pattern === "string",
+    )
+  ) {
+    const { name_patterns, ...skip } = drafting.skip;
+    const prefixes: string[] = [];
+    const names: string[] = [];
+    for (const pattern of name_patterns) {
+      const selector = textSelector(pattern, version);
+      if ("prefix" in selector) prefixes.push(selector.prefix);
+      else names.push(selector.name);
+    }
+    drafting.skip = { ...skip, name_prefixes: prefixes, names };
+  }
+  if (Array.isArray(drafting.dismiss)) {
+    drafting.dismiss = drafting.dismiss.map((rule: unknown) => {
+      if (!isDocument(rule) || typeof rule.name_pattern !== "string")
+        return rule;
+      const { name_pattern, ...rest } = rule;
+      return { ...rest, ...textSelector(name_pattern, version) };
+    });
+  }
+  return { ...document, drafting };
+};
+
 /** Turns a pre-format document into the current shape. Later issues each append one transform. */
-export const LEGACY_TRANSFORMS: readonly LegacyTransform[] = [moveChecksOff];
+export const LEGACY_TRANSFORMS: readonly LegacyTransform[] = [
+  moveChecksOff,
+  replaceDraftingPatterns,
+];
 
 /**
  * Turns each stored complete document, one without `format`, into the
@@ -44,10 +114,20 @@ export async function upgradeStoredConventions(
   );
   let upgraded = 0;
   for (const { version, document, newest } of rows) {
-    const current = LEGACY_TRANSFORMS.reduce(
-      (each, transform) => transform(each, version),
-      document,
-    );
+    let current;
+    try {
+      current = LEGACY_TRANSFORMS.reduce(
+        (each, transform) => transform(each, version),
+        document,
+      );
+    } catch (error) {
+      if (!(error instanceof DraftingPatternError) || newest) throw error;
+      logger.warn(
+        "an older version of the conventions no longer resolves and was left as it was",
+        { version, pattern: error.pattern },
+      );
+      continue;
+    }
     const problems = validateConventions(current);
     if (problems.length > 0 && newest)
       throw new Error(

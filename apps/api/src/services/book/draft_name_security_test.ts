@@ -364,8 +364,8 @@ describe("a draft's name and PII", () => {
     }));
 
   it.each([
-    ["skip", { skip: { name_patterns: ["^Mmm named$"] } }],
-    ["dismiss", { dismiss: [{ name_pattern: "^Mmm named$", reason: "No." }] }],
+    ["skip", { skip: { names: ["mMM NAMED"] } }],
+    ["dismiss", { dismiss: [{ name: "mMM NAMED", reason: "No." }] }],
   ])(
     "files a shift whose base a %s rule keeps out under a copy that is not PII, though a PII one sorts first",
     (_rule, drafting) =>
@@ -680,7 +680,7 @@ describe("a dismissal rule on an older draft", () => {
       await setConventions({ db: tx }, principals.admin, {
         preset: "metrics_book",
         drafting: {
-          dismiss: [{ name_pattern: "^Ad spend$", reason: "Not a metric." }],
+          dismiss: [{ name: "aD SPEND", reason: "Not a metric." }],
         },
       });
       await draft(tx, [datasetId(sample, "Marketing")]);

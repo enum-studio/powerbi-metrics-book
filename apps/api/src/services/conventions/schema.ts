@@ -39,20 +39,7 @@ const key = z
     "Use lowercase letters, digits and underscores, starting with a letter.",
   );
 const words = z.array(z.string().min(1));
-const pattern = z
-  .string()
-  .refine(isRegExp, "This is not a valid regular expression.");
 const required = z.strictObject({ required: z.boolean() });
-
-function isRegExp(source: string): boolean {
-  try {
-    new RegExp(source, "u");
-    return true;
-  } catch (error) {
-    if (error instanceof SyntaxError) return false;
-    throw error;
-  }
-}
 
 const hasUniqueKeys = (items: { key: string }[]): boolean =>
   new Set(items.map((item) => item.key)).size === items.length;
@@ -254,10 +241,20 @@ export const conventionsSchema = z.strictObject({
       hidden_measures: z.boolean(),
       display_folders: z.array(z.string()),
       tables: z.array(z.string()),
-      name_patterns: z.array(pattern),
+      name_prefixes: z.array(z.string()),
+      names: z.array(z.string()),
     }),
     dismiss: z.array(
-      z.strictObject({ name_pattern: pattern, reason: z.string().min(1) }),
+      z.union(
+        [
+          z.strictObject({ prefix: z.string(), reason: z.string().min(1) }),
+          z.strictObject({ name: z.string(), reason: z.string().min(1) }),
+        ],
+        {
+          error:
+            'A dismiss rule gives a prefix or a name, not both, and a reason. `name_pattern` is gone: write `^_` as `prefix: "_"`.',
+        },
+      ),
     ),
   }),
   trust: z.strictObject({

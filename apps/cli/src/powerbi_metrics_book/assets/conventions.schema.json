@@ -487,7 +487,13 @@
                 "type": "string"
               }
             },
-            "name_patterns": {
+            "name_prefixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "names": {
               "type": "array",
               "items": {
                 "type": "string"
@@ -499,18 +505,36 @@
         "dismiss": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "name_pattern": {
-                "type": "string"
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "prefix": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["prefix", "reason"],
+                "additionalProperties": false
               },
-              "reason": {
-                "type": "string",
-                "minLength": 1
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["name", "reason"],
+                "additionalProperties": false
               }
-            },
-            "required": ["name_pattern", "reason"],
-            "additionalProperties": false
+            ]
           }
         }
       },

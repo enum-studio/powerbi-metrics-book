@@ -168,9 +168,10 @@ drafting:
     hidden_measures: false
     display_folders: []
     tables: []
-    name_patterns: []
+    name_prefixes: []
+    names: []
   dismiss:
-    - name_pattern: "^_"
+    - prefix: "_"
       reason: "Helper measure (name starts with an underscore)"
 trust:
   agent_verify_requires: all_checks
