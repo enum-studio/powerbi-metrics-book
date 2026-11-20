@@ -468,7 +468,7 @@ async function resolveDataset(
   return found;
 }
 
-/** Keys and table kinds from the columns, measure counts and relationships shown to the caller. */
+/** Keys and table kinds from the columns and relationships given: those a person is shown, or the whole model for a run with no person. */
 export function modelKinds(
   columns: readonly { table: string; name: string; data_type: string | null }[],
   relationships: readonly (typeof powerbiRelationship.$inferSelect)[],

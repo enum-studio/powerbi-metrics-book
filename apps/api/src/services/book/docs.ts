@@ -270,7 +270,7 @@ export async function setDocs(
       { code: "docs.field_not_on_kind", field, kind: element.kind },
     );
   }
-  if (input.custom !== undefined || input.unit !== undefined) {
+  if (input.custom !== undefined || input.unit?.trim()) {
     const rules = await currentConventions(context.db);
     if (input.custom !== undefined) {
       const kind = element.kind;

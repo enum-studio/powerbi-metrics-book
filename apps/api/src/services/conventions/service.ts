@@ -9,7 +9,11 @@ import { metric } from "../../db/schema/book.js";
 import { BOOK, requireCurator } from "../book/changes.js";
 import { visibleMetric } from "../mirror/read.js";
 import { resolveMetric } from "../book/metrics.js";
-import { unusedExceptions } from "../book/whole-book-checks.js";
+import { exceptionIndex } from "../book/checks.js";
+import {
+  checkedElements,
+  unusedExceptions,
+} from "../book/whole-book-checks.js";
 import { piiColumn, readsPii } from "../pii/rules.js";
 import { type ApplyInput, applyConventions } from "./apply.js";
 import { FIXED_RULES, isRuleOff, RULES, valueAt } from "./rules.js";
@@ -313,14 +317,22 @@ export async function unusedExceptionsAsCurator(
 ) {
   await requireCurator(context);
   const conventions = await currentConventions(context.db);
+  const allowed = await context.access.describableDatasets(context.principal);
+  const hides = !(await readsPii(context));
   if (reference !== undefined) {
-    const allowed = await context.access.describableDatasets(context.principal);
-    const hides = !(await readsPii(context));
     const found = await resolveMetric(context.db, allowed, hides, reference);
     return unusedExceptions(context, conventions, { metric: found.name });
   }
   const exceptions = await visibleExceptions(context, conventions.exceptions);
-  return unusedExceptions(context, { ...conventions, exceptions });
+  const visible = { ...conventions, exceptions };
+  // Checked on the model the curator is shown, so whether an exception is used never tells of a hidden PII column.
+  const elements = await checkedElements(
+    context,
+    { conventions: visible, exceptions: exceptionIndex(visible) },
+    allowed,
+    hides,
+  );
+  return unusedExceptions(context, visible, undefined, elements);
 }
 
 /** Every saved version, newest first, for whoever may edit the conventions. */

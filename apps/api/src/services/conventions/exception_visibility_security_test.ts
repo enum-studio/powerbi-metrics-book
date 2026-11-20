@@ -1,5 +1,7 @@
+import { eq, TransactionRollbackError } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { principals } from "../../../test/deps.js";
+import { TEST_RUNNER } from "../../../test/database.js";
+import { principals, testPool } from "../../../test/deps.js";
 import {
   asPerson,
   everyWorkspace,
@@ -12,8 +14,11 @@ import {
   useMirror,
 } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
+import { createDb } from "../../db/client.js";
+import { setRole } from "../../../test/sample-mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
 import { term } from "../../db/schema/book.js";
+import { powerbiColumn, powerbiRelationship } from "../../db/schema/mirror.js";
 import type { Principal } from "../../principal.js";
 import { TOOLS } from "../../mcp/tools/index.js";
 import {
@@ -74,6 +79,62 @@ const onTheConnector = async (tx: Db, principal: Principal) => {
   const answer = await tool?.call(asPerson(principal, { db: tx }), {});
   return answer?.content.map((block) => block.text).join("") ?? "";
 };
+
+describe("an unused exception on an element", () => {
+  it("is judged on the model the curator is shown, so it never tells of a hidden PII column", () =>
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        // Order date is numeric and joined only to the Date table's Date column, a PII column.
+        await setRole(tx, "worker_rw");
+        await tx
+          .update(powerbiRelationship)
+          .set({ cardinality: "many_to_one" })
+          .where(eq(powerbiRelationship.dataset_id, id.sales));
+        await tx
+          .update(powerbiColumn)
+          .set({ data_type: "Int64" })
+          .where(eq(powerbiColumn.id, id.order_date));
+        await tx.insert(powerbiColumn).values({
+          dataset_id: id.sales,
+          table_id: id.date_table,
+          name: "Date",
+          data_type: "DateTime",
+          column_type: "data",
+        });
+        await setRole(tx, "api_rw");
+        await tx.insert(piiRule).values({
+          kind: "column",
+          table_name: "Date",
+          name: "Date",
+          set_by_kind: "person",
+          set_by_id: principals.admin.id,
+          set_via: "browser",
+          pii: true,
+        });
+        const unit = {
+          rule: "column_fields.unit",
+          dataset: "Sales",
+          column: "'Sales'[Order date]",
+          reason: "Counted, not measured.",
+        };
+        await setConventions({ db: tx }, principals.admin, {
+          format: 1,
+          exceptions: [unit],
+        });
+        // To a PII reader Order date is a key, asked for no unit, so the exception is unused.
+        const reader = reaching({ powerbi_app_ids: [id.sales_app] }, "curator");
+        expect(
+          await unused(tx, {
+            ...reader,
+            roles: [...reader.roles, "pii_reader"],
+          }),
+        ).toEqual([unit]);
+        // To a curator who may not read PII it is no key: the exception is in use, and nothing is listed.
+        expect(await unused(tx, curator)).toEqual([]);
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
+});
 
 describe("an exception on a metric the caller cannot see", () => {
   it("is left out of the conventions agents read, on the connector too", () =>
