@@ -909,7 +909,7 @@ PII column. Counts stay whole. The stored company part is returned whole to
 a principal with `book:edit_conventions`: export and apply must round-trip
 the file, and the deployment repository already holds those targets.
 `GET /api/v1/conventions` and `get_conventions` return counts instead of
-that list. This is a separate door from the admin-only company-part export
+that list. This is a separate door from the company-part export requiring `book:edit_conventions`
 (`services/conventions/exception_visibility_security_test.ts`).
 
 The admin dataset list exposes dataset names and counts beyond the admin's
@@ -1225,8 +1225,7 @@ Crossing: files an admin brings in, and ones they take out.
 
 - `conventions.yml` sits beside `book.yml`; book export leaves conventions
   out of its answer and the CLI writes the separate file and guide.
-  Import still accepts older inline conventions. The guide path resolves
-  inside the deployment folder, including through symlinks. The CLI refuses
+  Import still accepts older inline conventions. A guide path must resolve inside the deployment folder; a symlink pointing outside it is refused. The CLI refuses
   to write the conventions or guide through a symlink. Conventions YAML
   refuses anchors and aliases (`apps/cli/tests/commands/test_conventions_file.py`).
 - Saving, diffing and applying conventions need `book:edit_conventions`.
@@ -1575,7 +1574,7 @@ What the controls above do not close, and why it is accepted for now:
 | Passkey user verification is checked after Better Auth verifies the response, not by the WebAuthn library | Better Auth's passkey plugin verifies with `requireUserVerification: false` and has no option to change it | its `afterVerification` hooks refuse a registration or a sign-in without the UV flag before a passkey is stored or a session made, from the flags the signature covers |
 | Better Auth is a young OAuth server | advisories in 2026, some critical, all fixed | pinned exact, advisories read on every bump, our own flow tests with the refresh-reuse test written first |
 | A person presses Allow for a deceptive client | consent cannot read intent | the consent screen names the client and the redirect host; grants are revocable; audit records `via` and `client_id` |
-| A token with `book:edit_conventions` weakens checks through `off`, exceptions, baselines or `required: false`, so `agent_verify_requires` means less in effect | the token's role is the company's decision; a baseline excepts only a target the change newly breaks and the caller can see, not existing failures or changes to exceptions alone | accepted: `agent_verified` is the agent's own tier; `trust.*` changes only from a browser; `show --json` and `whoami` report off rules and exception counts; every change and verification is in `book_change` |
+| A token with `book:edit_conventions` weakens checks through `off`, exceptions, baselines or `required: false`, so `agent_verify_requires` means less in effect | the token's role is the company's decision; a baseline excepts only a target the change newly breaks and the caller can see, not existing failures or changes to exceptions alone | accepted: `agent_verified` is the agent's own tier; `trust.*` changes only from a browser; `show --json` and the MCP `whoami` tool report off rules and exception counts; every change and verification is in `book_change` |
 | Conventions give hints about hidden elements | whole exception and failure counts, and `no_such_target`, give hints to someone holding the deployment's `conventions.yml`; a dataset addressed by id in an exception or check target says another dataset shares its name, even when that other dataset is hidden | accepted: apply and unused lists name only visible targets; element checks show only their own exception; company-part export requires `book:edit_conventions` and must round-trip the file |
 | Text in data steers an agent's answer | the connector returns what Power BI, the book and threads say | the connector cannot change the book; approval needs a browser; agent rule 5 |
 | A question or search holds personal data the server cannot redact | free text may name a customer or colleague; the server has no model to identify it | owner, curator and admin readers only by default; 180-day retention, at most 365; request deletion and deletion with the principal; capture can be turned off; tool instructions forbid copying result values |

@@ -1,6 +1,7 @@
-"""Passes only for the intended dataset and a reason about campaign spend."""
+"""Passes only for the intended dataset and a reason drawn from when_to_use."""
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -14,10 +15,11 @@ try:
     answer = json.loads(path.read_text())
 except json.JSONDecodeError:
     fail("answer.json is not JSON")
-if not isinstance(answer, dict) or answer.get("dataset") != load_state()["dataset"]:
+state = load_state()
+if not isinstance(answer, dict) or answer.get("dataset") != state["dataset"]:
     fail("the answer does not choose the dataset whose documentation fits")
 reason = answer.get("reason")
-if not isinstance(reason, str) or not all(
-    word in reason.lower() for word in ("campaign", "spend")
+if not isinstance(reason, str) or not re.search(
+    rf"\b{re.escape(state['reason_word'])}\b", reason, re.IGNORECASE
 ):
-    fail("the reason does not explain the choice for campaign spend")
+    fail("the reason does not explain the documented use of this dataset")
