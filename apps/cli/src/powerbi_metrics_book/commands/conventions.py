@@ -214,19 +214,19 @@ def presets(context: typer.Context, json_output: JsonOption = False) -> None:
 
 def _company_changes(
     before: dict[str, Json], after: dict[str, Json], rule_ids: set[str] | None = None
-) -> list[dict[str, Json]]:
-    changes: list[dict[str, Json]] = []
+) -> list[Json]:
+    changes: list[Json] = []
 
-    def exceptions_by_rule(value: Json) -> dict[str, Json]:
-        grouped: dict[str, Json] = {}
+    def exceptions_by_rule(value: Json) -> dict[str, list[Json]]:
+        grouped: dict[str, list[Json]] = {}
         for item in sorted(
             objects_in({"items": value or []}, "items"),
             key=lambda item: (
                 str(item["rule"]),
                 json.dumps(
                     {
-                        key: value
-                        for key, value in item.items()
+                        key: field
+                        for key, field in item.items()
                         if key not in ("rule", "reason")
                     },
                     sort_keys=True,
@@ -234,9 +234,7 @@ def _company_changes(
                 str(item["reason"]),
             ),
         ):
-            entries = grouped.setdefault(str(item["rule"]), [])
-            if isinstance(entries, list):
-                entries.append(item)
+            grouped.setdefault(str(item["rule"]), []).append(item)
         return grouped
 
     def compare(
@@ -246,16 +244,21 @@ def _company_changes(
             left, right = before.get(key), after.get(key)
             path = f"{prefix}.{key}" if prefix else key
             if path == "exceptions":
-                compare(exceptions_by_rule(left), exceptions_by_rule(right))
+                compare(
+                    dict(exceptions_by_rule(left)),
+                    dict(exceptions_by_rule(right)),
+                    "exceptions",
+                )
             elif path not in (rule_ids or set()) and (
-                isinstance(left, dict) or isinstance(right, dict)
+                (isinstance(left, dict) and bool(left))
+                or (isinstance(right, dict) and bool(right))
             ):
                 compare(
                     left if isinstance(left, dict) else {},
                     right if isinstance(right, dict) else {},
                     path,
                 )
-            elif left != right:
+            elif left != right or (key in before) != (key in after):
                 changes.append({"path": path, "before": left, "after": right})
 
     compare(before, after)
@@ -275,7 +278,7 @@ def diff(
         listed = object_of(session.client.get("/conventions/rules"), "the rules")
         rule_ids = {string_field(item, "id") for item in objects_in(listed, "rules")}
         changes = _company_changes(current, document, rule_ids)
-        difference: dict[str, Json] = {"changes": [change for change in changes]}
+        difference: dict[str, Json] = {"changes": changes}
         session.emit(difference, lambda console: _print_changes(console, difference))
         if changes:
             raise typer.Exit(1)
@@ -349,11 +352,11 @@ def _rule_value(document: dict[str, Json], rule: str) -> Json:
     return value
 
 
-def _print_applied(
+def print_applied(
     console: Console,
     answer: dict[str, Json],
     document: dict[str, Json],
-    changes: list[dict[str, Json]] | None = None,
+    changes: list[Json] | None = None,
     dry_run: bool = False,
 ) -> None:
     rules = answer["changed_rules"]
@@ -375,25 +378,39 @@ def _print_applied(
             else set()
         )
         for key in sorted(
-            {str(change["path"]).split(".")[0] for change in changes} - covered
+            {
+                str(change["path"]).split(".")[0]
+                for change in objects_in({"changes": changes}, "changes")
+            }
+            - covered
         ):
             line(console, f"{key}: changed.")
     added = objects_in(answer, "exceptions_added")
     if added:
         line(
             console,
-            f"would add {len(added)} exceptions."
+            f"Would add {len(added)} exception{'s' if len(added) != 1 else ''}."
             if dry_run
             else f"{len(added)} exceptions added.",
         )
         line(console, yaml.safe_dump(added, sort_keys=False))
 
 
-def _preview_apply(
+def preview_apply(
     session: Session, document: dict[str, Json]
-) -> tuple[dict[str, Json], list[dict[str, Json]]]:
+) -> tuple[dict[str, Json], list[Json]]:
     current = object_of(session.client.get("/conventions/company"), "the company part")
-    changes = _company_changes(current, document)
+    unchanged = {**document, "exceptions": None} == {
+        **current,
+        "exceptions": None,
+    } and sorted(
+        json.dumps(item, sort_keys=True)
+        for item in objects_in({"items": document.get("exceptions") or []}, "items")
+    ) == sorted(
+        json.dumps(item, sort_keys=True)
+        for item in objects_in({"items": current.get("exceptions") or []}, "items")
+    )
+    changes = [] if unchanged else _company_changes(current, document)
     preview = (
         object_of(
             session.client.request(
@@ -403,7 +420,7 @@ def _preview_apply(
             ),
             "the apply result",
         )
-        if changes
+        if not unchanged
         else {"changed_rules": [], "now_failing": {}, "exceptions_added": []}
     )
     return preview, changes
@@ -411,14 +428,14 @@ def _preview_apply(
 
 def _apply(
     session: Session, document: dict[str, Json], yes: bool, dry_run: bool = False
-) -> tuple[dict[str, Json], list[dict[str, Json]]]:
-    preview, changes = _preview_apply(session, document)
+) -> tuple[dict[str, Json], list[Json]]:
+    preview, changes = preview_apply(session, document)
     if dry_run or not changes:
         return preview, changes
     if session.as_json and not yes:
         raise typer.BadParameter("--json cannot ask; add --yes.")
     if not session.as_json:
-        _print_applied(Console(), preview, document, changes, True)
+        print_applied(Console(), preview, document, changes, True)
     if not yes and not typer.confirm("Save these as the next version?", err=True):
         raise typer.Exit(1)
     return object_of(
@@ -473,7 +490,7 @@ def apply_file(
             if dry_run:
                 session.emit(
                     preview,
-                    lambda console: _print_applied(
+                    lambda console: print_applied(
                         console, preview, document, dry_run=True
                     ),
                 )
@@ -486,7 +503,7 @@ def apply_file(
             answer["exceptions_added"] = preview["exceptions_added"]
         session.emit(
             answer,
-            lambda console: _print_applied(console, answer, document, changes, dry_run),
+            lambda console: print_applied(console, answer, document, changes, dry_run),
         )
 
 
@@ -555,7 +572,7 @@ def reset(
                 ]
         answer, changes = _apply(session, document, yes)
         session.emit(
-            answer, lambda console: _print_applied(console, answer, document, changes)
+            answer, lambda console: print_applied(console, answer, document, changes)
         )
 
 

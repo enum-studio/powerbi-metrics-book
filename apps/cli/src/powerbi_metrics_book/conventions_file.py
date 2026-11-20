@@ -63,6 +63,21 @@ def read_conventions(path: Path) -> dict[str, Json]:
         raise typer.BadParameter(f"{path}: {error}") from error
 
 
+def check_output_paths(
+    document: dict[str, Json], path: Path, inline_guide: bool = False
+) -> None:
+    targets = [path]
+    if isinstance(document.get("guide"), str) and not inline_guide:
+        targets.extend(
+            [path.parent / "conventions", path.parent / "conventions/guide.md"]
+        )
+    for target in targets:
+        if target.is_symlink() or not target.resolve().is_relative_to(
+            path.parent.resolve()
+        ):
+            raise typer.BadParameter(f"Cannot write {target}: unsafe output path.")
+
+
 def write_conventions(
     document: dict[str, Json], path: Path, inline_guide: bool = False
 ) -> None:
@@ -72,12 +87,6 @@ def write_conventions(
     ordered.update(
         {key: value for key, value in document.items() if key not in ordered}
     )
-
-    def refuse_unsafe(target: Path) -> None:
-        if target.is_symlink() or not target.resolve().is_relative_to(
-            path.parent.resolve()
-        ):
-            raise typer.BadParameter(f"Cannot write {target}: unsafe output path.")
 
     def write(target: Path, text: str) -> None:
         with os.fdopen(
@@ -90,12 +99,7 @@ def write_conventions(
             stream.write(text)
 
     try:
-        for target in (
-            path,
-            path.parent / "conventions",
-            path.parent / "conventions/guide.md",
-        ):
-            refuse_unsafe(target)
+        check_output_paths(document, path, inline_guide)
         if "guide" in ordered and not inline_guide:
             guide = ordered["guide"]
             if isinstance(guide, str):

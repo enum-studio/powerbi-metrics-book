@@ -356,6 +356,8 @@ def test_export_refuses_symlink_targets(
     )
     assert result.exit_code == 2, result.output
     assert str(target) in result.output
+    if command == "admin":
+        assert not (folder / "book.yml").exists()
     assert protected.read_text() == "Keep this."
     assert sorted(item.name for item in outside.iterdir()) == ["guide.md"]
 
@@ -414,7 +416,7 @@ def test_diff_exception_order_and_rule_reporting(serve: Serve, tmp_path: Path) -
     path.write_text(yaml.safe_dump({**company, "exceptions": [first]}))
     result = run("conventions", "diff", str(path))
     assert result.exit_code == 1
-    assert "naming.kinds" in result.stdout
+    assert "exceptions.naming.kinds:" in result.stdout
 
 
 @pytest.mark.parametrize("changed", [True, False])
@@ -494,7 +496,10 @@ def test_baseline_json_requires_yes_before_file_write(
     assert path.read_text() == original
 
 
-def test_baseline_dry_run_says_would_add(serve: Serve, tmp_path: Path) -> None:
+@pytest.mark.parametrize("count", [1, 2])
+def test_baseline_dry_run_says_would_add(
+    serve: Serve, tmp_path: Path, count: int
+) -> None:
     path = tmp_path / "conventions.yml"
     path.write_text("format: 1\n")
     serve(
@@ -504,7 +509,12 @@ def test_baseline_dry_run_says_would_add(serve: Serve, tmp_path: Path) -> None:
                 "changed_rules": ["naming.case"],
                 "now_failing": {},
                 "exceptions_added": [
-                    {"rule": "naming.case", "metric": "gmv", "reason": "Old"}
+                    {
+                        "rule": "naming.case",
+                        "metric": f"metric_{index}",
+                        "reason": "Old",
+                    }
+                    for index in range(count)
                 ],
                 "version": 2,
             },
@@ -514,7 +524,7 @@ def test_baseline_dry_run_says_would_add(serve: Serve, tmp_path: Path) -> None:
         "conventions", "apply", str(path), "--baseline", "--reason", "Old", "--dry-run"
     )
     assert result.exit_code == 0
-    assert "would add 1 exceptions" in result.stdout
+    assert f"Would add {count} exception{'s' if count != 1 else ''}." in result.stdout
 
 
 def test_reset_unknown_rule(serve: Serve) -> None:
@@ -563,3 +573,139 @@ def test_export_resolved_guide_inline(serve: Serve, tmp_path: Path) -> None:
         "naming": {"case": "none"},
     }
     assert not (tmp_path / "conventions").exists()
+
+
+@pytest.mark.parametrize(
+    "book_changed,conventions_changed", [(False, True), (True, False), (False, False)]
+)
+def test_admin_import_separate_previews(
+    serve: Serve, tmp_path: Path, book_changed: bool, conventions_changed: bool
+) -> None:
+    book = tmp_path / "book.yml"
+    book.write_text("format: 1\n")
+    company = {"format": 1, "drafting": {"name_hints": {"currency": ["EUR"]}}}
+    (tmp_path / "conventions.yml").write_text(yaml.safe_dump(company))
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/company"):
+            return json_response(200, {"format": 1} if conventions_changed else company)
+        if request.url.path.endswith("/import"):
+            return json_response(
+                200,
+                {
+                    "changes": [
+                        {"path": "settings.example", "before": None, "after": True}
+                    ]
+                    if book_changed
+                    else []
+                },
+            )
+        return json_response(
+            200,
+            {
+                "changed_rules": [],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": 2,
+            },
+        )
+
+    seen = serve(answer)
+    result = run("admin", "import", str(book), input="y\n")
+    assert result.exit_code == 0, result.output
+    conventions_preview, book_preview = result.stdout.split("Book:")
+    assert "Conventions:" in conventions_preview
+    assert ("No change." in conventions_preview) == (not conventions_changed)
+    assert ("No change." in book_preview) == (not book_changed)
+    changed = book_changed or conventions_changed
+    assert ("Nothing to change: the deployment already matches." in result.stdout) == (
+        not changed
+    )
+    assert ("Apply these changes?" in result.stdout) == changed
+    if not changed:
+        assert not any(
+            request.method == "POST"
+            for request in seen
+            if not request.url.path.endswith("/import")
+        )
+        assert all(
+            not sent(request)["apply"]
+            for request in seen
+            if request.url.path.endswith("/import")
+        )
+
+
+@pytest.mark.parametrize("current", [{"format": 1}, {"format": 1, "naming": None}])
+def test_apply_empty_mapping_is_a_change(
+    serve: Serve, tmp_path: Path, current: dict[str, object]
+) -> None:
+    path = tmp_path / "conventions.yml"
+    path.write_text("format: 1\nnaming: {}\n")
+    seen = serve(
+        lambda request: json_response(
+            200,
+            current
+            if request.method == "GET"
+            else {
+                "changed_rules": [],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": 2,
+            },
+        )
+    )
+    result = run("conventions", "apply", str(path), "--yes")
+    assert result.exit_code == 0, result.output
+    assert "No change." not in result.stdout
+    assert [
+        sent(request)["dry_run"] for request in seen if request.method == "POST"
+    ] == [True, False]
+
+
+def test_resolved_export_ignores_guide_symlink(serve: Serve, tmp_path: Path) -> None:
+    folder = tmp_path / "output"
+    folder.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (folder / "conventions").symlink_to(outside)
+    serve(
+        lambda request: json_response(
+            200, {"preset": "minimal", "guide": "Inline guide.", "rules": {}}
+        )
+    )
+    path = folder / "conventions.yml"
+    result = run("conventions", "export", "--resolved", "--output", str(path))
+    assert result.exit_code == 0, result.output
+    assert yaml.safe_load(path.read_text())["guide"] == "Inline guide."
+    assert list(outside.iterdir()) == []
+
+
+def test_reset_all_keeps_only_format_and_preset(serve: Serve) -> None:
+    company = {
+        "format": 1,
+        "preset": "minimal",
+        "naming": {"case": "none"},
+        "off": ["naming.case"],
+        "exceptions": [{"rule": "naming.case", "metric": "gmv", "reason": "Old"}],
+        "drafting": {"name_hints": {"currency": ["EUR"]}},
+        "guide": "Our guide.",
+    }
+    seen = serve(
+        lambda request: json_response(
+            200,
+            company
+            if request.method == "GET"
+            else {
+                "changed_rules": ["naming.case"],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": 2,
+            },
+        )
+    )
+    result = run("conventions", "reset", "--yes")
+    assert result.exit_code == 0, result.output
+    assert [sent(request) for request in seen if request.method == "POST"] == [
+        {"conventions": {"format": 1, "preset": "minimal"}, "dry_run": dry_run}
+        for dry_run in [True, False]
+    ]

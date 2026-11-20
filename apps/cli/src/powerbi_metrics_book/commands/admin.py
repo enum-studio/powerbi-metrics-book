@@ -22,8 +22,12 @@ from powerbi_metrics_book.answers import (
 )
 from powerbi_metrics_book.calls import show_done, show_list, show_object
 from powerbi_metrics_book.client import ApiError, Json, api_path
-from powerbi_metrics_book.commands.conventions import _preview_apply, _print_applied
-from powerbi_metrics_book.conventions_file import read_conventions, write_conventions
+from powerbi_metrics_book.commands.conventions import preview_apply, print_applied
+from powerbi_metrics_book.conventions_file import (
+    check_output_paths,
+    read_conventions,
+    write_conventions,
+)
 from powerbi_metrics_book.output import FAILED, JsonOption, open_session
 from powerbi_metrics_book.pii_ref import PiiReference, parse_ref
 from powerbi_metrics_book.tables import line, print_fields, print_table
@@ -873,6 +877,8 @@ def export(
         answer = {**answer, "yaml": yaml_text, "conventions": company}
         if output is not None:
             try:
+                check_output_paths({}, output)
+                check_output_paths(company, output.parent / "conventions.yml")
                 output.write_text(yaml_text, encoding="utf-8")
                 write_conventions(company, output.parent / "conventions.yml")
             except OSError as error:
@@ -924,18 +930,22 @@ def import_book(
             ),
             "the difference",
         )
-        conventions_changes: list[dict[str, Json]] = []
+        conventions_changes: list[Json] = []
         if company is not None:
-            preview, conventions_changes = _preview_apply(session, company)
+            preview, conventions_changes = preview_apply(session, company)
             difference["conventions"] = preview
             if not session.as_json:
-                _print_applied(Console(), preview, company, conventions_changes, True)
+                line(Console(), "Conventions:")
+                print_applied(Console(), preview, company, conventions_changes, True)
         if session.as_json and not yes:
             session.emit(difference, lambda console: None)
             return
         if not session.as_json:
+            line(Console(), "Book:")
             _show_difference(Console(), difference)
         if not objects_in(difference, "changes") and not conventions_changes:
+            if not session.as_json:
+                line(Console(), "Nothing to change: the deployment already matches.")
             return
         if not yes:
             typer.confirm("Apply these changes?", abort=True)
@@ -957,6 +967,6 @@ def import_book(
 def _show_difference(console: Console, difference: dict[str, Json]) -> None:
     changes = objects_in(difference, "changes")
     if not changes:
-        console.print(Text("Nothing to change: the deployment already matches."))
+        line(console, "No change.")
         return
     print_table(console, changes, ["path", "before", "after"])
