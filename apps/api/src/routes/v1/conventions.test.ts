@@ -7,6 +7,7 @@ import {
   TEST_PUBLIC_BASE_URL,
 } from "../../../test/deps.js";
 import { MemorySettings } from "../../../test/doubles.js";
+import { MAX_BODY_BYTES } from "../../http/security-headers.js";
 import { startOAuth } from "../../../test/sign-in-support.js";
 import { assignRole } from "../../services/auth/roles.js";
 import { FIXED_RULES, RULES } from "../../services/conventions/rules.js";
@@ -200,4 +201,34 @@ it("answers a metric's failure under an exception as passing with its reason, an
     metric: name,
     reason: baseline,
   });
+});
+
+it("takes a part with 9,000 exceptions, over the 1 MiB other routes keep, and refuses a body over 8 MiB", async () => {
+  const admin = await signedIn("admin");
+  const exceptions = Array.from({ length: 9_000 }, (_, at) => ({
+    rule: "column_fields.definition",
+    dataset: "Sales",
+    column: `'Sales'[Column ${String(at).padStart(4, "0")}]`,
+    reason: "Columns in use before the documentation rules.",
+  }));
+  const part = { format: 1, exceptions };
+  expect(JSON.stringify(part).length).toBeGreaterThan(MAX_BODY_BYTES);
+  const applied = await admin("POST", "/api/v1/conventions/apply", {
+    conventions: part,
+    dry_run: false,
+  });
+  expect(applied.status).toBe(200);
+  const company = await admin("GET", "/api/v1/conventions/company");
+  expect(await company.json()).toEqual(part);
+  const oversized = { ...part, guide: "x".repeat(8 * 1024 * 1024) };
+  for (const [method, path, body] of [
+    ["PUT", "/api/v1/conventions", oversized],
+    ["POST", "/api/v1/conventions/diff", oversized],
+    [
+      "POST",
+      "/api/v1/conventions/apply",
+      { conventions: oversized, dry_run: true },
+    ],
+  ] as const)
+    expect((await admin(method, path, body)).status).toBe(413);
 });
