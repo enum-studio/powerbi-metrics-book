@@ -458,10 +458,11 @@ tabs and opens on Documentation; a dataset page gains a Documentation tab after 
 Martin's asking: a table and a column are read like a catalog's entries, as Secoda shows them, and a
 click that lands in the diagram loses the page a person meant to open.
 
-**Replaced in part, 2026-11-19: "Definition and each kind's fields come before Details" below replaces the shared `element_fields` list and its order with built-in fields and per-kind custom lists.** Documentation reads
-`GET /api/v1/elements/:kind/:id/docs` and the conventions, and shows the description, Power BI's
-description where it differs, each `element_fields` custom field, then the mirror's facts, in that order
-on every kind, so the structure is the company's (rule 11) and no field is named in code. The Columns
+**Replaced in part, 2026-11-19: "Definition and each kind's fields come before Details" below replaces
+the shared `element_fields` list and its order with built-in fields and per-kind custom lists.**
+Documentation reads `GET /api/v1/elements/:kind/:id/docs` and the conventions, and shows the
+description, Power BI's description where it differs, each `element_fields` custom field, then the
+mirror's facts, in that order on every kind, so the structure is the company's (rule 11) and no field is named in code. The Columns
 and Measures tabs list every field flat, A to Z, with its folder, so the filter searches the whole table;
 the first 100 show, as in the tree. "Show Order lines in the diagram" on a variant and "Show in the
 diagram" on a term still open the diagram, since they say so.

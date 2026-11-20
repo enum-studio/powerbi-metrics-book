@@ -9,7 +9,6 @@ takes its file approach from Metrics Book's project conventions spec
 ## Where the code differs
 
 - Off-rule and exception counts are on the MCP `whoami` tool, not `pbmb whoami`. The MCP handler calls `weakenedBy`; the CLI identity answer does not include those counts.
-
 - An exception's table target is the bare name, such as `table: Sales lines` with `dataset`, rather than `'<table>'`. A column stays `'<table>'[<column>]`. This matches how table names are stored. `pbmb docs check` prints a table as `table 'Sales lines' in Sales` to keep its kind and dataset clear.
 - The Documentation component fixes the built-in fields' order in code; the conventions set requirements and each kind's custom list. Built-in fields are part of the product's interface, so optional fields still appear.
 - `apply --baseline` adds only visible targets newly broken by the change. Existing failures and exception-only changes add none. This keeps a baseline from hiding unrelated failures. Failure counts stay whole.

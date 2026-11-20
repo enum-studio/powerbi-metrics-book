@@ -11,10 +11,10 @@ by_name = {
     for each in pbmb_json("datasets", "list", "--limit", "500")["items"]
 }
 for name, when_to_use in {
-    "Sales": "Use for ecommerce reporting: purchases made through the website. "
-    "Filter Channel to Web. For purchases taken at a shop counter, use Retail.",
-    "Retail": "Use for purchases taken at a shop counter, with each location's stock. "
-    "For purchases made through the website, use Sales.",
+    "Retail": "Use for shop stock and budget. Order lines arrive here only on Mondays, "
+    "so for shop purchases since the last Monday, use Sales.",
+    "Sales": "Use for orders from every channel. "
+    "Shop purchases are the rows where Channel is Store.",
 }.items():
     pbmb("docs", "set", "dataset", by_name[name], "--when-to-use", when_to_use)
-save_state({"dataset": "Sales", "reason_word": "ecommerce"})
+save_state({"dataset": "Sales", "reason_word": "Monday"})

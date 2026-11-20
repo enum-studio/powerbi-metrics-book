@@ -606,7 +606,7 @@ def edit(context: typer.Context, json_output: JsonOption = False) -> None:
         typer.echo(
             "Editing needs a terminal and $EDITOR. Without them, run "
             "`pbmb conventions export`, change the file, then `pbmb conventions "
-            "import <file>`.",
+            "apply <file>`.",
             err=True,
         )
         raise typer.Exit(2)

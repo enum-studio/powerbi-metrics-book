@@ -909,7 +909,8 @@ PII column. Counts stay whole. The stored company part is returned whole to
 a principal with `book:edit_conventions`: export and apply must round-trip
 the file, and the deployment repository already holds those targets.
 `GET /api/v1/conventions` and `get_conventions` return counts instead of
-that list. This is a separate door from the company-part export requiring `book:edit_conventions`
+that list. This is a separate door from the company-part export requiring
+`book:edit_conventions`
 (`services/conventions/exception_visibility_security_test.ts`).
 
 The admin dataset list exposes dataset names and counts beyond the admin's
@@ -1225,9 +1226,11 @@ Crossing: files an admin brings in, and ones they take out.
 
 - `conventions.yml` sits beside `book.yml`; book export leaves conventions
   out of its answer and the CLI writes the separate file and guide.
-  Import still accepts older inline conventions. A guide path must resolve inside the deployment folder; a symlink pointing outside it is refused. The CLI refuses
-  to write the conventions or guide through a symlink. Conventions YAML
-  refuses anchors and aliases (`apps/cli/tests/commands/test_conventions_file.py`).
+  Import still accepts older inline conventions. A guide path must resolve
+  inside the deployment folder; a symlink pointing outside it is refused.
+  The CLI refuses to write the conventions or guide through a symlink.
+  Conventions YAML refuses anchors and aliases
+  (`apps/cli/tests/commands/test_conventions_file.py`).
 - Saving, diffing and applying conventions need `book:edit_conventions`.
   `PUT /api/v1/conventions`, `POST /api/v1/conventions/diff` and
   `POST /api/v1/conventions/apply` accept up to 8 MiB so a baseline on a

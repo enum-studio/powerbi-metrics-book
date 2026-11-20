@@ -1125,6 +1125,8 @@ def test_edit_refuses_without_a_terminal_or_an_editor(
     assert without_terminal.exit_code == 2
     assert without_editor.exit_code == 2
     assert "conventions export" in without_terminal.stderr
+    assert "pbmb conventions apply <file>" in without_terminal.stderr
+    assert "pbmb conventions apply <file>" in without_editor.stderr
     assert seen == []
 
 

@@ -20,6 +20,6 @@ if not isinstance(answer, dict) or answer.get("dataset") != state["dataset"]:
     fail("the answer does not choose the dataset whose documentation fits")
 reason = answer.get("reason")
 if not isinstance(reason, str) or not re.search(
-    rf"\b{re.escape(state['reason_word'])}\b", reason, re.IGNORECASE
+    rf"\b{re.escape(state['reason_word'])}", reason, re.IGNORECASE
 ):
     fail("the reason does not explain the documented use of this dataset")
