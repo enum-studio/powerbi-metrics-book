@@ -6,6 +6,22 @@ import { formatTime } from "../../shell/time";
 import { elementDocsQuery } from "./queries";
 
 const NOT_WRITTEN = "Not written yet";
+const BUILT_IN_FIELDS = {
+  dataset: [
+    ["when_to_use", "When to use"],
+    ["owner", "Owner"],
+    ["freshness", "Freshness"],
+    ["caveats", "Caveats"],
+  ],
+  table: [
+    ["grain_and_filters", "Grain and filters"],
+    ["caveats", "Caveats"],
+  ],
+  column: [
+    ["unit", "Unit"],
+    ["blank_means", "Blank means"],
+  ],
+} as const;
 
 /** A custom field's value in words; the conventions have already checked it against the field's type. */
 function fieldText(value: unknown): string | null {
@@ -14,7 +30,15 @@ function fieldText(value: unknown): string | null {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-function Part({ term, text }: { term: string; text: string | null }) {
+function Part({
+  term,
+  text,
+  note,
+}: {
+  term: string;
+  text: string | null;
+  note?: string;
+}) {
   return (
     <section className="flex flex-col gap-1">
       <h2 className="text-meta font-medium text-ink-3">{term}</h2>
@@ -23,6 +47,7 @@ function Part({ term, text }: { term: string; text: string | null }) {
       ) : (
         <p className="text-body whitespace-pre-line text-ink">{text}</p>
       )}
+      {note && <p className="text-meta text-ink-3">{note}</p>}
     </section>
   );
 }
@@ -56,12 +81,23 @@ export function Documentation({
   ];
   return (
     <div className="flex max-w-(--measure) flex-col gap-5">
-      <Part term="Description" text={description ?? description_pbi} />
+      <Part
+        term="Definition"
+        text={description ?? description_pbi}
+        note={
+          description === null && description_pbi !== null
+            ? "From Power BI"
+            : undefined
+        }
+      />
       {description !== null &&
         description_pbi !== null &&
         description !== description_pbi && (
           <Part term="Description in Power BI" text={description_pbi} />
         )}
+      {BUILT_IN_FIELDS[kind].map(([key, label]) => (
+        <Part key={key} term={label} text={fieldText(docs.data[key])} />
+      ))}
       {conventions.data.rules[`${kind}_fields`].custom.map((field) => (
         <Part
           key={field.key}
