@@ -1,4 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
+import {
+  powerbiColumn,
+  powerbiDataset,
+  powerbiTable,
+  powerbiWorkspace,
+} from "../../db/schema/mirror.js";
 import {
   closeTestPools,
   createTestDeps,
@@ -182,4 +189,50 @@ it("filters unused table exceptions by dataset", async () => {
   };
   expect(await get(otherTable.dataset)).toContainEqual(exception);
   expect(await get(datasetName)).not.toContainEqual(exception);
+});
+
+it("pages through a dataset, table and column named in 200 CJK characters each", async () => {
+  const dataset = randomUUID();
+  await createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+    await setRole(tx, "worker_rw");
+    const [workspace] = await tx
+      .select({ id: powerbiWorkspace.id })
+      .from(powerbiWorkspace)
+      .limit(1);
+    if (workspace === undefined)
+      throw new Error("The sample has no workspace.");
+    await tx.insert(powerbiDataset).values({
+      id: dataset,
+      workspace_id: workspace.id,
+      name: "売上".repeat(100),
+    });
+    const [table] = await tx
+      .insert(powerbiTable)
+      .values({ dataset_id: dataset, name: "注文".repeat(100) })
+      .returning({ id: powerbiTable.id });
+    if (table === undefined) throw new Error("No table was made.");
+    await tx.insert(powerbiColumn).values({
+      dataset_id: dataset,
+      table_id: table.id,
+      name: "金額".repeat(100),
+      data_type: "String",
+      column_type: "data",
+    });
+  });
+  const person = await oauth.person();
+  const kinds: string[] = [];
+  let cursor: string | null = "";
+  while (cursor !== null) {
+    const answer = await oauth.request(
+      `/api/v1/docs/checks?dataset=${dataset}&limit=1${
+        cursor === "" ? "" : `&cursor=${encodeURIComponent(cursor)}`
+      }`,
+      { headers: { cookie: person.cookie } },
+    );
+    expect(answer.status).toBe(200);
+    const page = Page.parse(await answer.json());
+    kinds.push(...page.items.map((row) => row.kind));
+    cursor = page.next_cursor;
+  }
+  expect(kinds).toEqual(["dataset", "table", "column"]);
 });
