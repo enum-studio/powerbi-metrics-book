@@ -1,7 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeTestPools, principals } from "../../../test/deps.js";
-import { metricIn, rolledBack } from "../../../test/mirror-fixtures.js";
+import {
+  asPerson,
+  metricIn,
+  rolledBack,
+} from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
 import { bookChange, conventions } from "../../db/schema/book.js";
 import { failuresInBook } from "../book/whole-book-checks.js";
@@ -27,7 +31,11 @@ const apply = (
   tx: Db,
   input: { dry_run: boolean; baseline_reason?: string },
   conventions: object = part,
-) => applyConventions({ db: tx }, principals.admin, { conventions, ...input });
+) =>
+  applyConventions(asPerson(principals.admin, { db: tx }), {
+    conventions,
+    ...input,
+  });
 
 const stored = async (tx: Db) =>
   (await tx.select().from(conventions).orderBy(desc(conventions.version)))[0]
@@ -254,7 +262,7 @@ describe("applyConventions", () => {
   it("takes only a company part", () =>
     rolledBack(async (tx) => {
       await expect(
-        applyConventions({ db: tx }, principals.admin, {
+        applyConventions(asPerson(principals.admin, { db: tx }), {
           conventions: { naming: { kinds: ["total_"] } },
           dry_run: true,
         }),

@@ -164,7 +164,7 @@ async function hiddenMetrics(
   return new Set(rows.map((row) => row.name));
 }
 
-/** Exceptions are visible only through a live target and its describable dataset. */
+/** Exceptions are visible only through a live target and its describable dataset, named by its name or its id. */
 export async function visibleExceptions(
   context: ServiceContext,
   exceptions: Conventions["exceptions"],
@@ -179,8 +179,15 @@ export async function visibleExceptions(
       .from(powerbiDataset)
       .where(and(allowed, isNull(powerbiDataset.removed_at)));
     const ids = datasets.map((row) => row.id);
-    for (const row of datasets)
-      visible.add(exceptionKey({ dataset: row.name }));
+    const names = new Map(datasets.map((row) => [row.id, row.name]));
+    const see = (
+      datasetId: string,
+      target: { table?: string; column?: string },
+    ) => {
+      for (const dataset of [datasetId, names.get(datasetId)])
+        visible.add(exceptionKey({ dataset, ...target }));
+    };
+    for (const id of ids) see(id, {});
     if (ids.length > 0) {
       const tables = await context.db
         .select({
@@ -195,11 +202,7 @@ export async function visibleExceptions(
             isNull(powerbiTable.removed_at),
           ),
         );
-      const names = new Map(datasets.map((row) => [row.id, row.name]));
-      for (const row of tables)
-        visible.add(
-          exceptionKey({ dataset: names.get(row.dataset_id), table: row.name }),
-        );
+      for (const row of tables) see(row.dataset_id, { table: row.name });
       const hides = !(await readsPii(context));
       const columns = await context.db
         .select({
@@ -218,12 +221,7 @@ export async function visibleExceptions(
           ),
         );
       for (const row of columns)
-        visible.add(
-          exceptionKey({
-            dataset: names.get(row.dataset_id),
-            column: columnTarget(row.table, row.name),
-          }),
-        );
+        see(row.dataset_id, { column: columnTarget(row.table, row.name) });
     }
   }
   return exceptions.filter(({ metric, term, dataset, table, column }) =>
@@ -303,7 +301,7 @@ export async function setConventionsAsAdmin(
 /** Applies a company part, or only says what it would change; see applyConventions. */
 export async function applyAsAdmin(context: ServiceContext, input: ApplyInput) {
   await context.access.require(context.principal, BOOK, "edit_conventions");
-  return applyConventions(context, context.principal, input);
+  return applyConventions(context, input);
 }
 
 /**

@@ -1,10 +1,10 @@
 import { isDeepStrictEqual } from "node:util";
-import type { AppDeps } from "../../context.js";
+import type { ServiceContext } from "../../context.js";
 import { ServiceError } from "../../errors.js";
-import type { Principal } from "../../principal.js";
 import { type Failure, failuresInBook } from "../book/whole-book-checks.js";
 import { withEvents } from "../events/feed.js";
 import { isRuleOff, RULES, valueAt } from "./rules.js";
+import { visibleExceptions } from "./service.js";
 import {
   type Conventions,
   type ConventionsException,
@@ -82,10 +82,12 @@ export function changedRules(
  * value, read values or off state the part changes, and passed that rule
  * under the version in force, where a rule that is off passes. A failure the
  * change did not cause keeps failing, so a part that only adds an exception
- * excepts nothing more.
+ * excepts nothing more. The failures are the whole book's, and only those on
+ * targets the caller may see are excepted: one it cannot see is never named
+ * to it, and keeps failing.
  */
 async function baselineExceptions(
-  deps: Pick<AppDeps, "db">,
+  context: ServiceContext,
   before: Conventions,
   after: Conventions,
   failures: readonly Failure[],
@@ -99,14 +101,14 @@ async function baselineExceptions(
   if (rules.size === 0) return [];
   const key = ({ rule, target }: Failure) => exceptionKey({ rule, ...target });
   const failedBefore = new Set(
-    (await failuresInBook(deps, before, rules)).map(key),
+    (await failuresInBook(context, before, rules)).map(key),
   );
-  return failures
+  const caused = failures
     .filter(
       (failure) => rules.has(failure.rule) && !failedBefore.has(key(failure)),
     )
-    .map(({ rule, target }) => ({ rule, ...target, reason }))
-    .sort(byKey);
+    .map(({ rule, target }) => ({ rule, ...target, reason }));
+  return (await visibleExceptions(context, caused)).sort(byKey);
 }
 
 /**
@@ -120,10 +122,10 @@ async function baselineExceptions(
  * force saves nothing, so applying a file again is free.
  */
 export async function applyConventions(
-  deps: Pick<AppDeps, "db">,
-  principal: Principal,
+  context: ServiceContext,
   { conventions: document, dry_run, baseline_reason }: ApplyInput,
 ) {
+  const { principal } = context;
   const reason =
     baseline_reason === undefined
       ? undefined
@@ -133,7 +135,7 @@ export async function applyConventions(
       "invalid",
       "A baseline reason is one line of 1 to 200 characters.",
     );
-  return withEvents(deps.db, async (tx, emit) => {
+  return withEvents(context.db, async (tx, emit) => {
     const current = dry_run
       ? await conventionsInForce(tx)
       : await lockConventions(tx);
@@ -158,7 +160,7 @@ export async function applyConventions(
       reason?.data === undefined
         ? []
         : await baselineExceptions(
-            { db: tx },
+            { ...context, db: tx },
             current.conventions,
             proposed,
             failures,

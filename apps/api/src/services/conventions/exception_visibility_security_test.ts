@@ -22,6 +22,7 @@ import { powerbiColumn, powerbiRelationship } from "../../db/schema/mirror.js";
 import type { Principal } from "../../principal.js";
 import { TOOLS } from "../../mcp/tools/index.js";
 import {
+  applyAsAdmin,
   getCompanyPartAsAdmin,
   getConventionsForAgents,
   unusedExceptionsAsCurator,
@@ -166,6 +167,45 @@ describe("an exception on a metric the caller cannot see", () => {
         asPerson(principals.admin, { db: tx }),
       );
       expect(company.exceptions).toEqual([hidden, seen, word]);
+    }));
+});
+
+describe("a baseline run by an admin who cannot see a metric", () => {
+  it("neither lists nor saves an exception for it, and still counts its failure", () =>
+    rolledBack(async (tx) => {
+      await fileUnder(tx, await metricIn(tx, hidden.metric), id.profit);
+      await fileUnder(tx, await metricIn(tx, seen.metric), id.net_sales);
+      // Neither name has a kind, so turning naming.kinds on makes both fail.
+      await setConventions({ db: tx }, principals.admin, {
+        format: 1,
+        off: ["naming.kinds"],
+      });
+      const input = {
+        conventions: { format: 1 },
+        baseline_reason: "Named before the house style.",
+      };
+      const excepted = (answer: { exceptions_added: { metric?: string }[] }) =>
+        answer.exceptions_added.map(({ metric }) => metric);
+      const whole = await applyAsAdmin(asPerson(admin, { db: tx }), {
+        ...input,
+        dry_run: true,
+      });
+      expect(excepted(whole)).toEqual(
+        expect.arrayContaining([hidden.metric, seen.metric]),
+      );
+      const salesAdmin = reaching({ powerbi_app_ids: [id.sales_app] }, "admin");
+      const answer = await applyAsAdmin(asPerson(salesAdmin, { db: tx }), {
+        ...input,
+        dry_run: false,
+      });
+      expect(excepted(answer)).toContain(seen.metric);
+      expect(excepted(answer)).not.toContain(hidden.metric);
+      expect(answer.now_failing).toEqual(whole.now_failing);
+      const company = await getCompanyPartAsAdmin(
+        asPerson(principals.admin, { db: tx }),
+      );
+      expect(company.exceptions).toEqual(answer.exceptions_added);
+      expect(JSON.stringify(company)).not.toContain(hidden.metric);
     }));
 });
 

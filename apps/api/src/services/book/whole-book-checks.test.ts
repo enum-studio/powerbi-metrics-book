@@ -6,7 +6,12 @@ import { appReader, asPerson } from "../../../test/mirror-fixtures.js";
 import type { Db } from "../../context.js";
 import { metric, term, termColumn } from "../../db/schema/book.js";
 import * as schema from "../../db/schema/index.js";
-import { id, useMirror } from "../../../test/mirror-fixtures.js";
+import {
+  id,
+  reaching,
+  useMirror,
+  workspaces,
+} from "../../../test/mirror-fixtures.js";
 import { applyConventions } from "../conventions/apply.js";
 import { exceptionKey } from "../conventions/schema.js";
 import { resolve } from "../conventions/store.js";
@@ -443,7 +448,12 @@ describe("whole-book element checks", () => {
 
   it("includes element failures in apply and sorts the baseline's exceptions", () =>
     rolledBack(async (tx) => {
-      const answer = await applyConventions({ db: tx }, principals.admin, {
+      // An admin who sees every dataset, the twins too, so the baseline may except each.
+      const admin = reaching(
+        { powerbi_workspace_ids: [...workspaces, id.twin_workspace] },
+        "admin",
+      );
+      const answer = await applyConventions(asPerson(admin, { db: tx }), {
         conventions: {
           format: 1,
           dataset_fields: { owner: { required: true } },
