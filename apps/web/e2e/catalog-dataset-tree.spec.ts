@@ -34,8 +34,8 @@ test("the Datasets tree folds each level, workspace, dataset, table and display 
     .getByRole("button", { name: "Datasets", exact: true })
     .click();
   // A workspace with one dataset still has its row.
-  await expect(foldRow(page, "Finance", 1)).toBeVisible();
-  await foldRow(page, "Sales", 2).click();
+  await expect(foldRow(page, "Management", 1)).toBeVisible();
+  await foldRow(page, "Commercial", 2).click();
   await expect(
     tree(page).getByRole("link", { name: "Retail", exact: true }),
   ).toBeVisible();
@@ -45,7 +45,7 @@ test("the Datasets tree folds each level, workspace, dataset, table and display 
     tree(page).getByRole("link", { name: "Customer", exact: true }),
   ).toBeVisible();
   expect(fields).toEqual([]);
-  await tree(page).getByRole("button", { name: "Open Sales" }).click();
+  await tree(page).getByRole("button", { name: "Open Sales lines" }).click();
   const folder = tree(page).getByRole("button", {
     name: "Open Time intelligence",
   });
@@ -56,7 +56,9 @@ test("the Datasets tree folds each level, workspace, dataset, table and display 
   await expect(
     tree(page).getByRole("link", { name: "Is returned", exact: true }),
   ).toBeVisible();
-  expect(fields.every((query) => query.includes("table=Sales"))).toBe(true);
+  expect(fields.every((query) => /table=Sales(%20|\+)lines/.test(query))).toBe(
+    true,
+  );
   expect(fields.length).toBeGreaterThan(0);
   const measure = tree(page).getByRole("link", {
     name: "Net sales LY",
@@ -69,7 +71,7 @@ test("the Datasets tree folds each level, workspace, dataset, table and display 
   await measure.click();
   await expect(page).toHaveURL(
     new RegExp(
-      `/catalog/datasets/${SALES}/tables/Sales\\?.*field=Net(\\+|%20)sales(\\+|%20)LY`,
+      `/catalog/datasets/${SALES}/tables/Sales(%20| )lines\\?.*field=Net(\\+|%20)sales(\\+|%20)LY`,
     ),
   );
   await expect(
@@ -84,21 +86,21 @@ test("only the way to the dataset on screen opens, and what a person opens holds
 }) => {
   await page.goto(`/catalog/datasets/${RETAIL}`);
   await openColumn(page);
-  // Retail sits in the Sales workspace, which opens with Retail and its tables.
-  await expect(foldRow(page, "Sales", 2)).toHaveAttribute(
+  // Retail sits in the Commercial workspace, which opens with Retail and its tables.
+  await expect(foldRow(page, "Commercial", 2)).toHaveAttribute(
     "aria-expanded",
     "true",
   );
   await expect(
     tree(page).getByRole("button", { name: "Close Retail" }),
   ).toBeVisible();
-  const finance = foldRow(page, "Finance", 1);
-  await expect(finance).toHaveAttribute("aria-expanded", "false");
-  await finance.click();
+  const management = foldRow(page, "Management", 1);
+  await expect(management).toHaveAttribute("aria-expanded", "false");
+  await management.click();
   await tree(page).getByRole("link", { name: "Terms", exact: true }).click();
   await expect(page).toHaveURL(/\/catalog\/terms$/);
   await openColumn(page);
-  await expect(foldRow(page, "Finance", 1)).toHaveAttribute(
+  await expect(foldRow(page, "Management", 1)).toHaveAttribute(
     "aria-expanded",
     "true",
   );
@@ -109,7 +111,7 @@ test("the dataset page's Tables and Measures tabs are the same tree", async ({
 }) => {
   await page.goto(`/catalog/datasets/${SALES}?tab=tables`);
   const main = page.getByRole("main");
-  await main.getByRole("button", { name: "Open Sales" }).click();
+  await main.getByRole("button", { name: "Open Sales lines" }).click();
   const folder = main.getByRole("button", { name: "Open Time intelligence" });
   await expect(folder).toBeVisible();
   await expect(field(main, "Is returned")).toBeVisible();
@@ -117,15 +119,17 @@ test("the dataset page's Tables and Measures tabs are the same tree", async ({
   await expect(field(main, "Net sales LY")).toBeVisible();
   // The measures tab opens every table that holds a measure, and shows no columns.
   await page.goto(`/catalog/datasets/${SALES}?tab=measures`);
-  await expect(main.getByRole("button", { name: "Close Sales" })).toBeVisible();
+  await expect(
+    main.getByRole("button", { name: "Close Sales lines" }),
+  ).toBeVisible();
   await expect(
     main.getByRole("button", { name: "Open Time intelligence" }),
   ).toBeVisible();
   await expect(field(main, "Is returned")).toHaveCount(0);
   // A table's name opens its page, on its documentation, with no diagram tab.
-  await main.getByRole("link", { name: "Sales", exact: true }).click();
+  await main.getByRole("link", { name: "Sales lines", exact: true }).click();
   await expect(page).toHaveURL(
-    new RegExp(`/catalog/datasets/${SALES}/tables/Sales$`),
+    new RegExp(`/catalog/datasets/${SALES}/tables/Sales(%20| )lines$`),
   );
   const tabs = main.getByRole("navigation", { name: "Table" });
   await expect(tabs.getByRole("button")).toHaveText([

@@ -41,6 +41,8 @@ afterAll(closeTestPools);
 const tenant = sampleTenant();
 const SALES = "Sales";
 const FINANCE = "Finance";
+/** The workspace that holds Sales and Retail. */
+const COMMERCIAL = "Commercial";
 const MARKETING = "Marketing";
 const RETAIL = "Retail";
 const named = <T extends { name: string }>(items: T[], name: string) =>
@@ -171,7 +173,7 @@ describe("a person's Power BI lists", () => {
   it("reach the analyst's Sales through the Analysts group and Marketing through a direct share", () =>
     afterSync(async ({ tx, person, principal, describable }) => {
       expect((await principal("analyst")).attributes).toEqual({
-        powerbi_workspace_ids: [named(tenant.workspaces, SALES).id],
+        powerbi_workspace_ids: [named(tenant.workspaces, COMMERCIAL).id],
         powerbi_app_ids: [],
         powerbi_dataset_ids: [named(tenant.datasets, MARKETING).id],
       });
@@ -233,7 +235,7 @@ describe("a person's Power BI lists", () => {
         kind,
         attributes: { ...principals.viewer.attributes, ...lists },
       });
-      const sales = named(tenant.workspaces, SALES).id;
+      const sales = named(tenant.workspaces, COMMERCIAL).id;
       const leadership = named(tenant.apps, "Leadership app").id;
       for (const kind of ["person", "service_account"] as const) {
         expect(
@@ -363,7 +365,7 @@ describe("authenticate", () => {
         kind: "person",
         via: "browser",
         attributes: {
-          powerbi_workspace_ids: [named(f.tenant.workspaces, SALES).id],
+          powerbi_workspace_ids: [named(f.tenant.workspaces, COMMERCIAL).id],
           powerbi_app_ids: [],
           powerbi_dataset_ids: [named(f.tenant.datasets, MARKETING).id],
         },

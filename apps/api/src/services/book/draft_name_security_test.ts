@@ -294,7 +294,7 @@ describe("a draft's name and an off dataset", () => {
         tx,
         sample,
         { dataset: "Retail", measure: "Orders" },
-        { name: "Turnover", expression: "SUM(Sales[Net amount])" },
+        { name: "Turnover", expression: "SUM('Sales lines'[Net amount])" },
       );
       await setRole(tx, "worker_rw");
       await tx
@@ -313,12 +313,12 @@ describe("a draft's name and an off dataset", () => {
 describe("a draft's name and PII", () => {
   it("never names a draft a reader sees from a PII measure of their own dataset", () =>
     drafted(async (tx, sample) => {
-      await markPii(tx, "Sales", "Net sales");
+      await markPii(tx, "Sales lines", "Net sales");
       const copy = await addMeasure(
         tx,
         sample,
         { dataset: "Sales", measure: "Net sales" },
-        { name: "Turnover", expression: "SUM(Sales[Net amount])" },
+        { name: "Turnover", expression: "SUM('Sales lines'[Net amount])" },
       );
       await draft(tx, [datasetId(sample, "Sales")]);
 
@@ -339,7 +339,7 @@ describe("a draft's name and PII", () => {
       expect((await metricHolding(tx, shifted)).name).toBe("units_sold");
       expect(await namesSeenBy(tx, reader)).toContain("units_sold");
 
-      await markPii(tx, "Sales", "Units sold");
+      await markPii(tx, "Sales lines", "Units sold");
       await draft(tx, [datasetId(sample, "Sales")]);
 
       expect((await metricHolding(tx, shifted)).name).toBe("units_sold_ly");
@@ -350,8 +350,8 @@ describe("a draft's name and PII", () => {
 
   it("files a PII variant under its base as before", () =>
     drafted(async (tx, sample) => {
-      await markPii(tx, "Sales", "Units sold");
-      await markPii(tx, "Sales", "Units sold LY");
+      await markPii(tx, "Sales lines", "Units sold");
+      await markPii(tx, "Sales lines", "Units sold LY");
       await draft(tx, [datasetId(sample, "Sales")]);
       expect(
         (
@@ -371,7 +371,7 @@ describe("a draft's name and PII", () => {
     (_rule, drafting) =>
       drafted(async (tx, sample) => {
         const beside = { dataset: "Sales", measure: "Net sales" };
-        const expression = "SUM(Sales[Quantity]) * 11";
+        const expression = "SUM('Sales lines'[Quantity]) * 11";
         for (const name of ["Mmm named", "Aaa private", "Zzz open"])
           await addMeasure(tx, sample, beside, { name, expression });
         const shift = await addMeasure(tx, sample, beside, {
@@ -379,7 +379,7 @@ describe("a draft's name and PII", () => {
           expression:
             "CALCULATE([Mmm named], SAMEPERIODLASTYEAR('Date'[Date]))",
         });
-        await markPii(tx, "Sales", "Aaa private");
+        await markPii(tx, "Sales lines", "Aaa private");
         await setConventions({ db: tx }, principals.admin, {
           preset: "metrics_book",
           drafting,
@@ -400,7 +400,10 @@ describe("a curator's name stands, and reaches only a copy of its name", () => {
       { powerbi_dataset_ids: names.map((name) => datasetId(sample, name)) },
       "curator",
     );
-  const COPY = { name: "Net Sales", expression: "SUM(Sales[Net amount])" };
+  const COPY = {
+    name: "Net Sales",
+    expression: "SUM('Sales lines'[Net amount])",
+  };
 
   it("moves nothing of another name when a curator confirms a key they alone can see", () =>
     drafted(async (tx, sample) => {
@@ -527,7 +530,7 @@ describe("a curator's name stands, and reaches only a copy of its name", () => {
             .where(eq(powerbiDataset.id, datasetId(sample, "Sales")));
         if (state === "PII") {
           await setRole(tx, "api_rw");
-          await markPii(tx, "Sales", "Net sales");
+          await markPii(tx, "Sales lines", "Net sales");
         }
         const copy = await addMeasure(tx, sample, RETAIL_ORDERS, COPY);
         await draft(tx, [datasetId(sample, "Retail")]);
@@ -581,7 +584,7 @@ describe("a measure gone from Power BI", () => {
         sample.measureId({ dataset: "Sales", measure: "Units sold LY" }),
       );
       await setRole(tx, "api_rw");
-      await markPii(tx, "Sales", "Units sold");
+      await markPii(tx, "Sales lines", "Units sold");
       await draft(tx, [datasetId(sample, "Sales")]);
 
       expect(await namesSeenBy(tx, readerOf(sample, "Sales"))).not.toContain(
@@ -824,7 +827,7 @@ describe("a draft a curator empties", () => {
         .from(metricVariant)
         .where(eq(metricVariant.metric_id, metric_id));
       await setRole(tx, "api_rw");
-      await markPii(tx, "Sales", "Units sold");
+      await markPii(tx, "Sales lines", "Units sold");
       for (const variant of shifts.filter((v) => v.measure_id !== base))
         await moveVariant(inSales, variant.id, { to_metric: "words" });
 
@@ -909,7 +912,7 @@ describe("a dataset turned on", () => {
       await setRole(tx, "worker_rw");
       await turnOff(tx, sales);
       await setRole(tx, "api_rw");
-      await markPii(tx, "Sales", "Units sold");
+      await markPii(tx, "Sales lines", "Units sold");
 
       await turnOn(tx, sales);
 
@@ -922,7 +925,7 @@ describe("a dataset turned on", () => {
 describe("a number in a measure's own name", () => {
   it("is no suffix that lets another name in", () =>
     drafted(async (tx, sample) => {
-      const expression = "SUM(Sales[Quantity]) * 7";
+      const expression = "SUM('Sales lines'[Quantity]) * 7";
       const net = { dataset: "Sales", measure: "Net sales" };
       await addMeasure(tx, sample, net, { name: "Zeta", expression });
       await addMeasure(tx, sample, net, { name: "Zeta 2", expression });
@@ -948,7 +951,7 @@ describe("a number in a measure's own name", () => {
 describe("a group that grows after a metric proved it", () => {
   it("files a measure that is not PII by the group's name, not a PII one remembered", () =>
     drafted(async (tx, sample) => {
-      const shifted = `CALCULATE(CALCULATE(SUM(Sales[Quantity])), SAMEPERIODLASTYEAR('Date'[Date]))`;
+      const shifted = `CALCULATE(CALCULATE(SUM('Sales lines'[Quantity])), SAMEPERIODLASTYEAR('Date'[Date]))`;
       await addMeasure(
         tx,
         sample,
@@ -965,14 +968,14 @@ describe("a group that grows after a metric proved it", () => {
       });
       await addMeasure(tx, sample, REVENUE, {
         name: "Zulu",
-        expression: "SUM(Sales[Quantity])",
+        expression: "SUM('Sales lines'[Quantity])",
       });
       const zuluLy = await addMeasure(tx, sample, REVENUE, {
         name: "Zulu LY",
         expression: `CALCULATE([Zulu], SAMEPERIODLASTYEAR('Date'[Date]))`,
       });
       for (const name of ["Bravo", "Bravo LY", "Zulu"])
-        await markPii(tx, "Sales", name);
+        await markPii(tx, "Sales lines", name);
       await draft(tx, [datasetId(sample, "Sales")]);
       await draft(tx, [datasetId(sample, "Finance")]);
 

@@ -203,13 +203,13 @@ describe("a workspace that cannot be scanned", () => {
     const tenant = sampleTenant();
     const fillers = addFillers(tenant, 97);
     tooLarge(tenant);
-    const sales = workspaceNamed(tenant, "Sales").id;
+    const sales = workspaceNamed(tenant, "Commercial").id;
     await withSync(tenant, async (tx, sync) => {
       await expect(sync()).rejects.toThrow(sales);
 
       const others = [
-        workspaceNamed(tenant, "Finance").id,
-        workspaceNamed(tenant, "Marketing").id,
+        workspaceNamed(tenant, "Management").id,
+        workspaceNamed(tenant, "Growth").id,
         ...fillers,
       ];
       expect(await liveWorkspaces(tx, [sales, ...others])).toEqual(
@@ -240,7 +240,7 @@ describe("a workspace that cannot be scanned", () => {
   it("stops failing the run once an admin leaves it out", async () => {
     const tenant = sampleTenant();
     tooLarge(tenant);
-    const sales = workspaceNamed(tenant, "Sales").id;
+    const sales = workspaceNamed(tenant, "Commercial").id;
     await withSync(tenant, async (tx, sync, deps) => {
       await expect(sync()).rejects.toThrow();
       await deps.settings.set(
@@ -256,7 +256,7 @@ describe("a workspace that cannot be scanned", () => {
   it("fails alone when Power BI says its scan failed, in Power BI's words", async () => {
     const tenant = sampleTenant();
     const fillers = addFillers(tenant, 97);
-    const finance = workspaceNamed(tenant, "Finance");
+    const finance = workspaceNamed(tenant, "Management");
     finance.scan_failure = "The scan could not read this workspace";
     await withSync(tenant, async (tx, sync) => {
       await expect(sync()).rejects.toThrow(finance.id);
@@ -311,7 +311,7 @@ describe("a workspace that cannot be scanned", () => {
   it("fails alone when one workspace in the answer cannot be read", async () => {
     const tenant = sampleTenant();
     const fillers = addFillers(tenant, 97);
-    const finance = workspaceNamed(tenant, "Finance").id;
+    const finance = workspaceNamed(tenant, "Management").id;
     await withSync(tenant, async (tx, sync, deps) => {
       const fetchFixed = deps.fetcher.fetchFixed.bind(deps.fetcher);
       vi.spyOn(deps.fetcher, "fetchFixed").mockImplementation(
@@ -336,7 +336,7 @@ describe("a workspace that cannot be scanned", () => {
 
   it("records the run and its event when Power BI's sentence is one Postgres could not keep, and cuts a long one", async () => {
     const tenant = sampleTenant();
-    const finance = workspaceNamed(tenant, "Finance");
+    const finance = workspaceNamed(tenant, "Management");
     finance.scan_failure = `Bad \u0000 and \ud83d ${"x".repeat(10_000)}`;
     await withSync(tenant, async (tx, sync) => {
       await expect(sync()).rejects.toThrow(finance.id);
@@ -366,7 +366,7 @@ describe("a workspace that cannot be scanned", () => {
 
   it("is named but not offered to an admin to skip when Power BI fails a scan of it alone, which says nothing of it", async () => {
     const tenant = sampleTenant();
-    const finance = workspaceNamed(tenant, "Finance").id;
+    const finance = workspaceNamed(tenant, "Management").id;
     await withSync(tenant, async (tx, sync, deps, mock) => {
       await deps.settings.set(
         "powerbi.sync.workspaces.include",
@@ -477,7 +477,7 @@ describe("our documentation fields", () => {
 describe("the sync after a failed one", () => {
   it("fails again on a workspace that changed since the last success, until it can be read", async () => {
     const tenant = unchangedTenant();
-    const finance = workspaceNamed(tenant, "Finance");
+    const finance = workspaceNamed(tenant, "Management");
     await withSync(tenant, async (tx, _sync, deps) => {
       await syncAgo(deps, 6, "full");
       // After the last success and before the first failure, so a sync lists it
@@ -498,7 +498,7 @@ describe("the sync after a failed one", () => {
 
   it("does not read again what a full sync left of a workspace nothing changed in: it succeeds, and the next full sync tries again", async () => {
     const tenant = unchangedTenant();
-    const finance = workspaceNamed(tenant, "Finance");
+    const finance = workspaceNamed(tenant, "Management");
     await withSync(tenant, async (tx, _sync, deps) => {
       await syncAgo(deps, 6, "full");
       finance.scan_failure = "The scan could not read this workspace";
@@ -523,7 +523,10 @@ describe("a dataset or workspace that cannot be stored", () => {
   const VALUES: [string, Partial<Scanned> & { name: string }, RegExp][] = [
     [
       "a NUL in an expression",
-      { name: "Holds a NUL", expression: 'COUNTROWS(Sales) & "\u0000"' },
+      {
+        name: "Holds a NUL",
+        expression: `COUNTROWS('Sales lines') & "\u0000"`,
+      },
       /invalid byte sequence/,
     ],
     [
@@ -571,7 +574,7 @@ describe("a dataset or workspace that cannot be stored", () => {
     const tenant = sampleTenant();
     const sales = datasetNamed(tenant, "Sales");
     const retail = datasetNamed(tenant, "Retail");
-    sales.users = workspaceNamed(tenant, "Sales").users.slice(0, 1);
+    sales.users = workspaceNamed(tenant, "Commercial").users.slice(0, 1);
     await withSync(tenant, async (tx, sync) => {
       await sync();
       const before = await measureRows(tx, sales.id);
@@ -593,7 +596,7 @@ describe("a dataset or workspace that cannot be stored", () => {
       expect(await datasetName(tx, sales.id)).toBe(wasNamed);
       expect(await datasetName(tx, retail.id)).toBe("Retail, renamed");
 
-      refused.expression = "COUNTROWS(Sales) * 3";
+      refused.expression = "COUNTROWS('Sales lines') * 3";
       await sync();
       expect((await lastRun(tx)).status).toBe("succeeded");
       expect(await datasetName(tx, sales.id)).toBe("Sales, renamed");
@@ -660,7 +663,7 @@ describe("a dataset or workspace that cannot be stored", () => {
 
   it("fails a workspace alone when its own row is refused, and names it", async () => {
     const tenant = sampleTenant();
-    const finance = workspaceNamed(tenant, "Finance");
+    const finance = workspaceNamed(tenant, "Management");
     const shown = finance.id;
     finance.name = "Holds a NUL \u0000";
     const others = tenant.workspaces
@@ -950,7 +953,7 @@ describe("apps", () => {
 
   it("take a workspace with more reports than a call's arguments can carry", async () => {
     const tenant = sampleTenant();
-    const finance = workspaceNamed(tenant, "Finance").id;
+    const finance = workspaceNamed(tenant, "Management").id;
     await withSync(tenant, async (tx, sync, deps) => {
       const fetchFixed = deps.fetcher.fetchFixed.bind(deps.fetcher);
       vi.spyOn(deps.fetcher, "fetchFixed").mockImplementation(

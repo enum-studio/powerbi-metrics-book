@@ -667,11 +667,12 @@ Microsoft does, its shapes checked against Microsoft's own OpenAPI file
 - The embedding endpoints of OpenAI and Gemini, answering deterministic
   vectors, so search runs end to end without a key.
 
-The sample tenant is invented: workspaces "Sales", "Finance" and "Marketing", three datasets whose
-measures are written the way real models are (the same calculation under two names, the same one
-formatted differently, the same result written another way, time-intelligence variants, a helper
-measure that is not a metric, a reference cycle), and a few thousand generated rows for paging and
-CSV. The drafter's expected groups are written down beside it, so a test fails when the drafter
+The sample tenant is invented: workspaces "Commercial", "Management" and "Growth", and five
+datasets, "Sales", "Retail", "Finance", "Marketing" and "Campaign archive". Their measures are
+written the way real models are (the same calculation under two names, the same one formatted
+differently, the same result written another way, time-intelligence variants, a helper measure
+that is not a metric, a reference cycle), and the Sales lines table holds a few thousand generated
+rows for paging and CSV. The drafter's expected groups are written down beside it, so a test fails when the drafter
 changes its mind. It is labelled as sample data at the tenant, not in its names: the SPA's band,
 `pbmb whoami` and the MCP instructions say so.
 
@@ -986,7 +987,7 @@ As Metrics Book: a term is usually an important dimension, so a term is
 defined in one of two ways.
 
 - **A dimension term** is backed by one or more Power BI columns ("Channel"
-  is `'Sales'[Channel]` in two datasets). Its shape is a metric's (first
+  is `'Channel'[Channel]` in two datasets). Its shape is a metric's (first
   sentence the definition, aliases, not the same as), plus `values` for a
   categorical one (each value and what it means). Every metric whose
   variants filter or group by one of its columns links to it.

@@ -392,7 +392,7 @@ describe("suggestSameNames on the drafted sample", () => {
             dataset_id: home.dataset_id,
             table_id: home.table_id,
             name: `Order lines${"!".repeat(n + 1)}`,
-            expression: `COUNTROWS(Sales) + ${String(n)}`,
+            expression: `COUNTROWS('Sales lines') + ${String(n)}`,
           })
           .returning();
         const [draft] = await tx

@@ -65,6 +65,8 @@ const containing = {
 vi.setConfig({ testTimeout: 180_000 });
 
 const SALES = "Sales";
+/** The workspace that holds Sales. */
+const COMMERCIAL = "Commercial";
 const api = createDb(testPool("api_rw"));
 let f: SignInFixture;
 let mcp: ReturnType<typeof createApp>;
@@ -416,12 +418,12 @@ describe("find", () => {
       {},
       z.array(z.object({ name: z.string(), dataset_count: z.number() })),
     );
-    expect(workspaces.map(({ name }) => name)).toContain(SALES);
+    expect(workspaces.map(({ name }) => name)).toContain(COMMERCIAL);
     const apps = await ask(admin, "list_apps", {}, z.array(z.unknown()));
     expect(apps).toContainEqual(
       containing.object({
         name: "Sales app",
-        workspace: SALES,
+        workspace: COMMERCIAL,
         datasets: containing.array([containing.object({ name: SALES })]),
       }),
     );
@@ -505,7 +507,7 @@ describe("search", () => {
         hits,
       );
       expect(none.items).toEqual([]);
-      // The analyst is a Member of the Sales workspace through the Analysts group.
+      // The analyst is a Member of the Commercial workspace through the Analysts group.
       const seen = await ask(
         analyst,
         "search",
@@ -617,9 +619,9 @@ describe("read", () => {
     expect(byName).toEqual(byId);
     expect(byId).toMatchObject({
       name: SALES,
-      workspace: SALES,
+      workspace: COMMERCIAL,
       tables: containing.array([
-        containing.object({ kind: "fact", name: "Sales" }),
+        containing.object({ kind: "fact", name: "Sales lines" }),
       ]),
       relationships: anyOf(Array),
     });

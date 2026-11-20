@@ -37,7 +37,7 @@ const reachOf = async (
 describe("an access list Power BI does not send", () => {
   it("keeps the rows of a workspace whose users is null, and users: [] still revokes", async () => {
     const tenant = sampleTenant();
-    const sales = find(tenant.workspaces, (w) => w.name === "Sales");
+    const sales = find(tenant.workspaces, (w) => w.name === "Commercial");
     const viewer = find(
       tenant.people,
       (p) => p.email === "sales-viewer@sample.example",

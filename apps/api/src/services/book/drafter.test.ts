@@ -362,7 +362,7 @@ describe("draftDatasets on the sample mirror", () => {
       await tx
         .update(powerbiMeasure)
         .set({
-          expression: "COUNTROWS(Sales) * 2",
+          expression: "COUNTROWS('Sales lines') * 2",
           expression_changed_at: new Date(),
         })
         .where(eq(powerbiMeasure.id, sample.measureId(orders)));
@@ -392,7 +392,7 @@ describe("draftDatasets on the sample mirror", () => {
       await tx
         .update(powerbiMeasure)
         .set({
-          expression: "SUMX(Sales, Sales[Net amount])",
+          expression: "SUMX('Sales lines', 'Sales lines'[Net amount])",
           expression_changed_at: new Date(),
         })
         .where(eq(powerbiMeasure.id, sample.measureId(NET_SALES)));
@@ -527,12 +527,12 @@ describe("draftDatasets on the sample mirror", () => {
 
   it("keeps a shared draft with the measure that did not change", () =>
     inSampleMirror("worker_rw", async (tx, sample) => {
-      const before = "SUM(Sales[Quantity]) * 7";
+      const before = "SUM('Sales lines'[Quantity]) * 7";
       const print = (expression: string) => fingerprint(normalize(expression));
       // A new fingerprint that sorts first, so the order of fingerprints cannot be what keeps the draft.
       const after = Array.from(
         { length: 200 },
-        (_, n) => `SUM(Sales[Quantity]) * ${String(n + 8)}`,
+        (_, n) => `SUM('Sales lines'[Quantity]) * ${String(n + 8)}`,
       ).find((expression) => print(expression) < print(before));
       if (after === undefined) throw new Error("No expression sorts first");
       const [zetaA, zetaB] = [
@@ -942,7 +942,7 @@ describe("draftDatasets on the sample mirror", () => {
 
     it("holds a shift only on a live metric that has its calculation as a base", () =>
       drafted(async (tx, sample) => {
-        const expression = "COUNTROWS(Sales) * 7";
+        const expression = "COUNTROWS('Sales lines') * 7";
         const zed = await addMeasure(tx, sample, MARGIN, {
           name: "Zed base",
           expression,
@@ -1014,7 +1014,7 @@ describe("draftDatasets on the sample mirror", () => {
       drafted(async (tx, sample, of) => {
         const copy = await addMeasure(tx, sample, MARGIN, {
           name: "Gross margin % last year",
-          expression: "DIVIDE( [Gross margin PY] , 'Sales'[Revenue PY] )",
+          expression: "DIVIDE( [Gross margin PY] , 'Sales lines'[Revenue PY] )",
         });
         expect(await draft(tx, sample)).toEqual({ ...NONE, filed: 1 });
         expect(await variantOf(tx, copy)).toMatchObject({
@@ -1188,7 +1188,7 @@ describe("draftDatasets on the sample mirror", () => {
         cases.push({
           base: await addMeasure(tx, sample, LINES, {
             name,
-            expression: `SUM(Sales[Quantity]) + ${String(n)}`,
+            expression: `SUM('Sales lines'[Quantity]) + ${String(n)}`,
           }),
           holder: await addMeasure(tx, sample, LINES, {
             name: `${name} LY`,
@@ -1237,7 +1237,7 @@ describe("draftDatasets on the sample mirror", () => {
     inSampleMirror("worker_rw", async (tx, sample) => {
       await addMeasure(tx, sample, LINES, {
         name: "Bomb 0",
-        expression: "SUM(Sales[Quantity])",
+        expression: "SUM('Sales lines'[Quantity])",
       });
       let bomb = "";
       for (let n = 1; n <= 40; n += 1) {
@@ -1786,7 +1786,10 @@ describe("a time-shifted measure no pattern proves", () => {
 });
 
 describe("a shift of a base a curator filed in a currency", () => {
-  const ZED = { name: "Zed total EUR", expression: "COUNTROWS(Sales) * 3" };
+  const ZED = {
+    name: "Zed total EUR",
+    expression: "COUNTROWS('Sales lines') * 3",
+  };
   const ZED_LY = {
     name: "Zed total EUR LY",
     expression: "CALCULATE([Zed total EUR], DATEADD('Date'[Date], -1, YEAR))",
@@ -1949,7 +1952,7 @@ describe("a shift of a base a curator filed in a currency", () => {
     curated({}, [], async (tx, sample, held) => {
       const other = await addMeasure(tx, sample, NET_SALES, {
         name: "Zed other EUR LY",
-        expression: "COUNTROWS(Sales) * 5",
+        expression: "COUNTROWS('Sales lines') * 5",
       });
       await draft(tx, sample);
       const holder = one(
@@ -1979,7 +1982,7 @@ describe("a shift of a base a curator filed in a currency", () => {
     curated({}, [], async (tx, sample, held) => {
       const other = await addMeasure(tx, sample, NET_SALES, {
         name: "Zed total LY",
-        expression: "COUNTROWS(Sales) * 5",
+        expression: "COUNTROWS('Sales lines') * 5",
       });
       await draft(tx, sample);
       await tx

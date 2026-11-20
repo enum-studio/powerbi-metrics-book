@@ -51,6 +51,9 @@ const SALES = "Sales";
 const MARKETING = "Marketing";
 const RETAIL = "Retail";
 const FINANCE = "Finance";
+/** The workspaces that hold Sales and Retail, and Finance. */
+const COMMERCIAL = "Commercial";
+const MANAGEMENT = "Management";
 const userIdOf = (mailbox: string) => `sample-${mailbox}`;
 const named = <T extends { name: string }>(items: T[], name: string) =>
   find(items, (item) => item.name === name);
@@ -214,7 +217,7 @@ describe("metric dataset counts follow visible variants", () => {
   it("keeps a service account's count inside its workspace grant", () =>
     afterSync(sampleTenant(), async (_tx, as) => {
       const viewer = await as("viewer");
-      const salesWorkspace = named(sampleTenant().workspaces, SALES).id;
+      const salesWorkspace = named(sampleTenant().workspaces, COMMERCIAL).id;
       const serviceAccount: ServiceContext = {
         ...viewer,
         principal: {
@@ -460,7 +463,7 @@ describe("listApps, as the visibility mode shows datasets", () => {
     ]);
 
   it("under powerbi, lists no app outside the person's audience and workspaces, though it shows a dataset they may describe", () => {
-    // The Leadership app, in Finance, also shows Sales through a report bound to it.
+    // The Leadership app, in Management, also shows Sales through a report bound to it.
     const tenant = sampleTenant();
     const report = randomUUID();
     const leadership = named(tenant.apps, LEADERSHIP_APP);
@@ -471,9 +474,9 @@ describe("listApps, as the visibility mode shows datasets", () => {
       app_id: leadership.id,
     });
     leadership.report_ids.push(report);
-    named(tenant.workspaces, FINANCE).report_ids.push(report);
+    named(tenant.workspaces, MANAGEMENT).report_ids.push(report);
     return afterSync(tenant, async (_tx, as) => {
-      // The analyst reaches Sales only through the Sales workspace's list.
+      // The analyst reaches Sales only through the Commercial workspace's list.
       expect(await appsOf(await as("analyst"))).toEqual([
         [SALES_APP, [RETAIL, SALES]],
       ]);
@@ -496,7 +499,7 @@ describe("listApps, as the visibility mode shows datasets", () => {
     ));
 
   it("under policy, lists an app whose workspace holds, or which shows, a dataset the policy lets the caller describe", () => {
-    // The Leadership app, in Finance, shows Sales alone.
+    // The Leadership app, in Management, shows Sales alone.
     const tenant = sampleTenant();
     const sales = named(tenant.datasets, SALES).id;
     named(tenant.reports, "Leadership overview").dataset_id = sales;

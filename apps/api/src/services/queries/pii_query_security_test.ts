@@ -64,7 +64,7 @@ beforeAll(async () => {
   await reader.insert(piiRule).values({
     id: ruleId,
     kind: "column",
-    table_name: "Sales",
+    table_name: "Sales lines",
     name: "Net amount",
     pii: true,
     set_by_kind: "person",
@@ -303,7 +303,7 @@ describe("PII query relationship checks", () => {
       expect(
         await checkQuery(
           reader,
-          "EVALUATE VALUES(Sales[Email])",
+          "EVALUATE VALUES('Sales lines'[Email])",
           await rules.piiNamesOf(reader, datasetId),
           known.names,
         ),
@@ -347,7 +347,7 @@ describe("PII query relationship checks", () => {
       model.refuses_info_views = false;
       await reader
         .update(piiRule)
-        .set({ table_name: "Sales", name: "Net amount" })
+        .set({ table_name: "Sales lines", name: "Net amount" })
         .where(eq(piiRule.id, ruleId));
       await worker
         .update(powerbiTable)

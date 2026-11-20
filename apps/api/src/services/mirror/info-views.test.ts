@@ -220,7 +220,7 @@ describe("ensureModelDetails, through getDataset and listMeasures", () => {
     await reader.insert(piiRule).values({
       id: ruleId,
       kind: "table",
-      table_name: "Sales",
+      table_name: "Sales lines",
       name: null,
       pii: true,
       set_by_kind: "person",
@@ -231,7 +231,7 @@ describe("ensureModelDetails, through getDataset and listMeasures", () => {
       const since = new Date();
       const answer = await getDataset(analyst, SALES);
       expect(answer.relationships_source).toBe("info_view");
-      // Stored for the query check, though hidden from the analyst: every one has an end on Sales.
+      // Stored for the query check, though hidden from the analyst: every one has an end on Sales lines.
       expect((await storedRelationships(SALES)).size).toBeGreaterThan(0);
       expect(answer.relationships).toEqual([]);
       const logs = await reader

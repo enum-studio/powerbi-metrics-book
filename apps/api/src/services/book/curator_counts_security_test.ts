@@ -35,11 +35,11 @@ afterAll(closeTestPools);
 const SALES = "Sales";
 const FINANCE = "Finance";
 const MARKETING = "Marketing";
-/** In the Sales workspace, as the Sales dataset is. */
+/** In the Commercial workspace, as the Sales dataset is. */
 const RETAIL = "Retail";
 const RETAIL_TABLE = "Order lines";
 /** A table of this name is in Sales, Finance and Marketing. */
-const TABLE = "Sales";
+const TABLE = "Sales lines";
 const OTHER_TABLE = "Exchange rate";
 
 type Fixture = { sample: SampleMirror; tx: Db };
@@ -121,10 +121,11 @@ const piiMeasureRule = async (tx: Db, name: string, table_name = TABLE) => {
   });
 };
 
-const workspaceId = ({ sample }: Fixture, name: string) => {
-  const found = sample.tenant.workspaces.find((w) => w.name === name);
-  if (found === undefined) throw new Error(`No workspace ${name}`);
-  return found.id;
+/** The workspace a dataset of the sample sits in. */
+const workspaceId = ({ sample }: Fixture, datasetName: string) => {
+  const found = sample.tenant.datasets.find((d) => d.name === datasetName);
+  if (found === undefined) throw new Error(`No dataset ${datasetName}`);
+  return found.workspace_id;
 };
 
 const curators = (fixture: Fixture) => {

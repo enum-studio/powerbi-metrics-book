@@ -63,7 +63,7 @@ Scroll to move through the diagram, pinch to zoom, or use its zoom controls. A t
 
 ## Read a table, a folder or a column
 
-A table, a display folder and a column each have a page, reached by a link. Their addresses are `/catalog/datasets/<id>/tables/<table>`, `.../folders/<folder>` and `.../columns/<column>`. A line at the top says where you are: workspace, dataset, table, then the folders down to the page.
+A table, a display folder and a column each have a page, reached by a link. Their addresses are `/catalog/datasets/<id>/tables/<table>`, `.../folders/<folder>` and `.../columns/<column>`. A line at the top says where you are: workspace, dataset, table, then the folders down to the page, such as Datasets / Commercial / Sales / Sales lines on the sample tenant.
 
 A dataset, a table and a column each show **Definition** first: the book's description, or Power BI's with **From Power BI** when the book has none. **Description in Power BI** follows when the two differ. Then come the kind's built-in fields, its custom fields, and **Details**, the facts read from Power BI. An empty field says **Not written yet**.
 

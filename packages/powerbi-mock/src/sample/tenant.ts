@@ -95,6 +95,8 @@ export const SAMPLE_IDS = {
     app_id: "c1000000-0000-4000-8000-000000000002",
     object_id: "c2000000-0000-4000-8000-000000000002",
   },
+  // The keys keep the workspaces' first names so the ids stay stable: sales is
+  // Commercial, finance is Management and marketing is Growth.
   workspaces: {
     sales: "d0000000-0000-4000-8000-000000000001",
     finance: "d0000000-0000-4000-8000-000000000002",
@@ -227,7 +229,7 @@ export function sampleTenant(
     workspaces: [
       workspace(
         workspaces.sales,
-        "Sales",
+        "Commercial",
         [
           admin,
           group(groups.analysts, "Member"),
@@ -239,14 +241,14 @@ export function sampleTenant(
       ),
       workspace(
         workspaces.finance,
-        "Finance",
+        "Management",
         [admin],
         [datasets.finance],
         [reports.leadership],
       ),
       workspace(
         workspaces.marketing,
-        "Marketing",
+        "Growth",
         [
           admin,
           {
@@ -276,7 +278,7 @@ export function sampleTenant(
         id: apps.sales,
         name: "Sales app",
         description:
-          "The sales overview, for people outside the Sales workspace.",
+          "The sales overview, for people outside the Commercial workspace.",
         workspace_id: workspaces.sales,
         published_by: ADMIN_EMAIL,
         last_update: PUBLISHED,
@@ -477,7 +479,7 @@ function relationship(
 // The same import in every dataset that holds it; each dataset adds its own measures.
 function salesTable(salesMeasures: Measure[]): Table {
   return table(
-    "Sales",
+    "Sales lines",
     "One row per order line.",
     [
       column("Order id", "Int64"),
@@ -591,14 +593,17 @@ function salesModel(): Pick<
       channelTable(),
     ],
     relationships: [
-      relationship(["Sales", "Date"], ["Date", "Date"]),
+      relationship(["Sales lines", "Date"], ["Date", "Date"]),
       // Ship date is read through USERELATIONSHIP, as models with two dates do.
-      relationship(["Sales", "Ship date"], ["Date", "Date"], {
+      relationship(["Sales lines", "Ship date"], ["Date", "Date"], {
         is_active: false,
       }),
-      relationship(["Sales", "Product key"], ["Product", "Product key"]),
-      relationship(["Sales", "Customer key"], ["Customer", "Customer key"]),
-      relationship(["Sales", "Channel key"], ["Channel", "Channel key"]),
+      relationship(["Sales lines", "Product key"], ["Product", "Product key"]),
+      relationship(
+        ["Sales lines", "Customer key"],
+        ["Customer", "Customer key"],
+      ),
+      relationship(["Sales lines", "Channel key"], ["Channel", "Channel key"]),
     ],
     recorded_queries: [
       {
@@ -617,9 +622,13 @@ function salesModel(): Pick<
  */
 function orderLinesMeasures(): Measure[] {
   return [
-    measure("Order lines", "VAR Result = COUNTROWS(Sales) RETURN Result", {
-      format: WHOLE,
-    }),
+    measure(
+      "Order lines",
+      "VAR Result = COUNTROWS('Sales lines') RETURN Result",
+      {
+        format: WHOLE,
+      },
+    ),
     ...measures({ format: WHOLE, folder: TIME }, [
       [
         "Order lines LM",
@@ -681,12 +690,14 @@ RETURN Growth`,
 function salesMeasures(): Measure[] {
   return [
     ...orderLinesMeasures(),
-    measure("Net sales", "SUM(Sales[Net amount])", {
+    measure("Net sales", "SUM('Sales lines'[Net amount])", {
       format: MONEY,
       description: "Net amount of the order lines, before returns.",
     }),
-    measure("Orders", "DISTINCTCOUNT(Sales[Order id])", { format: WHOLE }),
-    measure("Units sold", "SUM(Sales[Quantity])", { format: WHOLE }),
+    measure("Orders", "DISTINCTCOUNT('Sales lines'[Order id])", {
+      format: WHOLE,
+    }),
+    measure("Units sold", "SUM('Sales lines'[Quantity])", { format: WHOLE }),
     measure("Average order value", "DIVIDE([Net sales], [Orders])", {
       format: MONEY,
     }),
@@ -704,7 +715,7 @@ function salesMeasures(): Measure[] {
     }),
     measure(
       "Return rate",
-      "DIVIDE(CALCULATE(COUNTROWS(Sales), Sales[Is returned] = TRUE()), COUNTROWS(Sales))",
+      "DIVIDE(CALCULATE(COUNTROWS('Sales lines'), 'Sales lines'[Is returned] = TRUE()), COUNTROWS('Sales lines'))",
       { format: PERCENT },
     ),
     ...measures({ format: MONEY, folder: TIME }, [
@@ -769,7 +780,7 @@ function financeModel(): Pick<Dataset, "tables" | "relationships"> {
   const rateMeasures = [
     measure(
       "Revenue USD",
-      `SUMX(Sales, Sales[Net amount] * LOOKUPVALUE(${RATE}[Rate], ${RATE}[Currency], "USD"))`,
+      `SUMX('Sales lines', 'Sales lines'[Net amount] * LOOKUPVALUE(${RATE}[Rate], ${RATE}[Currency], "USD"))`,
       { format: WHOLE, folder: "Currency" },
     ),
     measure("Revenue in selected currency", selectedCurrency, {
@@ -791,9 +802,12 @@ function financeModel(): Pick<Dataset, "tables" | "relationships"> {
     tables: [
       salesTable([
         ...measures({ format: WHOLE }, [
-          ["Revenue", "SUM('Sales'[Net amount])"],
-          ["Order count", "COUNTROWS(DISTINCT(Sales[Order id]))"],
-          ["Gross margin", "SUM(Sales[Net amount]) - SUM(Sales[Cost amount])"],
+          ["Revenue", "SUM('Sales lines'[Net amount])"],
+          ["Order count", "COUNTROWS(DISTINCT('Sales lines'[Order id]))"],
+          [
+            "Gross margin",
+            "SUM('Sales lines'[Net amount]) - SUM('Sales lines'[Cost amount])",
+          ],
         ]),
         measure("Gross margin %", "DIVIDE([Gross margin], [Revenue])", {
           format: PERCENT,
@@ -853,7 +867,7 @@ function financeModel(): Pick<Dataset, "tables" | "relationships"> {
       ),
     ],
     // The rate table stays disconnected: LOOKUPVALUE and the slicer read it.
-    relationships: [relationship(["Sales", "Date"], ["Date", "Date"])],
+    relationships: [relationship(["Sales lines", "Date"], ["Date", "Date"])],
   };
 }
 
@@ -885,15 +899,15 @@ function marketingModel(): Pick<
         // The same calculation as Sales' Net sales, spelled another way.
         measure(
           "Net Sales",
-          "-- Net of discounts, before returns\nSUM ( 'Sales'[Net Amount] )",
+          "-- Net of discounts, before returns\nSUM ( 'Sales lines'[Net Amount] )",
           {
             format: WHOLE,
           },
         ),
-        measure("Orders", "DISTINCTCOUNT('Sales'[Order ID])", {
+        measure("Orders", "DISTINCTCOUNT('Sales lines'[Order ID])", {
           format: WHOLE,
         }),
-        measure("Order lines", "COUNTROWS(Sales)", { format: WHOLE }),
+        measure("Order lines", "COUNTROWS('Sales lines')", { format: WHOLE }),
         measure("Conversion rate", "DIVIDE([Orders], [Sessions])", {
           format: "0.00%",
         }),
@@ -946,8 +960,8 @@ function marketingModel(): Pick<
       channelTable(),
     ],
     relationships: [
-      relationship(["Sales", "Date"], ["Date", "Date"]),
-      relationship(["Sales", "Channel key"], ["Channel", "Channel key"]),
+      relationship(["Sales lines", "Date"], ["Date", "Date"]),
+      relationship(["Sales lines", "Channel key"], ["Channel", "Channel key"]),
       relationship(["Ad spend", "Week start"], ["Date", "Date"]),
       relationship(["Ad spend", "Channel key"], ["Channel", "Channel key"], {
         cross_filtering_behavior: "BothDirections",

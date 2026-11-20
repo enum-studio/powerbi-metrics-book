@@ -643,7 +643,7 @@ pbmb columns COMMAND
 
 List a dataset's columns, A to Z, with their descriptions.
 
-Example: pbmb columns list 7c9e6679-7425-40de-944b-e07fc1f90ae7 --table Sales
+Example: pbmb columns list Sales --table 'Sales lines'
 
 ```bash
 pbmb columns list [OPTIONS] DATASET
@@ -848,7 +848,7 @@ pbmb datasets COMMAND
 
 List the datasets you may describe, A to Z.
 
-Example: pbmb datasets list --workspace Sales
+Example: pbmb datasets list --workspace Commercial
 
 ```bash
 pbmb datasets list [OPTIONS]

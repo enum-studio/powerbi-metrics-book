@@ -41,7 +41,7 @@ def list_columns(
 ) -> None:
     """List a dataset's columns, A to Z, with their descriptions.
 
-    Example: pbmb columns list 7c9e6679-7425-40de-944b-e07fc1f90ae7 --table Sales
+    Example: pbmb columns list Sales --table 'Sales lines'
     """
     with open_session(context, json_output) as session:
         route = api_path(

@@ -30,7 +30,7 @@ const idOf = (items: { id: string; name: string }[], name: string) => {
   return found.id;
 };
 const salesCurator = reaching(
-  { powerbi_workspace_ids: [idOf(tenant.workspaces, "Sales")] },
+  { powerbi_workspace_ids: [idOf(tenant.workspaces, "Commercial")] },
   "curator",
 );
 /*

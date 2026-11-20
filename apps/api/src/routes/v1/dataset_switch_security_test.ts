@@ -185,10 +185,10 @@ describe("the dataset switch", () => {
     try {
       const sample = await loadSampleMirror(worker);
       const sales = sample.tenant.datasets.find((d) =>
-        d.tables.some((t) => t.name === "Sales"),
+        d.tables.some((t) => t.name === "Sales lines"),
       );
       if (sales === undefined)
-        throw new Error("The sample has no Sales table.");
+        throw new Error("The sample has no Sales lines table.");
       const originals = [...sampleTenant().people, ...sampleTenant().groups];
       const own = [...f.tenant.people, ...f.tenant.groups];
       for (const item of [

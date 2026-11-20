@@ -50,9 +50,10 @@ import {
 const worker = createDb(testPool("worker_rw"));
 const db = createDb(testPool("api_rw"));
 const sales = sampleTenant().datasets.find((d) =>
-  d.tables.some((t) => t.name === "Sales"),
+  d.tables.some((t) => t.name === "Sales lines"),
 );
-if (sales === undefined) throw new Error("The sample has no Sales table.");
+if (sales === undefined)
+  throw new Error("The sample has no Sales lines table.");
 const dataset = sales.id;
 const metricId = randomUUID();
 const base = randomUUID();
@@ -76,8 +77,8 @@ const queryCases = [
   ["measure rule", 'EVALUATE ROW("value", [Net sales])', "[Net sales]"],
   [
     "column rule",
-    'EVALUATE ROW("value", MAX(Sales[Product key]))',
-    "Sales[Product key]",
+    `EVALUATE ROW("value", MAX('Sales lines'[Product key]))`,
+    "'Sales lines'[Product key]",
   ],
   ["relationship from", "EVALUATE TOPN(1, Product)", "the table Product"],
   ["bare", 'EVALUATE ROW("value", [Customer])', "[Customer]"],
@@ -89,8 +90,8 @@ const queryCases = [
   ],
   [
     "relationship end",
-    'EVALUATE ROW("value", MAX(Sales[Customer key]))',
-    "Sales[Customer key]",
+    `EVALUATE ROW("value", MAX('Sales lines'[Customer key]))`,
+    "'Sales lines'[Customer key]",
   ],
 ] as const;
 
@@ -132,7 +133,7 @@ beforeAll(async () => {
   await worker.insert(powerbiRelationship).values([
     {
       dataset_id: dataset,
-      from_table: "Sales",
+      from_table: "Sales lines",
       from_column: "Customer key",
       to_table: "Customer",
       to_column: "Customer key",
@@ -140,7 +141,7 @@ beforeAll(async () => {
     },
     {
       dataset_id: dataset,
-      from_table: "Sales",
+      from_table: "Sales lines",
       from_column: "Product key",
       to_table: "Product",
       to_column: "Product key",
@@ -189,9 +190,17 @@ beforeAll(async () => {
   await db.insert(piiRule).values(
     [
       { kind: "table" as const, table_name: "Customer", name: null },
-      { kind: "measure" as const, table_name: "Sales", name: "Net sales" },
-      { kind: "measure" as const, table_name: "Sales", name: "Orders" },
-      { kind: "column" as const, table_name: "Sales", name: "Product key" },
+      {
+        kind: "measure" as const,
+        table_name: "Sales lines",
+        name: "Net sales",
+      },
+      { kind: "measure" as const, table_name: "Sales lines", name: "Orders" },
+      {
+        kind: "column" as const,
+        table_name: "Sales lines",
+        name: "Product key",
+      },
       {
         kind: "column" as const,
         table_name: "Customer",
@@ -224,7 +233,7 @@ beforeAll(async () => {
       assigned_by: "sync",
       period: "previous_year",
       reads_selection: true,
-      selection_columns: ["Customer[Customer]", "Sales[Date]"],
+      selection_columns: ["Customer[Customer]", "'Sales lines'[Date]"],
     },
   ]);
   await db.insert(metric).values({
@@ -414,10 +423,10 @@ describe.each(["REST", "MCP"])("PII through %s", (transport) => {
         tables: including([
           containing(customer),
           containing({
-            name: "Sales",
+            name: "Sales lines",
             measure_count:
               sales.tables
-                .filter((table) => table.name === "Sales")
+                .filter((table) => table.name === "Sales lines")
                 .flatMap((table) => table.measures).length - (reads ? 0 : 2),
           }),
         ]),
@@ -447,8 +456,8 @@ describe.each(["REST", "MCP"])("PII through %s", (transport) => {
         await call(person, transport, "get_variant", { id: shifted }),
       ).toMatchObject({
         selection_columns: reads
-          ? ["Customer[Customer]", "Sales[Date]"]
-          : ["Sales[Date]"],
+          ? ["Customer[Customer]", "'Sales lines'[Date]"]
+          : ["'Sales lines'[Date]"],
       });
       const metricBody = await call(person, transport, "get_metric");
       expect(metricBody).toMatchObject({
