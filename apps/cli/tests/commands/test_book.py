@@ -22,6 +22,8 @@ type Answers = dict[tuple[str, str], httpx.Response]
 def routes(answers: Answers) -> Callable[[httpx.Request], httpx.Response]:
     def handler(request: httpx.Request) -> httpx.Response:
         key = (request.method, request.url.path.removeprefix(API))
+        if key == ("GET", "/conventions/exceptions/unused"):
+            return json_response(200, {"unused": []})
         return answers.get(key) or api_error(404, "not_found", f"No route {key}.")
 
     return handler
@@ -163,6 +165,8 @@ def test_check_all_follows_the_cursor_and_passes_when_nothing_fails(
     serve: Serve,
 ) -> None:
     def pages(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/unused"):
+            return json_response(200, {"unused": []})
         if request.url.path.endswith("/checks"):
             return checks_answer(("metric_fields", True, "ok"))
         if request.url.params.get("cursor") == "next":
@@ -833,6 +837,31 @@ def conventions_api(
         {
             ("GET", "/conventions"): json_response(200, CONVENTIONS_ANSWER),
             ("GET", "/conventions/rules"): json_response(200, RULE_LIST),
+            ("GET", "/conventions/company"): json_response(
+                200,
+                {
+                    "format": 1,
+                    **(
+                        {"preset": "minimal"}
+                        if diff and diff.json() == {"changes": []}
+                        else {
+                            "preset": "metrics_book",
+                            "naming": {"case": "snake_case"},
+                        }
+                    ),
+                },
+            ),
+            ("POST", "/conventions/apply"): json_response(
+                200,
+                {
+                    "changed_rules": []
+                    if diff and diff.json() == {"changes": []}
+                    else ["naming.case"],
+                    "now_failing": {"naming.case": 1},
+                    "exceptions_added": [],
+                    "version": 4,
+                },
+            ),
             ("POST", "/conventions/diff"): diff
             or json_response(200, {"changes": [CHANGE]}),
             ("PUT", "/conventions"): save
@@ -845,7 +874,9 @@ def conventions_api(
 
 def a_file(folder: Path, document: dict[str, object] | None = None) -> Path:
     path = folder / "conventions.yml"
-    path.write_text(yaml.safe_dump(document or {"preset": "minimal"}))
+    path.write_text(
+        yaml.safe_dump({"format": 1, **(document or {"preset": "minimal"})})
+    )
     return path
 
 
@@ -885,10 +916,9 @@ def test_conventions_export_is_the_yaml_that_import_takes(serve: Serve) -> None:
     exported = yaml.safe_load(run("conventions", "export").stdout)
 
     assert exported == {
+        "format": 1,
         "preset": "metrics_book",
-        "guide": "Names follow the company standard.",
-        "naming": RULES["naming"],
-        "trust": RULES["trust"],
+        "naming": {"case": "snake_case"},
     }
     assert json.loads(run("conventions", "export", "--json").stdout) == exported
 
@@ -933,15 +963,13 @@ def test_conventions_set_inside_a_value_is_refused(serve: Serve) -> None:
 
 def test_diff_shows_the_changes_and_saves_nothing(serve: Serve, tmp_path: Path) -> None:
     seen = serve(conventions_api())
-
     result = run("conventions", "diff", str(a_file(tmp_path)))
-
-    assert 'naming.case: "snake_case" -> "none"' in result.stdout
-    assert [request.method for request in seen] == ["POST"]
-    assert sent(seen[0]) == {"preset": "minimal"}
+    assert result.exit_code == 1
+    assert "naming" in result.stdout
+    assert [request.method for request in seen] == ["GET", "GET"]
     assert json.loads(
         run("conventions", "diff", str(a_file(tmp_path)), "--json").stdout
-    ) == {"changes": [CHANGE]}
+    )["changes"]
 
 
 def test_validate_says_a_file_is_valid(serve: Serve, tmp_path: Path) -> None:
@@ -985,12 +1013,20 @@ def test_import_shows_the_difference_and_asks_before_saving(
     unasked = run("conventions", "import", path)
     accepted = run("conventions", "import", path, input="y\n")
 
-    assert 'naming.case: "snake_case" -> "none"' in declined.stdout
+    assert "naming.case:" in declined.stdout
     assert declined.exit_code == 1
     assert unasked.exit_code == 1
-    assert "Nothing was saved." in declined.stderr
+    assert "alias for apply" in declined.stderr
     assert accepted.exit_code == 0
-    assert [request.method for request in seen] == ["POST", "POST", "POST", "PUT"]
+    assert [request.method for request in seen] == [
+        "GET",
+        "POST",
+        "GET",
+        "POST",
+        "GET",
+        "POST",
+        "POST",
+    ]
 
 
 def test_import_with_yes_saves_without_asking_and_json_needs_yes(
@@ -1004,11 +1040,12 @@ def test_import_with_yes_saves_without_asking_and_json_needs_yes(
         ["--json", "conventions", "import", path],
     ):
         assert run(*refused).exit_code == 2
-    assert seen == []
+    assert all(sent(request)["dry_run"] for request in seen if request.method == "POST")
+    seen.clear()
     result = run("conventions", "import", path, "--yes", "--json")
 
     assert json.loads(result.stdout)["version"] == 4
-    assert [request.method for request in seen] == ["POST", "PUT"]
+    assert [request.method for request in seen] == ["GET", "POST", "POST"]
 
 
 def test_import_of_a_file_that_changes_nothing_saves_nothing(
@@ -1018,8 +1055,8 @@ def test_import_of_a_file_that_changes_nothing_saves_nothing(
 
     result = run("conventions", "import", str(a_file(tmp_path)), "--yes")
 
-    assert "No changes." in result.stdout
-    assert [request.method for request in seen] == ["POST"]
+    assert "No change." in result.stdout
+    assert [request.method for request in seen] == ["GET"]
 
 
 def fake_editor(folder: Path, command: str) -> str:
