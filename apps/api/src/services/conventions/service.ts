@@ -140,7 +140,7 @@ export function summariseRules(rules: Rules): string[] {
     rules.off.length > 0 &&
       `These rules and checks are off: ${words(rules.off)}.`,
     rules.exceptions.length > 0 &&
-      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; get_conventions lists those on elements you can see, each with its reason.`,
+      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; an element's checks show its exception and the reason.`,
   ].filter((line) => line !== false);
 }
 
@@ -232,15 +232,22 @@ export async function visibleExceptions(
   );
 }
 
-/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. The summary counts every exception; the list holds those the caller may see. */
+/**
+ * Anyone signed in may read them: an agent reads them before it names,
+ * describes or groups anything. The exceptions come as a count per rule, never
+ * the list: a baseline over a large book holds thousands, and an element's own
+ * checks show its exception and reason.
+ */
 export async function getConventionsForAgents(context: ServiceContext) {
-  const { guide, ...rules } = await currentConventions(context.db);
-  const exceptions = await visibleExceptions(context, rules.exceptions);
+  const { guide, exceptions, ...rules } = await currentConventions(context.db);
+  const counts: Record<string, number> = {};
+  for (const { rule } of exceptions) counts[rule] = (counts[rule] ?? 0) + 1;
   return {
     preset: rules.preset,
     guide,
-    summary: summariseRules(rules),
-    rules: { ...rules, exceptions },
+    summary: summariseRules({ ...rules, exceptions }),
+    rules,
+    exceptions: counts,
   };
 }
 

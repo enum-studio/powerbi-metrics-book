@@ -430,7 +430,9 @@ const Conventions = z.object({
   preset: conventionsSchema.shape.preset,
   guide: z.string(),
   summary: z.array(z.string()),
-  rules: conventionsSchema.omit({ guide: true }),
+  rules: conventionsSchema.omit({ guide: true, exceptions: true }),
+  /** How many exceptions each rule has, by rule id; an element's checks show its own. */
+  exceptions: z.record(z.string(), z.number().int()),
 });
 
 /** The book and the mirror read: any principal, as far as it may describe. */
@@ -453,7 +455,7 @@ export function readRoutes(deps: AppDeps): Hono<AppEnv> {
   );
 
   const conventions = documented(
-    "The company's conventions: the guide in words and the rules as data",
+    "The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has",
     Conventions,
   );
   routes.get("/conventions", conventions.doc, credential, async (c) =>

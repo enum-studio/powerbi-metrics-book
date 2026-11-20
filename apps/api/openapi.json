@@ -10211,10 +10211,10 @@
       },
       "get": {
         "operationId": "getApiV1Conventions",
-        "summary": "The company's conventions: the guide in words and the rules as data",
+        "summary": "The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has",
         "responses": {
           "200": {
-            "description": "The company's conventions: the guide in words and the rules as data",
+            "description": "The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has",
             "content": {
               "application/json": {
                 "schema": {
@@ -11340,85 +11340,6 @@
                               "term_fields.custom"
                             ]
                           }
-                        },
-                        "exceptions": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "rule": {
-                                "type": "string",
-                                "enum": [
-                                  "naming.case",
-                                  "naming.kinds",
-                                  "metric_name_generated",
-                                  "naming.forbidden_words",
-                                  "naming.money_qualifier",
-                                  "naming.qualifier_order",
-                                  "metric_fields.definition",
-                                  "metric_fields.aliases",
-                                  "metric_fields.when_to_use",
-                                  "metric_fields.grain_and_filters",
-                                  "metric_fields.unit",
-                                  "metric_fields.category",
-                                  "metric_fields.custom",
-                                  "dataset_fields.definition",
-                                  "dataset_fields.when_to_use",
-                                  "dataset_fields.owner",
-                                  "dataset_fields.freshness",
-                                  "dataset_fields.caveats",
-                                  "dataset_fields.custom",
-                                  "table_fields.definition",
-                                  "table_fields.grain_and_filters",
-                                  "table_fields.caveats",
-                                  "table_fields.custom",
-                                  "column_fields.definition",
-                                  "column_fields.unit",
-                                  "column_fields.blank_means",
-                                  "column_fields.custom",
-                                  "metric_fields.not_the_same_as",
-                                  "metric_base_variant",
-                                  "term_fields.definition",
-                                  "term_fields.values",
-                                  "term_fields.custom"
-                                ]
-                              },
-                              "reason": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 200
-                              },
-                              "metric": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 500
-                              },
-                              "term": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 500
-                              },
-                              "dataset": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 500
-                              },
-                              "table": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 500
-                              },
-                              "column": {
-                                "type": "string",
-                                "maxLength": 500
-                              }
-                            },
-                            "required": [
-                              "rule",
-                              "reason"
-                            ],
-                            "additionalProperties": false
-                          }
                         }
                       },
                       "required": [
@@ -11432,17 +11353,28 @@
                         "variants",
                         "drafting",
                         "trust",
-                        "off",
-                        "exceptions"
+                        "off"
                       ],
                       "additionalProperties": false
+                    },
+                    "exceptions": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
                     }
                   },
                   "required": [
                     "preset",
                     "guide",
                     "summary",
-                    "rules"
+                    "rules",
+                    "exceptions"
                   ],
                   "additionalProperties": false
                 }

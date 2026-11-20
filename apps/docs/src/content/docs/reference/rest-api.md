@@ -1344,13 +1344,13 @@ Other answers: 401 Sign in first; 403 The caller's role or credential does not a
 
 ### GET `/api/v1/conventions`
 
-The company's conventions: the guide in words and the rules as data
+The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has
 
 Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | The company's conventions: the guide in words and the rules as data | an object with preset, guide, summary, rules |
+| 200 | The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has | an object with preset, guide, summary, rules, exceptions |
 
 Fields of the first answer:
 
@@ -1359,7 +1359,8 @@ Fields of the first answer:
 | `preset` | one of "metrics_book", "minimal" | yes |   |
 | `guide` | text | yes |   |
 | `summary` | a list of text | yes |   |
-| `rules` | an object with preset, naming, metric_fields, term_fields, dataset_fields, table_fields, column_fields, variants, drafting, trust, off, exceptions | yes |   |
+| `rules` | an object with preset, naming, metric_fields, term_fields, dataset_fields, table_fields, column_fields, variants, drafting, trust, off | yes |   |
+| `exceptions` | an object | yes |   |
 
 Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
 

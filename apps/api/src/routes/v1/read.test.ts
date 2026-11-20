@@ -495,7 +495,7 @@ describe("the read routes", () => {
     }
   });
 
-  it("leave an exception on a metric the caller cannot see out of the conventions", async () => {
+  it("count the conventions' exceptions per rule and name none, to a caller who sees the metric or not", async () => {
     const before = await getCompanyPartAsAdmin(admin);
     const exception = {
       rule: "naming.case",
@@ -507,15 +507,16 @@ describe("the read routes", () => {
       exceptions: [exception],
     });
     try {
-      const viewer = await signedIn("viewer");
-      expect((await get(viewer, "/conventions")).body).toMatchObject({
-        rules: { exceptions: [exception] },
-      });
+      const viewer = await get(await signedIn("viewer"), "/conventions");
       // Under "powerbi" a person connected to no Power BI sees no metric.
       await settings.set("access.metadata_visibility", "powerbi");
       const outsider = await get(await signedIn("viewer"), "/conventions");
-      expect(outsider.status).toBe(200);
-      expect(outsider.body).toMatchObject({ rules: { exceptions: [] } });
+      for (const { status, body } of [viewer, outsider]) {
+        expect(status).toBe(200);
+        expect(body).toMatchObject({ exceptions: { "naming.case": 1 } });
+        expect(body).not.toHaveProperty("rules.exceptions");
+        expect(JSON.stringify(body)).not.toContain(exception.reason);
+      }
     } finally {
       await settings.set("access.metadata_visibility", "everyone");
       await setConventions(admin, principals.admin, before);

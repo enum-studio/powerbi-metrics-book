@@ -26,17 +26,21 @@ import {
   getCompanyPartAsAdmin,
   getConventionsForAgents,
   unusedExceptionsAsCurator,
+  visibleExceptions,
 } from "./service.js";
+import type { Conventions } from "./schema.js";
 import { setConventions } from "./store.js";
 
 useMirror();
 
 /*
  * An exception names the element it is for, so it shows only to a caller who
- * may see that element: a metric's to whoever sees the metric, a term's to
- * anyone signed in, as term names are. GET /api/v1/conventions and the MCP
- * tool get_conventions answer through getConventionsForAgents. Counts and the
- * admin's own routes name nothing per element, so they stay whole.
+ * may see that element (visibleExceptions): a metric's to whoever sees the
+ * metric, a term's to anyone signed in, as term names are. The unused lists
+ * and a baseline go through it. GET /api/v1/conventions and the MCP tool
+ * get_conventions answer through getConventionsForAgents, which names no
+ * exception at all: it counts them per rule. Counts and the admin's own
+ * routes name nothing per element, so they stay whole.
  */
 
 const hidden = {
@@ -66,9 +70,11 @@ async function excepted(tx: Db): Promise<void> {
   });
 }
 
-const forAgents = async (tx: Db, principal: Principal) =>
-  (await getConventionsForAgents(asPerson(principal, { db: tx }))).rules
-    .exceptions;
+const visibleTo = async (
+  tx: Db,
+  principal: Principal,
+  exceptions: Conventions["exceptions"],
+) => visibleExceptions(asPerson(principal, { db: tx }), exceptions);
 
 const unused = async (tx: Db, principal: Principal) =>
   (await unusedExceptionsAsCurator(asPerson(principal, { db: tx }))).map(
@@ -137,15 +143,39 @@ describe("an unused exception on an element", () => {
     ).rejects.toThrow(TransactionRollbackError));
 });
 
-describe("an exception on a metric the caller cannot see", () => {
-  it("is left out of the conventions agents read, on the connector too", () =>
+describe("the conventions agents read", () => {
+  it("name no exception's target or reason, even to an admin who sees them all, on the connector too: they count exceptions per rule", () =>
     rolledBack(async (tx) => {
       await excepted(tx);
-      expect(await forAgents(tx, curator)).toEqual([seen, word]);
-      expect(await forAgents(tx, outsider)).toEqual([word]);
-      const connector = await onTheConnector(tx, curator);
-      expect(connector).toContain(seen.metric);
-      expect(connector).not.toContain(hidden.metric);
+      const named = [hidden, seen, word].flatMap(({ reason, ...target }) => [
+        reason,
+        ...Object.values(target).filter((value) => value !== target.rule),
+      ]);
+      for (const principal of [admin, curator, outsider]) {
+        const answer = await getConventionsForAgents(
+          asPerson(principal, { db: tx }),
+        );
+        expect(answer.exceptions).toEqual({
+          "naming.case": 2,
+          "term_fields.definition": 1,
+        });
+        expect(answer.rules).not.toHaveProperty("exceptions");
+        const text = [
+          JSON.stringify(answer),
+          await onTheConnector(tx, principal),
+        ].join("");
+        for (const name of named) expect(text).not.toContain(name);
+      }
+    }));
+});
+
+describe("an exception on a metric the caller cannot see", () => {
+  it("is left out of what visibleExceptions shows", () =>
+    rolledBack(async (tx) => {
+      await excepted(tx);
+      const all = [hidden, seen, word];
+      expect(await visibleTo(tx, curator, all)).toEqual([seen, word]);
+      expect(await visibleTo(tx, outsider, all)).toEqual([word]);
     }));
 
   it("is left out of the whole book's unused exceptions", () =>
@@ -157,7 +187,11 @@ describe("an exception on a metric the caller cannot see", () => {
   it("shows to an admin who sees the metric, and stays in the counts and the company's part", () =>
     rolledBack(async (tx) => {
       await excepted(tx);
-      expect(await forAgents(tx, admin)).toEqual([hidden, seen, word]);
+      expect(await visibleTo(tx, admin, [hidden, seen, word])).toEqual([
+        hidden,
+        seen,
+        word,
+      ]);
       expect(await unused(tx, admin)).toEqual([hidden, seen, word]);
       const { summary } = await getConventionsForAgents(
         asPerson(curator, { db: tx }),
@@ -212,6 +246,8 @@ describe("a baseline run by an admin who cannot see a metric", () => {
 describe("element exception visibility", () => {
   it.each([
     { rule: "dataset_fields.definition", dataset: "Sales" },
+    { rule: "dataset_fields.definition", dataset: id.sales },
+    { rule: "table_fields.definition", dataset: id.sales, table: "Sales" },
     { rule: "table_fields.definition", dataset: "Sales", table: "Sales" },
     {
       rule: "column_fields.definition",
@@ -225,8 +261,8 @@ describe("element exception visibility", () => {
         format: 1,
         exceptions: [item],
       });
-      expect(await forAgents(tx, curator)).toEqual([item]);
-      expect(await forAgents(tx, outsider)).toEqual([]);
+      expect(await visibleTo(tx, curator, [item])).toEqual([item]);
+      expect(await visibleTo(tx, outsider, [item])).toEqual([]);
     }),
   );
 
@@ -248,7 +284,7 @@ describe("element exception visibility", () => {
           format: 1,
           exceptions: [item],
         });
-        expect(await forAgents(tx, admin)).toEqual([]);
+        expect(await visibleTo(tx, admin, [item])).toEqual([]);
         expect(
           (await getCompanyPartAsAdmin(asPerson(principals.admin, { db: tx })))
             .exceptions,
@@ -257,7 +293,7 @@ describe("element exception visibility", () => {
       }),
   );
 
-  it("hides a PII column exception from non-readers in agents' conventions and unused lists", () =>
+  it("hides a PII column exception from non-readers, in what visibleExceptions shows and the unused lists", () =>
     rolledBack(async (tx) => {
       await tx.insert(piiRule).values({
         kind: "column",
@@ -278,13 +314,13 @@ describe("element exception visibility", () => {
         format: 1,
         exceptions: [item],
       });
-      expect(await forAgents(tx, curator)).toEqual([]);
+      expect(await visibleTo(tx, curator, [item])).toEqual([]);
       expect(await unused(tx, curator)).toEqual([]);
       const reader = {
         ...curator,
         roles: [...curator.roles, "pii_reader" as const],
       };
-      expect(await forAgents(tx, reader)).toEqual([item]);
+      expect(await visibleTo(tx, reader, [item])).toEqual([item]);
       expect(await unused(tx, reader)).toEqual([item]);
     }));
 });
