@@ -74,7 +74,7 @@ describe("getConventionsForAgents", () => {
           "The sync drafts nothing from: measures in the tables Staging.",
           "A person approves a metric from the browser, the CLI or the API.",
           "These rules and checks are off: metric_base_variant.",
-          "1 exception lets an element keep failing a rule; get_conventions lists each with its reason.",
+          "1 exception lets an element keep failing a rule; get_conventions lists those on elements you can see, each with its reason.",
         ]),
       );
       expect(summary.join(" ")).not.toContain("snake_case");

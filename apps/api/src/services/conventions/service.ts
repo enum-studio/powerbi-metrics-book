@@ -125,7 +125,7 @@ export function summariseRules(rules: Rules): string[] {
     rules.off.length > 0 &&
       `These rules and checks are off: ${words(rules.off)}.`,
     rules.exceptions.length > 0 &&
-      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; get_conventions lists each with its reason.`,
+      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; get_conventions lists those on elements you can see, each with its reason.`,
   ].filter((line) => line !== false);
 }
 

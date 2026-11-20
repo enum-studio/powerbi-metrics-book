@@ -5,7 +5,12 @@ import type { Principal } from "../../principal.js";
 import { failuresInBook } from "../book/whole-book-checks.js";
 import { withEvents } from "../events/feed.js";
 import { isRuleOff, RULES, valueAt } from "./rules.js";
-import { type Conventions, exceptionKey, exceptionReason } from "./schema.js";
+import {
+  type Conventions,
+  type ConventionsException,
+  exceptionKey,
+  exceptionReason,
+} from "./schema.js";
 import {
   checkSave,
   conventionsInForce,
@@ -20,11 +25,23 @@ export type ApplyInput = {
   baseline_reason?: string | undefined;
 };
 
-const exceptionsTo = (conventions: Conventions, rule: string): string[] =>
-  conventions.exceptions
-    .filter((item) => item.rule === rule)
+/** Each exception as its key and reason, sorted, so the order a file lists them in is no change. */
+const exceptionLines = (exceptions: readonly ConventionsException[]) =>
+  exceptions
     .map((item) => JSON.stringify([exceptionKey(item), item.reason]))
     .sort();
+
+const exceptionsTo = (conventions: Conventions, rule: string): string[] =>
+  exceptionLines(conventions.exceptions.filter((item) => item.rule === rule));
+
+/** Plain character order of the keys, the order any other tool sorts the same strings in. */
+const byKey = (
+  a: Parameters<typeof exceptionKey>[0],
+  b: Parameters<typeof exceptionKey>[0],
+) => {
+  const [first, second] = [exceptionKey(a), exceptionKey(b)];
+  return Number(first > second) - Number(first < second);
+};
 
 /** The ids of the rules whose value, the values it reads, off state or exceptions differ, sorted. */
 export function changedRules(
@@ -105,7 +122,7 @@ export async function applyConventions(
               ...target,
               reason: reason.data,
             }))
-            .sort((a, b) => exceptionKey(a).localeCompare(exceptionKey(b)));
+            .sort(byKey);
     const save =
       added.length === 0
         ? given
@@ -113,8 +130,16 @@ export async function applyConventions(
             ...document,
             exceptions: [...proposed.exceptions, ...added],
           });
-    // Equal once the baseline is added, as when a file without it is applied again.
-    const unchanged = isDeepStrictEqual(save.part, current.company);
+    // Equal once the baseline is added, as when a file without it is applied again, in whatever order the file lists its exceptions.
+    const unchanged =
+      isDeepStrictEqual(
+        { ...save.part, exceptions: null },
+        { ...current.company, exceptions: null },
+      ) &&
+      isDeepStrictEqual(
+        exceptionLines(save.proposed.exceptions),
+        exceptionLines(current.conventions.exceptions),
+      );
     const answer = {
       changed_rules: unchanged ? [] : changed,
       now_failing: unchanged ? {} : now_failing,

@@ -33,6 +33,8 @@ import {
 import { getMetric, updateMetric } from "../../services/book/metrics.js";
 import { createTerm, relateMetric } from "../../services/book/terms.js";
 import { draftDatasets } from "../../services/book/drafter.js";
+import { getCompanyPartAsAdmin } from "../../services/conventions/service.js";
+import { setConventions } from "../../services/conventions/store.js";
 import { removeRule, setRule } from "../../services/pii/rules.js";
 import {
   acceptReply,
@@ -490,6 +492,33 @@ describe("the read routes", () => {
       }
     } finally {
       await settings.set("access.metadata_visibility", "everyone");
+    }
+  });
+
+  it("leave an exception on a metric the caller cannot see out of the conventions", async () => {
+    const before = await getCompanyPartAsAdmin(admin);
+    const exception = {
+      rule: "naming.case",
+      metric: "sessions",
+      reason: "Named before the house style.",
+    };
+    await setConventions(admin, principals.admin, {
+      ...before,
+      exceptions: [exception],
+    });
+    try {
+      const viewer = await signedIn("viewer");
+      expect((await get(viewer, "/conventions")).body).toMatchObject({
+        rules: { exceptions: [exception] },
+      });
+      // Under "powerbi" a person connected to no Power BI sees no metric.
+      await settings.set("access.metadata_visibility", "powerbi");
+      const outsider = await get(await signedIn("viewer"), "/conventions");
+      expect(outsider.status).toBe(200);
+      expect(outsider.body).toMatchObject({ rules: { exceptions: [] } });
+    } finally {
+      await settings.set("access.metadata_visibility", "everyone");
+      await setConventions(admin, principals.admin, before);
     }
   });
 

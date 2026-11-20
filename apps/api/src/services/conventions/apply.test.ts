@@ -126,20 +126,21 @@ describe("applyConventions", () => {
         changed_rules: ["naming.kinds"],
         now_failing: { "naming.kinds": 2 },
       });
-      // The file the CLI writes holds them, so applying it again adds none and saves nothing.
-      for (const baseline_reason of [undefined, BASELINE])
-        expect(
-          await apply(
-            tx,
-            { dry_run: false, ...(baseline_reason && { baseline_reason }) },
-            { ...part, exceptions },
-          ),
-        ).toEqual({
-          changed_rules: [],
-          now_failing: {},
-          exceptions_added: [],
-          version: 1,
-        });
+      // The file the CLI writes holds them, in any order, so applying it again adds none and saves nothing.
+      for (const listed of [exceptions, [...exceptions].reverse()])
+        for (const baseline_reason of [undefined, BASELINE])
+          expect(
+            await apply(
+              tx,
+              { dry_run: false, ...(baseline_reason && { baseline_reason }) },
+              { ...part, exceptions: listed },
+            ),
+          ).toEqual({
+            changed_rules: [],
+            now_failing: {},
+            exceptions_added: [],
+            version: 1,
+          });
       // A file without them, given the baseline again, ends equal: nothing changes, and the file is handed them.
       expect(
         await apply(tx, { dry_run: false, baseline_reason: BASELINE }),
@@ -150,6 +151,13 @@ describe("applyConventions", () => {
         version: 1,
       });
       expect(await listVersions(tx)).toHaveLength(1);
+      // Without the baseline, a file without them is saved as given, and they are gone.
+      expect(await apply(tx, { dry_run: false })).toMatchObject({
+        changed_rules: ["naming.kinds"],
+        exceptions_added: [],
+        version: 2,
+      });
+      expect(await stored(tx)).toEqual(part);
     }));
 
   it("saves nothing, and records nothing, for a part equal to the one in force", () =>
