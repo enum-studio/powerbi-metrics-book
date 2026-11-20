@@ -6,8 +6,6 @@ the link or its signature.
 """
 
 import csv
-import os
-import tempfile
 from pathlib import Path
 
 import httpx
@@ -20,6 +18,7 @@ from powerbi_metrics_book.client import (
     UnreachableError,
     api_path,
 )
+from powerbi_metrics_book.files import atomic_file
 from powerbi_metrics_book.output import FAILED, Session
 
 
@@ -113,21 +112,12 @@ def _refused(status: int) -> ApiError:
 def _save(response: httpx.Response, path: Path) -> int:
     """Writes the body beside path, checks it is a UTF-8 CSV, and only then
     replaces path. Returns the rows after the header."""
-    # mkstemp creates the file exclusively with mode 0600, so a planted file or
-    # link at that name cannot be written through, and nobody else reads it.
-    descriptor, name = tempfile.mkstemp(
-        dir=path.parent, prefix=f".{path.name}.", suffix=".part"
-    )
-    partial = Path(name)
-    try:
-        with os.fdopen(descriptor, "wb") as file:
-            for chunk in response.iter_bytes():
-                file.write(chunk)
+    with atomic_file(path) as (file, partial):
+        for chunk in response.iter_bytes():
+            file.write(chunk)
+        file.flush()
         rows = _count_rows(partial)
-        partial.replace(path)
-        return rows
-    finally:
-        partial.unlink(missing_ok=True)
+    return rows
 
 
 def _count_rows(path: Path) -> int:

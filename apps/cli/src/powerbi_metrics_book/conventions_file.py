@@ -1,4 +1,3 @@
-import errno
 import json
 import os
 import re
@@ -10,6 +9,7 @@ import typer
 import yaml
 
 from powerbi_metrics_book.client import Json
+from powerbi_metrics_book.files import atomic_file, read_text_file
 
 MAX_FILE_BYTES = 1024 * 1024
 MAX_GUIDE_BYTES = 256 * 1024
@@ -55,36 +55,12 @@ class _NoAliasLoader(YamlLoader):
         return super().compose_node(parent, index)
 
 
-def _read_open(descriptor: int, name: str, limit: int, size: str) -> str:
-    """An opened file's text: a regular file of at most `limit` bytes."""
-    if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-        os.close(descriptor)
-        raise typer.BadParameter(f"{name} is not a regular file.")
-    with os.fdopen(descriptor, "rb") as stream:
-        data = stream.read(limit + 1)
-    if len(data) > limit:
-        raise typer.BadParameter(f"{name} is over {size}.")
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError:
-        raise typer.BadParameter(f"{name} is not UTF-8 text.") from None
-
-
-# Non-blocking, so a FIFO is refused rather than waited on.
 READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
 
 
 def read_file(path: Path) -> str:
-    """A deployment file's text. A symbolic link is refused: it could name .env."""
-    try:
-        descriptor = os.open(path, READ_FLAGS)
-    except OSError as error:
-        if error.errno == errno.ELOOP:
-            raise typer.BadParameter(
-                f"{path} is a symbolic link; the CLI reads only a regular file."
-            ) from None
-        raise typer.BadParameter(f"{path}: {error.strerror}.") from None
-    return _read_open(descriptor, str(path), MAX_FILE_BYTES, "1 MiB")
+    """A deployment file's text, refusing links before reading."""
+    return read_text_file(path)
 
 
 def _read_guide(folder: Path, guide: str) -> str:
@@ -109,7 +85,9 @@ def _read_guide(folder: Path, guide: str) -> str:
         ) from None
     finally:
         os.close(directory)
-    return _read_open(descriptor, f"guide {guide}", MAX_GUIDE_BYTES, "256 KiB")
+    return read_text_file(
+        Path(f"guide {guide}"), MAX_GUIDE_BYTES, descriptor=descriptor
+    )
 
 
 def read_mapping(path: Path, text: str | None = None) -> dict[str, Json]:
@@ -165,10 +143,13 @@ def replace_file(path: Path, text: str) -> None:
     """Writes a file beside `path` and renames it over, so no link is followed."""
     if path.is_symlink():
         raise typer.BadParameter(f"Cannot write {path}: it is a symbolic link.")
-    temporary = path.with_name(f".{path.name}.pbmb-{os.getpid()}")
     try:
-        _write(temporary, text)
-        os.replace(temporary, path)
+        try:
+            mode = stat.S_IMODE(path.stat(follow_symlinks=False).st_mode)
+        except FileNotFoundError:
+            mode = 0o600
+        with atomic_file(path, mode) as (stream, _):
+            stream.write(text.encode("utf-8"))
     except OSError as error:
         raise typer.BadParameter(f"Cannot write {path}: {error.strerror}.") from error
 

@@ -20,7 +20,7 @@ from powerbi_metrics_book.answers import (
     text_of,
     typed_value,
 )
-from powerbi_metrics_book.client import ApiError, Client, Json
+from powerbi_metrics_book.client import ApiError, Client, Json, UnreachableError
 from powerbi_metrics_book.conventions_file import (
     Baseline,
     add_exceptions,
@@ -467,15 +467,15 @@ def _apply(
         print_applied(Console(), preview, document, changes, True)
     if not yes and not typer.confirm("Save these as the next version?", err=True):
         raise typer.Exit(1)
-    if baseline is not None:
-        replace_file(baseline.path, baseline.after)
     try:
+        if baseline is not None:
+            replace_file(baseline.path, baseline.after)
         answer = session.client.request(
             "POST",
             "/conventions/apply",
             body={"conventions": document, "dry_run": False},
         )
-    except ApiError:
+    except (ApiError, UnreachableError, KeyboardInterrupt):
         if baseline is not None:
             replace_file(baseline.path, baseline.before)
         raise

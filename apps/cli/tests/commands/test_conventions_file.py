@@ -888,3 +888,29 @@ def test_apply_custom_field_twice_prompts_only_once(
     assert "No change." in second.stdout
     assert "Save these as the next version?" not in second.stderr
     assert len(seen) == 4
+
+
+@pytest.mark.parametrize("failure", ["unreachable", "interrupt"])
+def test_baseline_restores_file_when_apply_cannot_answer(
+    serve: Serve, tmp_path: Path, failure: str
+) -> None:
+    path = tmp_path / "conventions.yml"
+    original = b"format: 1 # keep\n"
+    path.write_bytes(original)
+    preview = baseline_api()
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST" and sent(request)["dry_run"] is False:
+            assert path.read_bytes() != original
+            if failure == "interrupt":
+                raise KeyboardInterrupt
+            raise httpx.ConnectError("unreachable", request=request)
+        return preview(request)
+
+    serve(answer)
+    result = run(
+        "conventions", "apply", str(path), "--baseline", "--reason", "Old", "--yes"
+    )
+    assert result.exit_code != 0
+    assert path.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [path]
