@@ -140,7 +140,7 @@ export function summariseRules(rules: Rules): string[] {
     rules.off.length > 0 &&
       `These rules and checks are off: ${words(rules.off)}.`,
     rules.exceptions.length > 0 &&
-      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; get_conventions lists those on elements you can see, each with its reason.`,
+      `${String(rules.exceptions.length)} ${rules.exceptions.length === 1 ? "exception lets an element" : "exceptions let elements"} keep failing a rule; an element's checks show its exception and the reason.`,
   ].filter((line) => line !== false);
 }
 
@@ -164,7 +164,7 @@ async function hiddenMetrics(
   return new Set(rows.map((row) => row.name));
 }
 
-/** Exceptions are visible only through a live target and its describable dataset. */
+/** Exceptions are visible only through a live target and its describable dataset, named by its name or its id. */
 export async function visibleExceptions(
   context: ServiceContext,
   exceptions: Conventions["exceptions"],
@@ -179,8 +179,15 @@ export async function visibleExceptions(
       .from(powerbiDataset)
       .where(and(allowed, isNull(powerbiDataset.removed_at)));
     const ids = datasets.map((row) => row.id);
-    for (const row of datasets)
-      visible.add(exceptionKey({ dataset: row.name }));
+    const names = new Map(datasets.map((row) => [row.id, row.name]));
+    const see = (
+      datasetId: string,
+      target: { table?: string; column?: string },
+    ) => {
+      for (const dataset of [datasetId, names.get(datasetId)])
+        visible.add(exceptionKey({ dataset, ...target }));
+    };
+    for (const id of ids) see(id, {});
     if (ids.length > 0) {
       const tables = await context.db
         .select({
@@ -195,11 +202,7 @@ export async function visibleExceptions(
             isNull(powerbiTable.removed_at),
           ),
         );
-      const names = new Map(datasets.map((row) => [row.id, row.name]));
-      for (const row of tables)
-        visible.add(
-          exceptionKey({ dataset: names.get(row.dataset_id), table: row.name }),
-        );
+      for (const row of tables) see(row.dataset_id, { table: row.name });
       const hides = !(await readsPii(context));
       const columns = await context.db
         .select({
@@ -218,12 +221,7 @@ export async function visibleExceptions(
           ),
         );
       for (const row of columns)
-        visible.add(
-          exceptionKey({
-            dataset: names.get(row.dataset_id),
-            column: columnTarget(row.table, row.name),
-          }),
-        );
+        see(row.dataset_id, { column: columnTarget(row.table, row.name) });
     }
   }
   return exceptions.filter(({ metric, term, dataset, table, column }) =>
@@ -234,15 +232,22 @@ export async function visibleExceptions(
   );
 }
 
-/** Anyone signed in may read them: an agent reads them before it names, describes or groups anything. The summary counts every exception; the list holds those the caller may see. */
+/**
+ * Anyone signed in may read them: an agent reads them before it names,
+ * describes or groups anything. The exceptions come as a count per rule, never
+ * the list: a baseline over a large book holds thousands, and an element's own
+ * checks show its exception and reason.
+ */
 export async function getConventionsForAgents(context: ServiceContext) {
-  const { guide, ...rules } = await currentConventions(context.db);
-  const exceptions = await visibleExceptions(context, rules.exceptions);
+  const { guide, exceptions, ...rules } = await currentConventions(context.db);
+  const counts: Record<string, number> = {};
+  for (const { rule } of exceptions) counts[rule] = (counts[rule] ?? 0) + 1;
   return {
     preset: rules.preset,
     guide,
-    summary: summariseRules(rules),
-    rules: { ...rules, exceptions },
+    summary: summariseRules({ ...rules, exceptions }),
+    rules,
+    exceptions: counts,
   };
 }
 
@@ -303,7 +308,7 @@ export async function setConventionsAsAdmin(
 /** Applies a company part, or only says what it would change; see applyConventions. */
 export async function applyAsAdmin(context: ServiceContext, input: ApplyInput) {
   await context.access.require(context.principal, BOOK, "edit_conventions");
-  return applyConventions(context, context.principal, input);
+  return applyConventions(context, input);
 }
 
 /**

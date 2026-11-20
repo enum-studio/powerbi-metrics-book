@@ -11,6 +11,7 @@ import { recordBookChange } from "../book/changes.js";
 import { type NewEvent, withEvents } from "../events/feed.js";
 import { FIXED_RULES, isDocument, isRuleOff, RULES, valueAt } from "./rules.js";
 import {
+  companyPartSchema,
   type Conventions,
   conventionsSchema,
   PRESET_NAMES,
@@ -402,17 +403,19 @@ function refuseTrustChangeUnlessBrowser(
 }
 
 /**
- * The company's part a document makes: a part as given; a complete document
- * as what differs from its preset. A complete document holds every trust key,
- * so one whose trust rules are those in force keeps the stored part's trust
- * as it is, pinned or not.
+ * The company's part a document makes: a part as the schema reads it, so
+ * what the schema drops, such as a "__proto__" key in a record, is not
+ * stored; a complete document as what differs from its preset. A complete
+ * document holds every trust key, so one whose trust rules are those in force
+ * keeps the stored part's trust as it is, pinned or not.
  */
 function partOf(
   document: unknown,
   proposed: Conventions,
   current: InForce,
 ): CompanyPart {
-  if (isCompanyPart(document)) return document;
+  // resolve has checked the part merged over its preset, so this parse holds.
+  if (isCompanyPart(document)) return companyPartSchema.parse(document);
   const { trust, ...part } = toCompanyPart(proposed);
   const kept = isDeepStrictEqual(proposed.trust, current.conventions.trust)
     ? current.company.trust
@@ -494,8 +497,8 @@ export async function saveVersion(
  * Saves the next version. The trust rule is checked here, against the version
  * read under the lock this save writes under, so every caller gets it and no
  * save can land between the check and the write. A company part is stored as
- * given, values equal to the preset's included; a complete document as what
- * differs from its preset.
+ * validated, values equal to the preset's included; a complete document as
+ * what differs from its preset.
  */
 export async function setConventions(
   deps: Pick<AppDeps, "db">,

@@ -50,16 +50,35 @@ export function securityHeaders(publicBaseUrl: URL): MiddlewareHandler {
   };
 }
 
+/** A company's conventions with a baseline over a large book: about 9,000 exceptions pass 1 MiB. */
+export const MAX_CONVENTIONS_BODY_BYTES = 8 * MAX_BODY_BYTES;
+const CONVENTIONS_BODIES = new Set([
+  "PUT /api/v1/conventions",
+  "POST /api/v1/conventions/diff",
+  "POST /api/v1/conventions/apply",
+]);
+
+const limitTo = (maxSize: number, size: string) =>
+  bodyLimit({
+    maxSize,
+    onError: (c) =>
+      c.json(
+        {
+          error: "invalid",
+          message: `The request body is larger than ${size}.`,
+        },
+        413,
+      ),
+  });
+const anyBody = limitTo(MAX_BODY_BYTES, "1 MiB");
+const conventionsBody = limitTo(MAX_CONVENTIONS_BODY_BYTES, "8 MiB");
+
 /**
  * Refuses a body over 1 MiB before any handler reads it: at once when
  * Content-Length says so, and part way through when a streamed body passes
- * the limit.
+ * the limit. Saving, diffing and applying the conventions take 8 MiB.
  */
-export const bodySizeLimit: MiddlewareHandler = bodyLimit({
-  maxSize: MAX_BODY_BYTES,
-  onError: (c) =>
-    c.json(
-      { error: "invalid", message: "The request body is larger than 1 MiB." },
-      413,
-    ),
-});
+export const bodySizeLimit: MiddlewareHandler = (c, next) =>
+  (CONVENTIONS_BODIES.has(`${c.req.method} ${c.req.path}`)
+    ? conventionsBody
+    : anyBody)(c, next);

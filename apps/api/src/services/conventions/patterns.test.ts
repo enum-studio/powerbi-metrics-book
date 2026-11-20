@@ -1,7 +1,11 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { conventionsSchema, PRESET_NAMES } from "./schema.js";
+import {
+  companyPartSchema,
+  conventionsSchema,
+  PRESET_NAMES,
+} from "./schema.js";
 import { resolve, validateConventions } from "./store.js";
 import { summariseRules } from "./service.js";
 import { LEGACY_TRANSFORMS } from "./upgrade.js";
@@ -60,6 +64,8 @@ describe("text drafting rules", () => {
       const entries: [string, unknown][] = Object.entries(value);
       for (const [key, child] of entries) {
         if (!schema) expect(key).not.toMatch(/pattern|regex/i);
+        // pbmb check runs the shipped schema through Python's re, which backtracks.
+        if (schema) expect(key).not.toBe("pattern");
         if (
           schema &&
           key === "properties" &&
@@ -72,7 +78,76 @@ describe("text drafting rules", () => {
       }
     };
     walk(z.toJSONSchema(conventionsSchema), true);
+    walk(z.toJSONSchema(companyPartSchema), true);
     for (const preset of PRESET_NAMES) walk(resolve({ preset }));
+  });
+
+  it("refuses a 1 MiB column target built to make a pattern backtrack, within 100 ms", () => {
+    const hostile = `'${"'[".repeat(512 * 1024)}`;
+    const started = performance.now();
+    const problems = validateConventions({
+      format: 1,
+      exceptions: [
+        {
+          rule: "column_fields.definition",
+          dataset: "Sales",
+          column: hostile,
+          reason: "Kept.",
+        },
+      ],
+    });
+    expect(performance.now() - started).toBeLessThan(100);
+    expect(problems.map(({ path }) => path)).toContain("exceptions.0.column");
+  });
+
+  it("holds every target and name to 500 characters, and reads a column as '<table>'[<column>]", () => {
+    const long = "a".repeat(501);
+    const exception = (target: object) =>
+      validateConventions({
+        exceptions: [{ rule: "naming.kinds", reason: "Kept.", ...target }],
+      });
+    expect(exception({ metric: long }).length).toBeGreaterThan(0);
+    expect(
+      validateConventions({ naming: { forbidden_words: [long] } }),
+    ).toEqual([expect.objectContaining({ path: "naming.forbidden_words.0" })]);
+    expect(
+      validateConventions({
+        drafting: { skip: { name_prefixes: [long] } },
+      }),
+    ).toEqual([
+      expect.objectContaining({ path: "drafting.skip.name_prefixes.0" }),
+    ]);
+    const column = (target: string) =>
+      validateConventions({
+        exceptions: [
+          {
+            rule: "column_fields.definition",
+            dataset: "Sales",
+            column: target,
+            reason: "Kept.",
+          },
+        ],
+      });
+    for (const valid of ["'Sales'[Channel]", "'a'['b'[c]", "'It''s'[x]"])
+      expect(column(valid)).toEqual([]);
+    for (const invalid of [
+      "Sales[Channel]",
+      "'Sales'Channel]",
+      "''[Channel]",
+      "'Sales'[]",
+      "'Sales'[Channel",
+      "'Sales'[Chan\nnel]",
+      `'Sales'[${long}]`,
+    ])
+      expect(column(invalid).length).toBeGreaterThan(0);
+    expect(
+      validateConventions({ naming: { qualifiers: { Per: ["per"] } } }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      validateConventions({
+        variants: { axes: { currency: { values: ["eur"] } } },
+      }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("allows dynamic regular expressions only in the three reviewed modules", () => {

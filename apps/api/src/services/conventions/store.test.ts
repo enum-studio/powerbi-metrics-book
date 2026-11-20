@@ -10,6 +10,7 @@ import { waitingOn } from "../../../test/locks.js";
 import { event } from "../../db/schema/events.js";
 import {
   CONVENTIONS_LOCK,
+  conventionsInForce,
   currentConventions,
   diffConventions,
   listVersions,
@@ -368,6 +369,26 @@ describe("setConventions", () => {
         }),
       );
       expect((await listVersions(tx))[0]?.document).toEqual(saved.conventions);
+    }));
+
+  it("stores a part as validated, so a key the schema drops is neither stored nor given back", () =>
+    rolledBack(async (tx) => {
+      const part: unknown = JSON.parse(
+        '{"format":1,"naming":{"qualifiers":{"__proto__":["x"],"per":["per"]}}}',
+      );
+      await setConventions({ db: tx }, principals.admin, part);
+      const [row] = await tx
+        .select()
+        .from(conventions)
+        .orderBy(desc(conventions.version));
+      const { company } = await conventionsInForce(tx);
+      for (const kept of [row?.document, company]) {
+        expect(JSON.stringify(kept)).not.toContain("__proto__");
+        expect(kept).toEqual({
+          format: 1,
+          naming: { qualifiers: { per: ["per"] } },
+        });
+      }
     }));
 
   it("keeps every version, records each change and announces it", () =>

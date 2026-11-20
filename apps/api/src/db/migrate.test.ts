@@ -131,7 +131,10 @@ describe("a start's migration", () => {
       const { rows } = await worker.query(
         "select document from conventions where version = 1",
       );
-      expect(rows).toEqual([{ document: { format: 1, preset: "minimal" } }]);
+      const { trust } = resolve({ preset: "minimal" });
+      expect(rows).toEqual([
+        { document: { format: 1, preset: "minimal", trust } },
+      ]);
     } finally {
       await newSession("migrator", (migrator) =>
         migrator.query("delete from conventions"),

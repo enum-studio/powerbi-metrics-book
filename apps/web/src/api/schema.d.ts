@@ -571,7 +571,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The company's conventions: the guide in words and the rules as data */
+    /** The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has */
     get: operations["getApiV1Conventions"];
     /** Save the conventions as the next version */
     put: operations["putApiV1Conventions"];
@@ -5909,7 +5909,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description The company's conventions: the guide in words and the rules as data */
+      /** @description The company's conventions: the guide in words, the rules as data, and how many exceptions each rule has */
       200: {
         headers: {
           [name: string]: unknown;
@@ -6172,48 +6172,9 @@ export interface operations {
                 | "term_fields.values"
                 | "term_fields.custom"
               )[];
-              exceptions: {
-                /** @enum {string} */
-                rule:
-                  | "naming.case"
-                  | "naming.kinds"
-                  | "metric_name_generated"
-                  | "naming.forbidden_words"
-                  | "naming.money_qualifier"
-                  | "naming.qualifier_order"
-                  | "metric_fields.definition"
-                  | "metric_fields.aliases"
-                  | "metric_fields.when_to_use"
-                  | "metric_fields.grain_and_filters"
-                  | "metric_fields.unit"
-                  | "metric_fields.category"
-                  | "metric_fields.custom"
-                  | "dataset_fields.definition"
-                  | "dataset_fields.when_to_use"
-                  | "dataset_fields.owner"
-                  | "dataset_fields.freshness"
-                  | "dataset_fields.caveats"
-                  | "dataset_fields.custom"
-                  | "table_fields.definition"
-                  | "table_fields.grain_and_filters"
-                  | "table_fields.caveats"
-                  | "table_fields.custom"
-                  | "column_fields.definition"
-                  | "column_fields.unit"
-                  | "column_fields.blank_means"
-                  | "column_fields.custom"
-                  | "metric_fields.not_the_same_as"
-                  | "metric_base_variant"
-                  | "term_fields.definition"
-                  | "term_fields.values"
-                  | "term_fields.custom";
-                reason: string;
-                metric?: string;
-                term?: string;
-                dataset?: string;
-                table?: string;
-                column?: string;
-              }[];
+            };
+            exceptions: {
+              [key: string]: number;
             };
           };
         };
