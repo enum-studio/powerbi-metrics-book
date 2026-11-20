@@ -22,6 +22,7 @@ from powerbi_metrics_book.answers import (
 )
 from powerbi_metrics_book.calls import show_done, show_list, show_object
 from powerbi_metrics_book.client import ApiError, Json, api_path
+from powerbi_metrics_book.commands.conventions import _preview_apply, _print_applied
 from powerbi_metrics_book.conventions_file import read_conventions, write_conventions
 from powerbi_metrics_book.output import FAILED, JsonOption, open_session
 from powerbi_metrics_book.pii_ref import PiiReference, parse_ref
@@ -869,10 +870,6 @@ def export(
         company = object_of(
             session.client.get("/conventions/company"), "the company part"
         )
-        if any(line.startswith("conventions:") for line in yaml_text.splitlines()):
-            book = object_of(yaml.safe_load(yaml_text), "book.yml")
-            book.pop("conventions")
-            yaml_text = yaml.safe_dump(book, sort_keys=False, allow_unicode=True)
         answer = {**answer, "yaml": yaml_text, "conventions": company}
         if output is not None:
             try:
@@ -927,12 +924,18 @@ def import_book(
             ),
             "the difference",
         )
+        conventions_changes: list[dict[str, Json]] = []
+        if company is not None:
+            preview, conventions_changes = _preview_apply(session, company)
+            difference["conventions"] = preview
+            if not session.as_json:
+                _print_applied(Console(), preview, company, conventions_changes, True)
         if session.as_json and not yes:
             session.emit(difference, lambda console: None)
             return
         if not session.as_json:
             _show_difference(Console(), difference)
-        if not objects_in(difference, "changes") and company is None:
+        if not objects_in(difference, "changes") and not conventions_changes:
             return
         if not yes:
             typer.confirm("Apply these changes?", abort=True)
@@ -942,7 +945,7 @@ def import_book(
             ),
             "the result",
         )
-        if company is not None:
+        if company is not None and conventions_changes:
             applied["conventions"] = session.client.request(
                 "POST",
                 "/conventions/apply",

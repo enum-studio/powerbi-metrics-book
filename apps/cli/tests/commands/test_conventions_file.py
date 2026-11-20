@@ -26,6 +26,8 @@ def test_baseline_preserves_comments_and_applies_file(
     exception = {"rule": "naming.kinds", "metric": "gmv", "reason": "Before style"}
 
     def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return json_response(200, yaml.safe_load(original))
         body = sent(request)
         return json_response(
             200,
@@ -204,7 +206,11 @@ def test_baseline_dry_run_and_second_run_do_not_write(
         "exceptions_added": [],
         "version": 1,
     }
-    seen = serve(lambda request: json_response(200, answer))
+    seen = serve(
+        lambda request: json_response(
+            200, {"format": 1} if request.method == "GET" else answer
+        )
+    )
     for flags in [("--dry-run",), ("--yes",)]:
         result = run(
             "conventions",
@@ -217,9 +223,14 @@ def test_baseline_dry_run_and_second_run_do_not_write(
             *flags,
         )
         assert result.exit_code == 0
-        assert json.loads(result.stdout) == answer
+        expected = (
+            answer
+            if "--dry-run" in flags
+            else {key: value for key, value in answer.items() if key != "version"}
+        )
+        assert json.loads(result.stdout) == expected
         assert path.read_text() == original
-    assert len(seen) == 2
+    assert [request.method for request in seen] == ["POST", "POST", "GET"]
 
 
 def test_admin_import_refuses_two_sources_before_request(
@@ -255,7 +266,7 @@ def test_metrics_check_reports_unused(serve: Serve) -> None:
     serve(answer)
     result = run("metrics", "check", "gmv")
     assert result.exit_code == 1
-    assert "conventions.exception_unused" in result.stdout
+    assert "metric gmv: conventions.exception_unused" in result.stdout
 
 
 def test_admin_export_and_import_use_company_file(serve: Serve, tmp_path: Path) -> None:
@@ -265,9 +276,7 @@ def test_admin_export_and_import_use_company_file(serve: Serve, tmp_path: Path) 
         if request.url.path.endswith("/company"):
             return json_response(200, company)
         if request.url.path.endswith("/export"):
-            return json_response(
-                200, {"yaml": "format: 1\nconventions:\n  preset: minimal\n"}
-            )
+            return json_response(200, {"yaml": "format: 1\n"})
         if request.url.path.endswith("/apply"):
             assert sent(request) == {"conventions": company, "dry_run": False}
             return json_response(
@@ -287,11 +296,14 @@ def test_admin_export_and_import_use_company_file(serve: Serve, tmp_path: Path) 
     assert "conventions:" not in book.read_text()
     assert (tmp_path / "conventions/guide.md").read_text() == "The guide."
     assert run("admin", "import", str(book), "--yes").exit_code == 0
-    assert [request.url.path.rsplit("/", 1)[-1] for request in seen][-3:] == [
+    assert [request.url.path.rsplit("/", 1)[-1] for request in seen][-2:] == [
         "import",
-        "import",
-        "apply",
+        "company",
     ]
+    assert all(
+        request.method == "GET" or request.url.path.endswith("/import")
+        for request in seen
+    )
 
 
 def test_check_conventions_offline_uses_schema_and_safe_paths(tmp_path: Path) -> None:
@@ -310,3 +322,244 @@ def test_check_conventions_offline_uses_schema_and_safe_paths(tmp_path: Path) ->
     assert any("outside" in problem for problem in _check_conventions(path))
     path.write_text("format: 1\noff: &rules []\nexceptions: *rules\n")
     assert any("aliases" in problem for problem in _check_conventions(path))
+
+
+@pytest.mark.parametrize("command", ["conventions", "admin"])
+@pytest.mark.parametrize(
+    "link", ["conventions", "conventions/guide.md", "conventions.yml"]
+)
+def test_export_refuses_symlink_targets(
+    serve: Serve, tmp_path: Path, command: str, link: str
+) -> None:
+    folder = tmp_path / "output"
+    folder.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    protected = outside / "guide.md"
+    protected.write_text("Keep this.")
+    target = folder / link
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.symlink_to(outside if link == "conventions" else protected)
+    serve(
+        lambda request: json_response(
+            200,
+            {"yaml": "format: 1\n"}
+            if request.url.path.endswith("/export")
+            else {"format": 1, "guide": "Server guide."},
+        )
+    )
+    result = run(
+        command,
+        "export",
+        "--output",
+        str(folder / ("book.yml" if command == "admin" else "conventions.yml")),
+    )
+    assert result.exit_code == 2, result.output
+    assert str(target) in result.output
+    assert protected.read_text() == "Keep this."
+    assert sorted(item.name for item in outside.iterdir()) == ["guide.md"]
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [("guide", "New guide."), ("drafting", {"name_hints": {"currency": ["EUR"]}})],
+)
+def test_apply_non_rule_change_saves(
+    serve: Serve, tmp_path: Path, key: str, value: object
+) -> None:
+    path = tmp_path / "conventions.yml"
+    if key == "guide":
+        (tmp_path / "guide.md").write_text(str(value))
+    path.write_text(
+        yaml.safe_dump({"format": 1, key: "guide.md" if key == "guide" else value})
+    )
+    seen = serve(
+        lambda request: json_response(
+            200,
+            {"format": 1}
+            if request.method == "GET"
+            else {
+                "changed_rules": [],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": 2,
+            },
+        )
+    )
+    result = run("conventions", "apply", str(path), "--yes")
+    assert result.exit_code == 0, result.output
+    assert key in result.stdout
+    assert any(
+        request.method == "POST" and sent(request)["dry_run"] is False
+        for request in seen
+    )
+
+
+def test_diff_exception_order_and_rule_reporting(serve: Serve, tmp_path: Path) -> None:
+    first = {"rule": "naming.case", "metric": "one", "reason": "Old"}
+    second = {"rule": "naming.kinds", "metric": "two", "reason": "Old"}
+    company = {"format": 1, "exceptions": [first, second]}
+    seen = serve(
+        lambda request: json_response(
+            200, {"rules": []} if request.url.path.endswith("/rules") else company
+        )
+    )
+    path = tmp_path / "conventions.yml"
+    path.write_text(yaml.safe_dump({**company, "exceptions": [second, first]}))
+    assert run("conventions", "diff", str(path)).exit_code == 0
+    result = run("conventions", "apply", str(path), "--yes")
+    assert result.exit_code == 0
+    assert "No change." in result.stdout
+    assert all(request.method == "GET" for request in seen)
+    path.write_text(yaml.safe_dump({**company, "exceptions": [first]}))
+    result = run("conventions", "diff", str(path))
+    assert result.exit_code == 1
+    assert "naming.kinds" in result.stdout
+
+
+@pytest.mark.parametrize("changed", [True, False])
+def test_admin_import_previews_conventions_and_skips_equal(
+    serve: Serve, tmp_path: Path, changed: bool
+) -> None:
+    book = tmp_path / "book.yml"
+    book.write_text("format: 1\n")
+    company = {"format": 1, "drafting": {"name_hints": {"currency": ["EUR"]}}}
+    (tmp_path / "conventions.yml").write_text(yaml.safe_dump(company))
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/company"):
+            return json_response(200, {"format": 1} if changed else company)
+        if request.url.path.endswith("/import"):
+            return json_response(200, {"changes": []})
+        return json_response(
+            200,
+            {
+                "changed_rules": [],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": 2,
+            },
+        )
+
+    seen = serve(answer)
+    result = run("admin", "import", str(book), input="y\n")
+    assert result.exit_code == 0, result.output
+    posts = [sent(request) for request in seen if request.url.path.endswith("/apply")]
+    assert posts == (
+        [
+            {"conventions": company, "dry_run": True},
+            {"conventions": company, "dry_run": False},
+        ]
+        if changed
+        else []
+    )
+    assert ("Apply these changes?" in result.stdout) == changed
+    if changed:
+        assert result.stdout.index("drafting") < result.stdout.index(
+            "Apply these changes?"
+        )
+
+
+@pytest.mark.parametrize("global_json", [False, True])
+def test_baseline_json_requires_yes_before_file_write(
+    serve: Serve, tmp_path: Path, global_json: bool
+) -> None:
+    path = tmp_path / "conventions.yml"
+    original = "format: 1 # keep\n"
+    path.write_text(original)
+    serve(
+        lambda request: json_response(
+            200,
+            {
+                "changed_rules": ["naming.case"],
+                "now_failing": {},
+                "exceptions_added": [
+                    {"rule": "naming.case", "metric": "gmv", "reason": "Old"}
+                ],
+                "version": 2,
+            },
+        )
+    )
+    result = run(
+        *(["--json"] if global_json else []),
+        "conventions",
+        "apply",
+        str(path),
+        "--baseline",
+        "--reason",
+        "Old",
+        *([] if global_json else ["--json"]),
+    )
+    assert result.exit_code == 2
+    assert path.read_text() == original
+
+
+def test_baseline_dry_run_says_would_add(serve: Serve, tmp_path: Path) -> None:
+    path = tmp_path / "conventions.yml"
+    path.write_text("format: 1\n")
+    serve(
+        lambda request: json_response(
+            200,
+            {
+                "changed_rules": ["naming.case"],
+                "now_failing": {},
+                "exceptions_added": [
+                    {"rule": "naming.case", "metric": "gmv", "reason": "Old"}
+                ],
+                "version": 2,
+            },
+        )
+    )
+    result = run(
+        "conventions", "apply", str(path), "--baseline", "--reason", "Old", "--dry-run"
+    )
+    assert result.exit_code == 0
+    assert "would add 1 exceptions" in result.stdout
+
+
+def test_reset_unknown_rule(serve: Serve) -> None:
+    seen = serve(lambda request: json_response(200, {"rules": [{"id": "naming.case"}]}))
+    result = run("conventions", "reset", "unknown", "--yes")
+    assert result.exit_code == 2
+    assert "Unknown rule id: unknown" in result.output
+    assert len(seen) == 1
+
+
+def test_import_alias_note(serve: Serve, tmp_path: Path) -> None:
+    path = tmp_path / "conventions.yml"
+    path.write_text("format: 1\n")
+    serve(
+        lambda request: json_response(
+            200,
+            {"format": 1}
+            if request.method == "GET"
+            else {
+                "changed_rules": [],
+                "now_failing": {},
+                "exceptions_added": [],
+                "version": 1,
+            },
+        )
+    )
+    result = run("conventions", "import", str(path), "--yes")
+    assert result.exit_code == 0
+    assert "alias for apply for one release" in result.stderr
+
+
+def test_export_resolved_guide_inline(serve: Serve, tmp_path: Path) -> None:
+    document = {
+        "preset": "minimal",
+        "guide": "Resolved guide.",
+        "rules": {"naming": {"case": "none"}},
+    }
+    serve(lambda request: json_response(200, document))
+    path = tmp_path / "conventions.yml"
+    result = run("conventions", "export", "--resolved", "--output", str(path))
+    assert result.exit_code == 0, result.output
+    assert yaml.safe_load(path.read_text()) == {
+        "format": 1,
+        "preset": "minimal",
+        "guide": "Resolved guide.",
+        "naming": {"case": "none"},
+    }
+    assert not (tmp_path / "conventions").exists()

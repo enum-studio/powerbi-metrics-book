@@ -543,7 +543,10 @@ def check(
         unused = objects_in(unused_answer, "unused")
         failures += [
             (
-                str(item["target"]),
+                " ".join(
+                    f"{key} {value}"
+                    for key, value in object_of(item["target"], "the target").items()
+                ),
                 "conventions.exception_unused",
                 f"{one_line(item['rule'])}: {one_line(item['why'])}",
             )

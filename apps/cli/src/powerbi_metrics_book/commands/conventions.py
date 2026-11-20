@@ -22,11 +22,12 @@ from powerbi_metrics_book.answers import (
 )
 from powerbi_metrics_book.client import ApiError, Client, Json
 from powerbi_metrics_book.conventions_file import (
-    read_conventions as _read,
-)
-from powerbi_metrics_book.conventions_file import (
+    add_exceptions,
     read_mapping,
     write_conventions,
+)
+from powerbi_metrics_book.conventions_file import (
+    read_conventions as _read,
 )
 from powerbi_metrics_book.output import JsonOption, Session, open_session
 from powerbi_metrics_book.tables import line, print_table
@@ -211,6 +212,56 @@ def presets(context: typer.Context, json_output: JsonOption = False) -> None:
         session.emit(listed, render)
 
 
+def _company_changes(
+    before: dict[str, Json], after: dict[str, Json], rule_ids: set[str] | None = None
+) -> list[dict[str, Json]]:
+    changes: list[dict[str, Json]] = []
+
+    def exceptions_by_rule(value: Json) -> dict[str, Json]:
+        grouped: dict[str, Json] = {}
+        for item in sorted(
+            objects_in({"items": value or []}, "items"),
+            key=lambda item: (
+                str(item["rule"]),
+                json.dumps(
+                    {
+                        key: value
+                        for key, value in item.items()
+                        if key not in ("rule", "reason")
+                    },
+                    sort_keys=True,
+                ),
+                str(item["reason"]),
+            ),
+        ):
+            entries = grouped.setdefault(str(item["rule"]), [])
+            if isinstance(entries, list):
+                entries.append(item)
+        return grouped
+
+    def compare(
+        before: dict[str, Json], after: dict[str, Json], prefix: str = ""
+    ) -> None:
+        for key in sorted(before.keys() | after.keys()):
+            left, right = before.get(key), after.get(key)
+            path = f"{prefix}.{key}" if prefix else key
+            if path == "exceptions":
+                compare(exceptions_by_rule(left), exceptions_by_rule(right))
+            elif path not in (rule_ids or set()) and (
+                isinstance(left, dict) or isinstance(right, dict)
+            ):
+                compare(
+                    left if isinstance(left, dict) else {},
+                    right if isinstance(right, dict) else {},
+                    path,
+                )
+            elif left != right:
+                changes.append({"path": path, "before": left, "after": right})
+
+    compare(before, after)
+    return changes
+
+
 @app.command("diff")
 def diff(
     context: typer.Context, file: FileArgument, json_output: JsonOption = False
@@ -223,27 +274,8 @@ def diff(
         )
         listed = object_of(session.client.get("/conventions/rules"), "the rules")
         rule_ids = {string_field(item, "id") for item in objects_in(listed, "rules")}
-        changes: list[Json] = []
-
-        def compare(
-            before: dict[str, Json], after: dict[str, Json], prefix: str = ""
-        ) -> None:
-            for key in sorted(before.keys() | after.keys()):
-                left, right = before.get(key), after.get(key)
-                path = f"{prefix}.{key}" if prefix else key
-                if path not in rule_ids and (
-                    isinstance(left, dict) or isinstance(right, dict)
-                ):
-                    compare(
-                        left if isinstance(left, dict) else {},
-                        right if isinstance(right, dict) else {},
-                        path,
-                    )
-                elif left != right:
-                    changes.append({"path": path, "before": left, "after": right})
-
-        compare(current, document)
-        difference: dict[str, Json] = {"changes": changes}
+        changes = _company_changes(current, document, rule_ids)
+        difference: dict[str, Json] = {"changes": [change for change in changes]}
         session.emit(difference, lambda console: _print_changes(console, difference))
         if changes:
             raise typer.Exit(1)
@@ -318,12 +350,16 @@ def _rule_value(document: dict[str, Json], rule: str) -> Json:
 
 
 def _print_applied(
-    console: Console, answer: dict[str, Json], document: dict[str, Json]
+    console: Console,
+    answer: dict[str, Json],
+    document: dict[str, Json],
+    changes: list[dict[str, Json]] | None = None,
+    dry_run: bool = False,
 ) -> None:
     rules = answer["changed_rules"]
-    if not rules:
+    if changes == []:
         line(console, "No change.")
-    elif isinstance(rules, list):
+    if isinstance(rules, list):
         failing = object_of(answer["now_failing"], "the failing counts")
         for rule in rules:
             name = text_of(rule)
@@ -332,29 +368,57 @@ def _print_applied(
                 f"{name}: {json.dumps(_rule_value(document, name))}; "
                 f"{failing.get(name, 0)} targets now fail.",
             )
+    if changes:
+        covered = (
+            {str(rule).split(".")[0] for rule in rules}
+            if isinstance(rules, list)
+            else set()
+        )
+        for key in sorted(
+            {str(change["path"]).split(".")[0] for change in changes} - covered
+        ):
+            line(console, f"{key}: changed.")
     added = objects_in(answer, "exceptions_added")
     if added:
-        line(console, f"{len(added)} exceptions added.")
+        line(
+            console,
+            f"would add {len(added)} exceptions."
+            if dry_run
+            else f"{len(added)} exceptions added.",
+        )
         line(console, yaml.safe_dump(added, sort_keys=False))
+
+
+def _preview_apply(
+    session: Session, document: dict[str, Json]
+) -> tuple[dict[str, Json], list[dict[str, Json]]]:
+    current = object_of(session.client.get("/conventions/company"), "the company part")
+    changes = _company_changes(current, document)
+    preview = (
+        object_of(
+            session.client.request(
+                "POST",
+                "/conventions/apply",
+                body={"conventions": document, "dry_run": True},
+            ),
+            "the apply result",
+        )
+        if changes
+        else {"changed_rules": [], "now_failing": {}, "exceptions_added": []}
+    )
+    return preview, changes
 
 
 def _apply(
     session: Session, document: dict[str, Json], yes: bool, dry_run: bool = False
-) -> dict[str, Json]:
-    preview = object_of(
-        session.client.request(
-            "POST",
-            "/conventions/apply",
-            body={"conventions": document, "dry_run": True},
-        ),
-        "the apply result",
-    )
-    if dry_run or not preview["changed_rules"]:
-        return preview
+) -> tuple[dict[str, Json], list[dict[str, Json]]]:
+    preview, changes = _preview_apply(session, document)
+    if dry_run or not changes:
+        return preview, changes
     if session.as_json and not yes:
         raise typer.BadParameter("--json cannot ask; add --yes.")
     if not session.as_json:
-        _print_applied(Console(), preview, document)
+        _print_applied(Console(), preview, document, changes, True)
     if not yes and not typer.confirm("Save these as the next version?", err=True):
         raise typer.Exit(1)
     return object_of(
@@ -364,7 +428,7 @@ def _apply(
             body={"conventions": document, "dry_run": False},
         ),
         "the apply result",
-    )
+    ), changes
 
 
 @app.command("apply")
@@ -391,6 +455,8 @@ def apply_file(
         raise typer.BadParameter("--baseline requires --reason.")
     document = _read(file)
     with open_session(context, json_output) as session:
+        if baseline and session.as_json and not yes and not dry_run:
+            raise typer.BadParameter("--json cannot ask; add --yes.")
         if baseline:
             preview = object_of(
                 session.client.request(
@@ -404,20 +470,24 @@ def apply_file(
                 ),
                 "the apply result",
             )
-            if dry_run or not preview["changed_rules"]:
+            if dry_run:
                 session.emit(
-                    preview, lambda console: _print_applied(console, preview, document)
+                    preview,
+                    lambda console: _print_applied(
+                        console, preview, document, dry_run=True
+                    ),
                 )
                 return
             added = objects_in(preview, "exceptions_added")
             if added:
-                from powerbi_metrics_book.conventions_file import add_exceptions
-
                 document = add_exceptions(file, document, added)
-        answer = _apply(session, document, yes, dry_run)
+        answer, changes = _apply(session, document, yes, dry_run)
         if baseline:
             answer["exceptions_added"] = preview["exceptions_added"]
-        session.emit(answer, lambda console: _print_applied(console, answer, document))
+        session.emit(
+            answer,
+            lambda console: _print_applied(console, answer, document, changes, dry_run),
+        )
 
 
 @app.command("import")
@@ -483,8 +553,10 @@ def reset(
                     for item in objects_in(document, "exceptions")
                     if item["rule"] != rule
                 ]
-        answer = _apply(session, document, yes)
-        session.emit(answer, lambda console: _print_applied(console, answer, document))
+        answer, changes = _apply(session, document, yes)
+        session.emit(
+            answer, lambda console: _print_applied(console, answer, document, changes)
+        )
 
 
 class _EditorNotStartedError(Exception):

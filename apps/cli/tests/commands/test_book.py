@@ -841,8 +841,14 @@ def conventions_api(
                 200,
                 {
                     "format": 1,
-                    "preset": "metrics_book",
-                    "naming": {"case": "snake_case"},
+                    **(
+                        {"preset": "minimal"}
+                        if diff and diff.json() == {"changes": []}
+                        else {
+                            "preset": "metrics_book",
+                            "naming": {"case": "snake_case"},
+                        }
+                    ),
                 },
             ),
             ("POST", "/conventions/apply"): json_response(
@@ -1012,7 +1018,15 @@ def test_import_shows_the_difference_and_asks_before_saving(
     assert unasked.exit_code == 1
     assert "alias for apply" in declined.stderr
     assert accepted.exit_code == 0
-    assert [request.method for request in seen] == ["POST", "POST", "POST", "POST"]
+    assert [request.method for request in seen] == [
+        "GET",
+        "POST",
+        "GET",
+        "POST",
+        "GET",
+        "POST",
+        "POST",
+    ]
 
 
 def test_import_with_yes_saves_without_asking_and_json_needs_yes(
@@ -1026,12 +1040,12 @@ def test_import_with_yes_saves_without_asking_and_json_needs_yes(
         ["--json", "conventions", "import", path],
     ):
         assert run(*refused).exit_code == 2
-    assert all(sent(request)["dry_run"] for request in seen)
+    assert all(sent(request)["dry_run"] for request in seen if request.method == "POST")
     seen.clear()
     result = run("conventions", "import", path, "--yes", "--json")
 
     assert json.loads(result.stdout)["version"] == 4
-    assert [request.method for request in seen] == ["POST", "POST"]
+    assert [request.method for request in seen] == ["GET", "POST", "POST"]
 
 
 def test_import_of_a_file_that_changes_nothing_saves_nothing(
@@ -1042,7 +1056,7 @@ def test_import_of_a_file_that_changes_nothing_saves_nothing(
     result = run("conventions", "import", str(a_file(tmp_path)), "--yes")
 
     assert "No change." in result.stdout
-    assert [request.method for request in seen] == ["POST"]
+    assert [request.method for request in seen] == ["GET"]
 
 
 def fake_editor(folder: Path, command: str) -> str:

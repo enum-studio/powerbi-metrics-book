@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from pathlib import Path
 
@@ -71,18 +72,38 @@ def write_conventions(
     ordered.update(
         {key: value for key, value in document.items() if key not in ordered}
     )
+
+    def refuse_unsafe(target: Path) -> None:
+        if target.is_symlink() or not target.resolve().is_relative_to(
+            path.parent.resolve()
+        ):
+            raise typer.BadParameter(f"Cannot write {target}: unsafe output path.")
+
+    def write(target: Path, text: str) -> None:
+        with os.fdopen(
+            os.open(
+                target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o666
+            ),
+            "w",
+            encoding="utf-8",
+        ) as stream:
+            stream.write(text)
+
     try:
+        for target in (
+            path,
+            path.parent / "conventions",
+            path.parent / "conventions/guide.md",
+        ):
+            refuse_unsafe(target)
         if "guide" in ordered and not inline_guide:
             guide = ordered["guide"]
             if isinstance(guide, str):
                 target = path.parent / "conventions/guide.md"
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(guide, encoding="utf-8")
+                write(target, guide)
                 ordered["guide"] = "conventions/guide.md"
-        path.write_text(
-            yaml.safe_dump(ordered, sort_keys=False, allow_unicode=True),
-            encoding="utf-8",
-        )
+        write(path, yaml.safe_dump(ordered, sort_keys=False, allow_unicode=True))
     except OSError as error:
         raise typer.BadParameter(f"Cannot write {path}: {error.strerror}.") from error
 
@@ -114,10 +135,10 @@ def add_exceptions(
         if match:
             indent = match[1]
     block = "".join(
-        f"{indent}{'- ' if index == 0 else '  '}{key}: "
+        f"{indent}{'- ' if field_index == 0 else '  '}{key}: "
         f"{json.dumps(value, ensure_ascii=False)}\n"
         for item in added
-        for index, (key, value) in enumerate(item.items())
+        for field_index, (key, value) in enumerate(item.items())
     )
     if index is None:
         changed = (
