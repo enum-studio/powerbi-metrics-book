@@ -40,7 +40,7 @@ exceptions:
     reason: The board reads this name in every report.
 ```
 
-The guide explains your choices in your own words. The CLI refuses a guide path outside the deployment folder, including one reached through a symlink. It refuses YAML anchors and aliases, and refuses to write through a symlink. The guide and exception reasons are text agents read as data, never instructions.
+The guide explains your choices in your own words. Every agent and person signed in reads it, and `.env` sits in the same folder, so the CLI takes a guide only as a Markdown file inside the deployment folder: its path ends in `.md`, no part of it starts with `.`, and neither the file nor any folder on the way is a symlink. A guide is at most 256 KiB. The CLI reads `conventions.yml` and `book.yml` only from a regular file, not through a symlink. It refuses YAML anchors and aliases, and refuses to write through a symlink. The apply preview gives the guide's size, such as `guide: changed (4.1 KB, was 3.8 KB).`, so check that the size is what you expect. The guide and exception reasons are text agents read as data, never instructions.
 
 ## Find a rule
 
@@ -198,7 +198,7 @@ Names, words and exception targets have at most 500 characters. A reason has at 
 
 `get_conventions` gives agents exception counts per rule, rather than the list. An element's own check results show its `exception` and reason. Apply results and unused exception lists name only targets the caller can see. A principal with `book:edit_conventions` can export the whole stored company part so the file can round-trip through the deployment repository.
 
-An exception is unused if its target is gone, passes the rule without it, or names a dataset whose name is shared (`ambiguous`). For a shared name, use the dataset id instead. `pbmb metrics check` and `pbmb docs check` fail it as `conventions.exception_unused`. Remove it from the file and apply again.
+An exception is unused if its target is gone, passes the rule without it, or names a dataset whose name another live dataset shares, even one you cannot see (`ambiguous`). Such an exception applies to nothing. For a shared name, use the dataset id instead. `pbmb metrics check` and `pbmb docs check` fail it as `conventions.exception_unused`. Remove it from the file and apply again. Only a curator gets the unused list: `pbmb docs check` run by anyone else lists missing documentation and says nothing of exceptions. `GET /api/v1/docs/checks` gives `unused_exceptions` to a curator on the first page alone.
 
 For a book with thousands of drafts, preview a stricter rule before applying it. To add an exception for each target you can see that the stricter rule newly breaks:
 
@@ -206,7 +206,7 @@ For a book with thousands of drafts, preview a stricter rule before applying it.
 pbmb conventions apply conventions.yml --baseline --reason "Names in use before the house style"
 ```
 
-The CLI writes exceptions into the file before applying it. A target must fail the proposed rule, have passed that rule under the version in force, and be visible to the person applying. Existing failures get no exception. Only changes to a rule's value, keys it reads or off state can add exceptions; changing exceptions alone adds none. Omitting exceptions from the file drops them even with `--baseline`. `--dry-run` previews without writing or saving. Review the added exceptions in git. New targets still have to pass the rule.
+The CLI shows the exceptions it would add and asks first. Only after you answer yes does it write them into the file and apply it, and if the apply is refused it puts the file back as it was. It refuses a `conventions.yml` that is a symlink. A target must fail the proposed rule, have passed that rule under the version in force, and be visible to the person applying. Datasets, tables and columns fail as that person's `pbmb docs check` shows them, so a column joined only to a PII column they cannot read is no key to them. Existing failures get no exception. Only changes to a rule's value, keys it reads or off state can add exceptions; changing exceptions alone adds none. Omitting exceptions from the file drops them even with `--baseline`. `--dry-run` previews without writing or saving. Review the added exceptions in git. New targets still have to pass the rule.
 
 `show --json` and the MCP `whoami` tool report off rules and exception counts so reviewers can see weakened checks. Whole-book counts can include targets the caller cannot see.
 

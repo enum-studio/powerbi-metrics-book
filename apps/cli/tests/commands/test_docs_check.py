@@ -192,3 +192,22 @@ def test_check_collects_two_pages_without_repeating_totals_or_exceptions(
     else:
         assert result.stdout.count("conventions.exception_unused:") == 1
         assert result.stdout.endswith("3 checks fail.\n")
+
+
+@pytest.mark.parametrize("json_output", [False, True])
+def test_check_without_the_unused_list_says_nothing_of_it(
+    serve: Serve, json_output: bool
+) -> None:
+    answer = page([item()])
+    del answer["unused_exceptions"]
+    serve(lambda request: json_response(200, answer))
+    result = run(
+        "docs", "check", "--dataset", "Sales", *(["--json"] if json_output else [])
+    )
+
+    assert result.exit_code == 1, result.stderr
+    if json_output:
+        assert json.loads(result.stdout) == {"items": [item()], "failing": 1}
+    else:
+        assert "exception" not in result.stdout
+        assert result.stdout.endswith("1 check fails.\n")

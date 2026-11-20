@@ -904,11 +904,21 @@ catalog. The new documentation columns follow the element's visibility.
 Checks work out a column's key status and a table's kind from what the
 caller is shown, as the table page does. A non-reader's documentation
 failures can therefore differ from an admin's; using hidden columns would
-otherwise reveal PII through which fields fail.
+otherwise reveal PII through which fields fail. A baseline works out its
+element failures, before and after the change, the same way, as the admin
+applying it is shown the model, so which columns it excepts never tells of
+a PII column they may not read; `now_failing` still counts the whole book
+(`services/conventions/exception_visibility_security_test.ts`).
 
 Exception targets on element checks, apply results and unused lists are
 shown only to a caller who can see the target, including `pii_reader` for a
-PII column. Counts stay whole. The stored company part is returned whole to
+PII column. The unused list goes to a curator alone, on every route that
+gives it: `GET /api/v1/conventions/exceptions/unused`, and
+`GET /api/v1/docs/checks` on its first page; anyone else, and a later page,
+gets no `unused_exceptions` field, and the route does not work it out.
+The list matches exceptions to datasets through an index built once, so
+20,000 exceptions over 20,000 elements take milliseconds, not seconds.
+Counts stay whole. The stored company part is returned whole to
 a principal with `book:edit_conventions`: export and apply must round-trip
 the file, and the deployment repository already holds those targets.
 `GET /api/v1/conventions` and `get_conventions` return counts instead of
@@ -1229,11 +1239,23 @@ Crossing: files an admin brings in, and ones they take out.
 
 - `conventions.yml` sits beside `book.yml`; book export leaves conventions
   out of its answer and the CLI writes the separate file and guide.
-  Import still accepts older inline conventions. A guide path must resolve
-  inside the deployment folder; a symlink pointing outside it is refused.
-  The CLI refuses to write the conventions or guide through a symlink.
-  Conventions YAML refuses anchors and aliases
-  (`apps/cli/tests/commands/test_conventions_file.py`).
+  Import still accepts older inline conventions. The guide is served to
+  everyone signed in and every MCP client, and `.env` sits in the same
+  folder, so a guide is a Markdown file inside the deployment folder: its
+  path ends in `.md`, no part of it starts with `.`, and neither it nor any
+  folder on the way is a symlink. The CLI opens each part without following
+  a link, refuses anything but a regular file, and reads at most 256 KiB;
+  the api's schema takes a guide of at most 262,144 characters. The CLI
+  reads `conventions.yml` and `book.yml` only from a regular file, never
+  through a symlink, so a YAML error never quotes another file. The apply
+  preview gives the guide's size before and after, never its text. The CLI
+  refuses to write the conventions or guide through a symlink. `apply
+  --baseline` shows the exceptions it would add and asks before it writes
+  them; it writes the file by a temporary file in the same folder and a
+  rename, and puts the file back as it was if the apply is refused. Conventions
+  YAML refuses anchors and aliases
+  (`apps/cli/tests/commands/conventions_file_security_test.py`,
+  `apps/cli/tests/commands/test_conventions_file.py`).
 - Saving, diffing, applying and exporting conventions need
   `book:edit_conventions`. The CLI's `set`, `edit` and `export --resolved`
   keep the whole company exception list; `presets` reads only the
@@ -1587,7 +1609,7 @@ What the controls above do not close, and why it is accepted for now:
 | Better Auth is a young OAuth server | advisories in 2026, some critical, all fixed | pinned exact, advisories read on every bump, our own flow tests with the refresh-reuse test written first |
 | A person presses Allow for a deceptive client | consent cannot read intent | the consent screen names the client and the redirect host; grants are revocable; audit records `via` and `client_id` |
 | A token with `book:edit_conventions` weakens checks through `off`, exceptions, baselines or `required: false`, so `agent_verify_requires` means less in effect | the token's role is the company's decision; a baseline excepts only a target the change newly breaks and the caller can see, not existing failures or changes to exceptions alone | accepted: `agent_verified` is the agent's own tier; `trust.*` changes only from a browser; `show --json` and the MCP `whoami` tool report off rules and exception counts; every change and verification is in `book_change` |
-| Conventions give hints about hidden elements | whole exception and failure counts, and `no_such_target`, give hints to someone holding the deployment's `conventions.yml`; a dataset addressed by id in an exception or check target says another dataset shares its name, even when that other dataset is hidden | accepted: apply and unused lists name only visible targets; element checks show only their own exception; company-part export requires `book:edit_conventions` and must round-trip the file |
+| Conventions give hints about hidden elements | whole exception and failure counts, and `no_such_target`, give hints to someone holding the deployment's `conventions.yml`; a dataset addressed by id in an exception or check target says another dataset shares its name, even when that other dataset is hidden; an exception by a dataset name that more than one live dataset holds applies to nothing, for every caller, and the unused list reports it `ambiguous`, even to a curator who sees only one of the datasets, so it tells them a dataset they cannot see shares the name | accepted: apply and unused lists name only visible targets; element checks show only their own exception; company-part export requires `book:edit_conventions` and must round-trip the file |
 | Text in data steers an agent's answer | the connector returns what Power BI, the book and threads say | the connector cannot change the book; approval needs a browser; agent rule 5 |
 | A question or search holds personal data the server cannot redact | free text may name a customer or colleague; the server has no model to identify it | owner, curator and admin readers only by default; 180-day retention, at most 365; request deletion and deletion with the principal; capture can be turned off; tool instructions forbid copying result values |
 | A planted question steers a curator's agent into changing the book | one person's agent records text that another person's agent later reads in the report | the report tool and curation skill mark text as data, never instructions; the skill requires showing proposals to the person before filing them; the connector cannot change the book |

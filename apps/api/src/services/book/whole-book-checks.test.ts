@@ -19,6 +19,7 @@ import { METRICS, TERMS } from "../sample/book.js";
 import { getDataset } from "../mirror/read.js";
 import { metricChecks } from "./metrics.js";
 import {
+  type CheckedElement,
   checkedElements,
   failuresInBook,
   unusedExceptions,
@@ -207,6 +208,46 @@ describe("unusedExceptions", () => {
         await unusedExceptions({ db: tx }, conventions, { term: "Channel" }),
       ).toMatchObject([{ target: { term: "Channel" }, why: "passes" }]);
     }));
+
+  it("matches 20,000 exceptions to 20,000 elements in under a second", async () => {
+    const elements = Array.from(
+      { length: 20_000 },
+      (_, index): CheckedElement => {
+        const name = `Dataset ${String(index)}`;
+        const id = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+        return {
+          kind: "dataset",
+          id,
+          name,
+          dataset: name,
+          dataset_id: id,
+          target: { dataset: name },
+          results: [
+            {
+              check: "dataset_fields",
+              rule: "dataset_fields.definition",
+              passed: true,
+              message: "Excepted.",
+              exception: "Kept.",
+            },
+          ],
+        };
+      },
+    );
+    const conventions = {
+      ...metricsBook,
+      exceptions: elements.map(({ name }) => ({
+        rule: "dataset_fields.definition",
+        dataset: name,
+        reason: "Kept.",
+      })),
+    };
+    const started = performance.now();
+    expect(
+      await unusedExceptions({ db: logged }, conventions, undefined, elements),
+    ).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
 
   it("counts an exception to a rule that is off as unused", () =>
     rolledBack(async (tx) => {

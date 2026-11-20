@@ -65,7 +65,7 @@ def check(
     ] = None,
     json_output: JsonOption = False,
 ) -> None:
-    """List missing required documentation and unused conventions exceptions.
+    """List missing required documentation and, to a curator, unused exceptions.
 
     Exits 1 when anything fails. --json combines every page of checks.
     """
@@ -80,7 +80,9 @@ def check(
         )
         answer = pages[0]
         items = [item for page in pages for item in objects_in(page, "items")]
-        unused = objects_in(answer, "unused_exceptions")
+        # Only a curator gets the unused list, on the first page.
+        listed = "unused_exceptions" in answer
+        unused = objects_in(answer, "unused_exceptions") if listed else []
 
         failures: list[str] = []
         for item in items:
@@ -145,7 +147,7 @@ def check(
             {
                 "items": list(items),
                 "failing": answer["failing"],
-                "unused_exceptions": list(unused),
+                **({"unused_exceptions": list(unused)} if listed else {}),
             },
             render,
         )

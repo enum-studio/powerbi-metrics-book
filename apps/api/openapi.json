@@ -8938,7 +8938,8 @@
                           ]
                         },
                         "guide": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 262144
                         },
                         "naming": {
                           "type": "object",
@@ -17374,10 +17375,10 @@
     "/api/v1/docs/checks": {
       "get": {
         "operationId": "getApiV1DocsChecks",
-        "summary": "Missing required documentation on visible datasets, tables and columns",
+        "summary": "Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more",
         "responses": {
           "200": {
-            "description": "Missing required documentation on visible datasets, tables and columns",
+            "description": "Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more",
             "content": {
               "application/json": {
                 "schema": {
@@ -17509,7 +17510,6 @@
                   "required": [
                     "items",
                     "failing",
-                    "unused_exceptions",
                     "next_cursor"
                   ],
                   "additionalProperties": false
@@ -17583,7 +17583,7 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 500
+              "maxLength": 4096
             }
           }
         ]

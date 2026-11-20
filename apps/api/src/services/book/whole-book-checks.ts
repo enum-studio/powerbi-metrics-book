@@ -183,11 +183,19 @@ const targetsOf = (
       rule.target === kind && (rules === undefined || rules.has(rule.id)),
   );
 
-/** Every failing result in the book under `conventions`, exceptions applied, optionally only for `rules`. Metrics, terms, datasets, tables and columns. */
+/** The model as a caller is shown it: the datasets they may describe, and whether PII is left out. */
+export type ModelView = { allowed: SQL; hidesPii: boolean };
+
+/**
+ * Every failing result in the book under `conventions`, exceptions applied,
+ * optionally only for `rules`. Metrics, terms, datasets, tables and columns;
+ * with `view`, the elements only as that caller is shown them.
+ */
 export async function failuresInBook(
   deps: Deps,
   conventions: Conventions,
   rules?: ReadonlySet<string>,
+  view?: ModelView,
 ): Promise<Failure[]> {
   const run: Run = { conventions, exceptions: exceptionIndex(conventions) };
   const checked = [
@@ -196,7 +204,7 @@ export async function failuresInBook(
     ...((["dataset", "table", "column"] as const).some((kind) =>
       targetsOf(kind, rules),
     )
-      ? await checkedElements(deps, run)
+      ? await checkedElements(deps, run, view?.allowed, view?.hidesPii)
       : []),
   ];
   return checked.flatMap(({ target, results }) =>
@@ -242,13 +250,22 @@ export async function unusedExceptions(
   const byTarget = new Map(
     checked.map((each) => [exceptionKey(each.target), each]),
   );
+  const datasets = elements.filter((each) => each.kind === "dataset");
+  const byId = new Map(datasets.map((each) => [each.id, each]));
+  const byName = Map.groupBy(datasets, (each) => each.name);
   return exceptions.flatMap(({ rule, reason, target }): UnusedException[] => {
-    const datasets = elements.filter((each) => each.kind === "dataset");
-    const named = datasets.filter((each) => each.name === target.dataset);
-    const dataset = datasets.find((each) => each.id === target.dataset);
-    if (dataset === undefined && named.length > 1)
+    const key = target.dataset;
+    const dataset = key === undefined ? undefined : byId.get(key);
+    const resolved =
+      dataset ?? (key === undefined ? undefined : byName.get(key)?.[0]);
+    // The checks address a dataset by its id when another live dataset, seen
+    // or not, shares its name: an exception by that name applies to nothing.
+    if (
+      dataset === undefined &&
+      resolved !== undefined &&
+      resolved.target.dataset !== key
+    )
       return [{ rule, target, reason, why: "ambiguous" }];
-    const resolved = dataset ?? named[0];
     const lookup =
       resolved === undefined ? target : { ...target, ...resolved.target };
     const found = byTarget.get(exceptionKey(lookup));

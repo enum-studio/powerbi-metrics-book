@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq, TransactionRollbackError } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TEST_RUNNER } from "../../../test/database.js";
@@ -18,9 +19,14 @@ import { createDb } from "../../db/client.js";
 import { setRole } from "../../../test/sample-mirror.js";
 import { piiRule } from "../../db/schema/pii.js";
 import { term } from "../../db/schema/book.js";
-import { powerbiColumn, powerbiRelationship } from "../../db/schema/mirror.js";
+import {
+  powerbiColumn,
+  powerbiDataset,
+  powerbiRelationship,
+} from "../../db/schema/mirror.js";
 import type { Principal } from "../../principal.js";
 import { TOOLS } from "../../mcp/tools/index.js";
+import { docsChecks } from "../book/docs.js";
 import {
   applyAsAdmin,
   getCompanyPartAsAdmin,
@@ -87,37 +93,41 @@ const onTheConnector = async (tx: Db, principal: Principal) => {
   return answer?.content.map((block) => block.text).join("") ?? "";
 };
 
+/** Order date is numeric and joined only to the Date table's Date column, a PII column. */
+async function orderDateJoinedOnlyToPii(tx: Db): Promise<void> {
+  await setRole(tx, "worker_rw");
+  await tx
+    .update(powerbiRelationship)
+    .set({ cardinality: "many_to_one" })
+    .where(eq(powerbiRelationship.dataset_id, id.sales));
+  await tx
+    .update(powerbiColumn)
+    .set({ data_type: "Int64" })
+    .where(eq(powerbiColumn.id, id.order_date));
+  await tx.insert(powerbiColumn).values({
+    dataset_id: id.sales,
+    table_id: id.date_table,
+    name: "Date",
+    data_type: "DateTime",
+    column_type: "data",
+  });
+  await setRole(tx, "api_rw");
+  await tx.insert(piiRule).values({
+    kind: "column",
+    table_name: "Date",
+    name: "Date",
+    set_by_kind: "person",
+    set_by_id: principals.admin.id,
+    set_via: "browser",
+    pii: true,
+  });
+}
+
 describe("an unused exception on an element", () => {
   it("is judged on the model the curator is shown, so it never tells of a hidden PII column", () =>
     expect(
       createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
-        // Order date is numeric and joined only to the Date table's Date column, a PII column.
-        await setRole(tx, "worker_rw");
-        await tx
-          .update(powerbiRelationship)
-          .set({ cardinality: "many_to_one" })
-          .where(eq(powerbiRelationship.dataset_id, id.sales));
-        await tx
-          .update(powerbiColumn)
-          .set({ data_type: "Int64" })
-          .where(eq(powerbiColumn.id, id.order_date));
-        await tx.insert(powerbiColumn).values({
-          dataset_id: id.sales,
-          table_id: id.date_table,
-          name: "Date",
-          data_type: "DateTime",
-          column_type: "data",
-        });
-        await setRole(tx, "api_rw");
-        await tx.insert(piiRule).values({
-          kind: "column",
-          table_name: "Date",
-          name: "Date",
-          set_by_kind: "person",
-          set_by_id: principals.admin.id,
-          set_via: "browser",
-          pii: true,
-        });
+        await orderDateJoinedOnlyToPii(tx);
         const unit = {
           rule: "column_fields.unit",
           dataset: "Sales",
@@ -141,6 +151,136 @@ describe("an unused exception on an element", () => {
         tx.rollback();
       }),
     ).rejects.toThrow(TransactionRollbackError));
+
+  it("is ambiguous when a dataset the curator cannot see shares its dataset's name, as it applies to nothing", () =>
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        const item = {
+          rule: "dataset_fields.definition",
+          dataset: "Sales",
+          reason: "Kept.",
+        };
+        await setRole(tx, "api_rw");
+        await setConventions({ db: tx }, principals.admin, {
+          format: 1,
+          exceptions: [item],
+        });
+        const why = async () =>
+          (await unusedExceptionsAsCurator(asPerson(curator, { db: tx }))).map(
+            (each) => each.why,
+          );
+        expect(await why()).toEqual(["passes"]);
+        // A second live Sales, in a workspace the curator does not reach.
+        await setRole(tx, "worker_rw");
+        await tx.insert(powerbiDataset).values({
+          id: randomUUID(),
+          workspace_id: id.twin_workspace,
+          name: "Sales",
+        });
+        await setRole(tx, "api_rw");
+        expect(await why()).toEqual(["ambiguous"]);
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
+});
+
+describe("a baseline run by an admin who cannot read PII", () => {
+  it("excepts a column joined only to a PII column exactly when that admin's docs check shows it failing", () =>
+    expect(
+      createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+        await orderDateJoinedOnlyToPii(tx);
+        const salesAdmin = reaching(
+          { powerbi_app_ids: [id.sales_app] },
+          "admin",
+        );
+        const reader: Principal = {
+          ...salesAdmin,
+          roles: [...salesAdmin.roles, "pii_reader"],
+        };
+        // To the admin Order date is no key and fails; to a PII reader it is a key and passes.
+        for (const [principal, fails] of [
+          [salesAdmin, true],
+          [reader, false],
+        ] as const) {
+          await setConventions({ db: tx }, principals.admin, {
+            format: 1,
+            column_fields: { unit: { required: false } },
+          });
+          // The preset's when_numeric comes back on.
+          const answer = await applyAsAdmin(asPerson(principal, { db: tx }), {
+            conventions: { format: 1 },
+            dry_run: true,
+            baseline_reason: "Measured before units.",
+          });
+          // The docs check under the same change, before any exception.
+          await setConventions({ db: tx }, principals.admin, { format: 1 });
+          const checks = await docsChecks(asPerson(principal, { db: tx }), {
+            dataset: "Sales",
+            limit: 500,
+          });
+          const failing = checks.items.some(
+            (item) =>
+              item.id === id.order_date &&
+              item.results.some(
+                (result) =>
+                  result.rule === "column_fields.unit" && !result.passed,
+              ),
+          );
+          const excepted = answer.exceptions_added.some(
+            (item) =>
+              item.rule === "column_fields.unit" &&
+              item.column === "'Sales'[Order date]",
+          );
+          expect(failing).toBe(fails);
+          expect(excepted).toBe(fails);
+        }
+        tx.rollback();
+      }),
+    ).rejects.toThrow(TransactionRollbackError));
+});
+
+describe("the unused list on the documentation checks", () => {
+  it("goes to a curator, on the first page alone, and to no viewer or service account without curation", () =>
+    rolledBack(async (tx) => {
+      const item = {
+        rule: "dataset_fields.definition",
+        dataset: "Sales",
+        reason: "Kept.",
+      };
+      await setConventions({ db: tx }, principals.admin, {
+        format: 1,
+        exceptions: [item],
+      });
+      const viewer = reaching({ powerbi_app_ids: [id.sales_app] });
+      const account: Principal = {
+        ...viewer,
+        kind: "service_account",
+        id: "docs-check-account",
+        via: "api",
+      };
+      for (const principal of [viewer, account])
+        expect(
+          await docsChecks(asPerson(principal, { db: tx }), { limit: 1 }),
+        ).not.toHaveProperty("unused_exceptions");
+      const first = await docsChecks(asPerson(curator, { db: tx }), {
+        limit: 1,
+      });
+      expect(first.unused_exceptions).toEqual([
+        {
+          rule: item.rule,
+          target: { dataset: "Sales" },
+          reason: item.reason,
+          why: "passes",
+        },
+      ]);
+      expect(first.next_cursor).not.toBeNull();
+      const second = await docsChecks(asPerson(curator, { db: tx }), {
+        limit: 1,
+        cursor: first.next_cursor ?? "",
+      });
+      expect(second.items).toHaveLength(1);
+      expect(second).not.toHaveProperty("unused_exceptions");
+    }));
 });
 
 describe("the conventions agents read", () => {

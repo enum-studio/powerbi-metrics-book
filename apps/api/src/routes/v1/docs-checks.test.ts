@@ -1,4 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
+import {
+  powerbiColumn,
+  powerbiDataset,
+  powerbiTable,
+  powerbiWorkspace,
+} from "../../db/schema/mirror.js";
 import {
   closeTestPools,
   createTestDeps,
@@ -65,8 +72,19 @@ const Page = z.object({
   ),
   failing: z.number(),
   next_cursor: z.string().nullable(),
-  unused_exceptions: z.array(z.unknown()),
+  unused_exceptions: z.array(z.unknown()).optional(),
 });
+
+/** A signed-in person who curates, as GET /conventions/exceptions/unused asks. */
+async function curatorPerson() {
+  const person = await oauth.person();
+  await assignRole(
+    oauth.deps.db,
+    { role: "curator", subject_kind: "person", subject: person.email },
+    principals.admin,
+  );
+  return person;
+}
 
 it("requires a credential and validates paging", async () => {
   expect((await oauth.request("/api/v1/docs/checks")).status).toBe(401);
@@ -91,6 +109,8 @@ it("paginates only failures, preserves totals and filters by dataset name or id"
     return Page.parse(await answer.json());
   };
   const all = await get("?limit=500");
+  // The unused list is a curator's.
+  expect(all).not.toHaveProperty("unused_exceptions");
   const hundred = await get("?limit=100");
   expect(hundred.items).toEqual(all.items.slice(0, 100));
   expect(hundred.failing).toBe(all.failing);
@@ -128,12 +148,7 @@ it("paginates only failures, preserves totals and filters by dataset name or id"
 });
 
 it("includes a visible element exception in the existing unused route", async () => {
-  const person = await oauth.person();
-  await assignRole(
-    oauth.deps.db,
-    { role: "curator", subject_kind: "person", subject: person.email },
-    principals.admin,
-  );
+  const person = await curatorPerson();
   const answer = await oauth.request("/api/v1/conventions/exceptions/unused", {
     headers: { cookie: person.cookie },
   });
@@ -157,7 +172,7 @@ it("includes a visible element exception in the existing unused route", async ()
 });
 
 it("filters unused table exceptions by dataset", async () => {
-  const person = await oauth.person();
+  const person = await curatorPerson();
   const get = async (dataset: string) => {
     const answer = await oauth.request(
       `/api/v1/docs/checks?dataset=${encodeURIComponent(dataset)}`,
@@ -174,4 +189,50 @@ it("filters unused table exceptions by dataset", async () => {
   };
   expect(await get(otherTable.dataset)).toContainEqual(exception);
   expect(await get(datasetName)).not.toContainEqual(exception);
+});
+
+it("pages through a dataset, table and column named in 200 CJK characters each", async () => {
+  const dataset = randomUUID();
+  await createDb(testPool(TEST_RUNNER)).transaction(async (tx) => {
+    await setRole(tx, "worker_rw");
+    const [workspace] = await tx
+      .select({ id: powerbiWorkspace.id })
+      .from(powerbiWorkspace)
+      .limit(1);
+    if (workspace === undefined)
+      throw new Error("The sample has no workspace.");
+    await tx.insert(powerbiDataset).values({
+      id: dataset,
+      workspace_id: workspace.id,
+      name: "売上".repeat(100),
+    });
+    const [table] = await tx
+      .insert(powerbiTable)
+      .values({ dataset_id: dataset, name: "注文".repeat(100) })
+      .returning({ id: powerbiTable.id });
+    if (table === undefined) throw new Error("No table was made.");
+    await tx.insert(powerbiColumn).values({
+      dataset_id: dataset,
+      table_id: table.id,
+      name: "金額".repeat(100),
+      data_type: "String",
+      column_type: "data",
+    });
+  });
+  const person = await oauth.person();
+  const kinds: string[] = [];
+  let cursor: string | null = "";
+  while (cursor !== null) {
+    const answer = await oauth.request(
+      `/api/v1/docs/checks?dataset=${dataset}&limit=1${
+        cursor === "" ? "" : `&cursor=${encodeURIComponent(cursor)}`
+      }`,
+      { headers: { cookie: person.cookie } },
+    );
+    expect(answer.status).toBe(200);
+    const page = Page.parse(await answer.json());
+    kinds.push(...page.items.map((row) => row.kind));
+    cursor = page.next_cursor;
+  }
+  expect(kinds).toEqual(["dataset", "table", "column"]);
 });

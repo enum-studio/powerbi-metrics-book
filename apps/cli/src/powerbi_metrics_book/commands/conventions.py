@@ -22,8 +22,10 @@ from powerbi_metrics_book.answers import (
 )
 from powerbi_metrics_book.client import ApiError, Client, Json
 from powerbi_metrics_book.conventions_file import (
+    Baseline,
     add_exceptions,
     read_mapping,
+    replace_file,
     write_conventions,
 )
 from powerbi_metrics_book.conventions_file import (
@@ -361,6 +363,13 @@ def _rule_value(document: dict[str, Json], rule: str) -> Json:
     return value
 
 
+def _size(guide: Json) -> str:
+    if not isinstance(guide, str):
+        return "none"
+    size = len(guide.encode("utf-8"))
+    return f"{size} bytes" if size < 1000 else f"{size / 1000:.1f} KB"
+
+
 def print_applied(
     console: Console,
     answer: dict[str, Json],
@@ -386,14 +395,17 @@ def print_applied(
             if isinstance(rules, list)
             else set()
         )
+        listed = objects_in({"changes": changes}, "changes")
         for key in sorted(
-            {
-                str(change["path"]).split(".")[0]
-                for change in objects_in({"changes": changes}, "changes")
-            }
-            - covered
+            {str(change["path"]).split(".")[0] for change in listed} - covered
         ):
-            line(console, f"{key}: changed.")
+            # The guide is not printed, so its size shows what is about to be served.
+            sizes = [
+                f" ({_size(change['after'])}, was {_size(change['before'])})"
+                for change in listed
+                if change["path"] == "guide"
+            ]
+            line(console, f"{key}: changed{''.join(sizes)}.")
     added = objects_in(answer, "exceptions_added")
     if added:
         line(
@@ -436,9 +448,17 @@ def preview_apply(
 
 
 def _apply(
-    session: Session, document: dict[str, Json], yes: bool, dry_run: bool = False
+    session: Session,
+    document: dict[str, Json],
+    yes: bool,
+    dry_run: bool = False,
+    baseline: Baseline | None = None,
 ) -> tuple[dict[str, Json], list[Json]]:
+    """A baseline's exceptions are shown before the question, written into the
+    file once it is answered, and taken out again if the apply is refused."""
     preview, changes = preview_apply(session, document)
+    if baseline is not None:
+        preview = {**preview, "exceptions_added": list(baseline.added)}
     if dry_run or not changes:
         return preview, changes
     if session.as_json and not yes:
@@ -447,14 +467,19 @@ def _apply(
         print_applied(Console(), preview, document, changes, True)
     if not yes and not typer.confirm("Save these as the next version?", err=True):
         raise typer.Exit(1)
-    return object_of(
-        session.client.request(
+    if baseline is not None:
+        replace_file(baseline.path, baseline.after)
+    try:
+        answer = session.client.request(
             "POST",
             "/conventions/apply",
             body={"conventions": document, "dry_run": False},
-        ),
-        "the apply result",
-    ), changes
+        )
+    except ApiError:
+        if baseline is not None:
+            replace_file(baseline.path, baseline.before)
+        raise
+    return object_of(answer, "the apply result"), changes
 
 
 @app.command("apply")
@@ -481,6 +506,7 @@ def apply_file(
     if baseline and not reason:
         raise typer.BadParameter("--baseline requires --reason.")
     document = _read(file)
+    pending: Baseline | None = None
     with open_session(context, json_output) as session:
         if baseline and session.as_json and not yes and not dry_run:
             raise typer.BadParameter("--json cannot ask; add --yes.")
@@ -507,8 +533,8 @@ def apply_file(
                 return
             added = objects_in(preview, "exceptions_added")
             if added:
-                document = add_exceptions(file, document, added)
-        answer, changes = _apply(session, document, yes, dry_run)
+                document, pending = add_exceptions(file, document, added)
+        answer, changes = _apply(session, document, yes, dry_run, pending)
         if baseline:
             answer["exceptions_added"] = preview["exceptions_added"]
         session.emit(

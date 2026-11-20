@@ -3,6 +3,7 @@ import type { ServiceContext } from "../../context.js";
 import { ServiceError } from "../../errors.js";
 import { type Failure, failuresInBook } from "../book/whole-book-checks.js";
 import { withEvents } from "../events/feed.js";
+import { readsPii } from "../pii/rules.js";
 import { isRuleOff, RULES, valueAt } from "./rules.js";
 import { visibleExceptions } from "./service.js";
 import {
@@ -82,15 +83,16 @@ export function changedRules(
  * value, read values or off state the part changes, and passed that rule
  * under the version in force, where a rule that is off passes. A failure the
  * change did not cause keeps failing, so a part that only adds an exception
- * excepts nothing more. The failures are the whole book's, and only those on
- * targets the caller may see are excepted: one it cannot see is never named
- * to it, and keeps failing.
+ * excepts nothing more. Elements fail, before and after, as the caller is
+ * shown the model, as their docs check shows them: a column joined only to a
+ * PII column they may not read is no key to them, and which keys a hidden
+ * column makes never shows in what is excepted. Only targets the caller may
+ * see are excepted: one it cannot see is never named to it, and keeps failing.
  */
 async function baselineExceptions(
   context: ServiceContext,
   before: Conventions,
   after: Conventions,
-  failures: readonly Failure[],
   reason: string,
 ) {
   const rules = new Set(
@@ -99,14 +101,16 @@ async function baselineExceptions(
     ),
   );
   if (rules.size === 0) return [];
+  const view = {
+    allowed: await context.access.describableDatasets(context.principal),
+    hidesPii: !(await readsPii(context)),
+  };
   const key = ({ rule, target }: Failure) => exceptionKey({ rule, ...target });
   const failedBefore = new Set(
-    (await failuresInBook(context, before, rules)).map(key),
+    (await failuresInBook(context, before, rules, view)).map(key),
   );
-  const caused = failures
-    .filter(
-      (failure) => rules.has(failure.rule) && !failedBefore.has(key(failure)),
-    )
+  const caused = (await failuresInBook(context, after, rules, view))
+    .filter((failure) => !failedBefore.has(key(failure)))
     .map(({ rule, target }) => ({ rule, ...target, reason }));
   return (await visibleExceptions(context, caused)).sort(byKey);
 }
@@ -163,7 +167,6 @@ export async function applyConventions(
             { ...context, db: tx },
             current.conventions,
             proposed,
-            failures,
             reason.data,
           );
     const save =

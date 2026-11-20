@@ -22,7 +22,7 @@ import { currentConventions } from "../conventions/store.js";
 import { withEvents } from "../events/feed.js";
 import { appsSeen, decodeCursor, pageBy, sizeOf } from "../mirror/read.js";
 import { piiColumn, piiMeasure, readsPii } from "../pii/rules.js";
-import { recordBookChange, requireCurator } from "./changes.js";
+import { BOOK, recordBookChange, requireCurator } from "./changes.js";
 import { checkCustom, exceptionIndex } from "./checks.js";
 
 /*
@@ -362,42 +362,51 @@ export async function docsChecks(
       (dataset === undefined || row.dataset_id === dataset.id) &&
       row.results.some((result) => !result.passed),
   );
-  const nameOf = (row: CheckedElement) =>
-    JSON.stringify([
-      row.dataset,
-      row.dataset_id,
-      row.kind === "dataset" ? "" : (row.table ?? row.name),
-      row.kind === "column" ? 1 : 0,
-      row.name,
-    ]);
+  // Each name once, so the cursor stays short; a table's columns follow it.
+  const keyOf = (row: CheckedElement) => [
+    row.dataset,
+    row.dataset_id,
+    row.kind === "dataset" ? "" : (row.table ?? row.name),
+    row.kind === "column" ? "1" : "0",
+    row.kind === "column" ? row.name : "",
+  ];
   const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-  failures.sort((a, b) => compare(nameOf(a), nameOf(b)) || compare(a.id, b.id));
+  const order = (a: string[], b: string[]) =>
+    a.reduce((found, part, index) => found || compare(part, b[index] ?? ""), 0);
+  failures.sort((a, b) => order([...keyOf(a), a.id], [...keyOf(b), b.id]));
   const after =
-    filters.cursor === undefined ? undefined : decodeCursor(filters.cursor);
+    filters.cursor === undefined ? undefined : decodeCursor(filters.cursor, 5);
   const remaining =
     after === undefined
       ? failures
-      : failures.filter((row) => {
-          const order = compare(nameOf(row), after.names[0]);
-          return order > 0 || (order === 0 && compare(row.id, after.id) > 0);
-        });
-  const exceptions = await visibleExceptions(
-    context,
-    conventions.exceptions.filter(
-      (item) =>
-        item.dataset !== undefined &&
-        (dataset === undefined ||
-          item.dataset === dataset.id ||
-          item.dataset === dataset.name),
-    ),
-  );
-  const unused = await unusedExceptions(
-    context,
-    { ...conventions, exceptions },
-    undefined,
-    rows,
-  );
-  const page = pageBy(remaining, sizeOf(filters.limit), nameOf);
+      : failures.filter(
+          (row) =>
+            order([...keyOf(row), row.id], [...after.names, after.id]) > 0,
+        );
+  // A curator's, as GET /conventions/exceptions/unused is, and the first page's alone.
+  const unused =
+    filters.cursor === undefined &&
+    (await context.access.check(context.principal, BOOK, "curate"))
+      ? await unusedExceptions(
+          context,
+          {
+            ...conventions,
+            exceptions: await visibleExceptions(
+              context,
+              conventions.exceptions.filter(
+                (item) =>
+                  item.dataset !== undefined &&
+                  (dataset === undefined ||
+                    item.dataset === dataset.id ||
+                    item.dataset === dataset.name),
+              ),
+            ),
+          },
+          undefined,
+          rows,
+        )
+      : undefined;
+  const page = pageBy(remaining, sizeOf(filters.limit), keyOf);
   return {
     ...page,
     items: page.items.map(({ kind, id, name, dataset, table, results }) => ({
@@ -409,6 +418,6 @@ export async function docsChecks(
       results,
     })),
     failing: failures.length,
-    unused_exceptions: unused,
+    ...(unused === undefined ? {} : { unused_exceptions: unused }),
   };
 }

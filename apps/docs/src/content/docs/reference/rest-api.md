@@ -1652,7 +1652,7 @@ Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's
 
 ### GET `/api/v1/docs/checks`
 
-Missing required documentation on visible datasets, tables and columns
+Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more
 
 Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
 
@@ -1664,7 +1664,7 @@ Who may call it: Any signed-in caller: a person in a browser or with `pbmb login
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
-| 200 | Missing required documentation on visible datasets, tables and columns | an object with items, failing, unused_exceptions, next_cursor |
+| 200 | Missing required documentation on visible datasets, tables and columns; to a curator, on the first page, the element exceptions nothing needs any more | an object with items, failing, unused_exceptions, next_cursor |
 
 Fields of the first answer:
 
@@ -1672,7 +1672,7 @@ Fields of the first answer:
 | --- | --- | --- | --- |
 | `items` | a list of an object | yes |   |
 | `failing` | a whole number, at least -9007199254740991 and at most 9007199254740991 | yes |   |
-| `unused_exceptions` | a list of an object | yes |   |
+| `unused_exceptions` | a list of an object | no |   |
 | `next_cursor` | text or null | yes |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.

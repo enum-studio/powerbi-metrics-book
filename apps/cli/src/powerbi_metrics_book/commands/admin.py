@@ -27,6 +27,7 @@ from powerbi_metrics_book.conventions_file import (
     YamlLoader,
     check_output_paths,
     read_conventions,
+    read_file,
     write_conventions,
 )
 from powerbi_metrics_book.output import FAILED, JsonOption, open_session
@@ -912,7 +913,7 @@ def import_book(
 
     With --json and no --yes, prints the difference and changes nothing.
     """
-    yaml_text = file.read_text(encoding="utf-8")
+    yaml_text = read_file(file)
     conventions_path = file.parent / "conventions.yml"
     company = None
     if conventions_path.exists():
