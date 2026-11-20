@@ -7,7 +7,7 @@ import jsonschema
 import typer
 import yaml
 
-from powerbi_metrics_book.conventions_file import read_conventions
+from powerbi_metrics_book.conventions_file import YamlLoader, read_conventions
 from powerbi_metrics_book.deployment import ASSETS, REQUIRED_ENV
 from powerbi_metrics_book.output import FAILED, JsonOption, Settings
 
@@ -66,7 +66,7 @@ def _check_book(path: Path) -> list[str]:
     if not path.exists():
         return []
     try:
-        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        document = yaml.load(path.read_text(encoding="utf-8"), Loader=YamlLoader)
     except yaml.YAMLError as error:
         return [f"book.yml is not valid YAML: {error}"]
     schema = json.loads((ASSETS / "book.schema.json").read_text(encoding="utf-8"))

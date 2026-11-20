@@ -24,6 +24,7 @@ from powerbi_metrics_book.calls import show_done, show_list, show_object
 from powerbi_metrics_book.client import ApiError, Json, api_path
 from powerbi_metrics_book.commands.conventions import preview_apply, print_applied
 from powerbi_metrics_book.conventions_file import (
+    YamlLoader,
     check_output_paths,
     read_conventions,
     write_conventions,
@@ -351,7 +352,9 @@ def settings_get(
         return
     with open_session(context, json_output) as session:
         exported = object_of(session.client.get("/admin/export"), "the export")
-        saved = object_of(yaml.safe_load(text_of(exported.get("yaml"))), "book.yml")
+        saved = object_of(
+            yaml.load(text_of(exported.get("yaml")), Loader=YamlLoader), "book.yml"
+        )
         listing = object_of(saved.get("settings") or {}, "the settings")
         session.emit(
             {"settings": listing}, lambda console: print_fields(console, listing)
@@ -914,7 +917,7 @@ def import_book(
     company = None
     if conventions_path.exists():
         try:
-            book = yaml.safe_load(yaml_text)
+            book = yaml.load(yaml_text, Loader=YamlLoader)
         except yaml.YAMLError as error:
             raise typer.BadParameter(f"{file}: {error}") from error
         if isinstance(book, dict) and "conventions" in book:

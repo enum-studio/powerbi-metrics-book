@@ -324,6 +324,25 @@ def test_check_conventions_offline_uses_schema_and_safe_paths(tmp_path: Path) ->
     assert any("aliases" in problem for problem in _check_conventions(path))
 
 
+def test_off_and_yes_read_as_text_as_the_api_reads_them(tmp_path: Path) -> None:
+    from powerbi_metrics_book.commands.check import _check_conventions
+    from powerbi_metrics_book.conventions_file import read_conventions
+
+    path = tmp_path / "conventions.yml"
+    path.write_text(
+        "format: 1\n"
+        "off: [naming.qualifier_order]\n"
+        "drafting:\n  name_hints:\n    currency: [yes, on, NO]\n"
+    )
+    assert _check_conventions(path) == []
+    document = read_conventions(path)
+    assert document["off"] == ["naming.qualifier_order"]
+    assert document["drafting"] == {"name_hints": {"currency": ["yes", "on", "NO"]}}
+    path.write_text("format: 1\ndataset_fields:\n  owner:\n    required: true\n")
+    assert _check_conventions(path) == []
+    assert read_conventions(path)["dataset_fields"] == {"owner": {"required": True}}
+
+
 @pytest.mark.parametrize("command", ["conventions", "admin"])
 @pytest.mark.parametrize(
     "link", ["conventions", "conventions/guide.md", "conventions.yml"]

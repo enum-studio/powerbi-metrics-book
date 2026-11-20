@@ -11,7 +11,28 @@ from powerbi_metrics_book.client import Json
 MAX_FILE_BYTES = 1024 * 1024
 
 
-class _NoAliasLoader(yaml.SafeLoader):
+class YamlLoader(yaml.SafeLoader):
+    """PyYAML's safe loader with YAML 1.2 booleans, as the api reads YAML.
+
+    YAML 1.1 reads on, off, yes and no as booleans, so the conventions key
+    `off:` would load as False. Only true and false are booleans here.
+    """
+
+
+YamlLoader.yaml_implicit_resolvers = {
+    first: [
+        (tag, pattern) for tag, pattern in resolvers if tag != "tag:yaml.org,2002:bool"
+    ]
+    for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+YamlLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool",
+    re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"),
+    list("tTfF"),
+)
+
+
+class _NoAliasLoader(YamlLoader):
     def compose_node(self, parent: yaml.Node | None, index: int) -> yaml.Node | None:
         if self.check_event(yaml.AliasEvent) or any(
             self.check_event(event) and getattr(self.current_event, "anchor", None)
