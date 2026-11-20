@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Network } from "lucide-react";
 import { FoldMark, useFold } from "../shell/fold";
 import { CodePanel } from "./code-panel";
@@ -8,8 +8,8 @@ import { formatShift, humanize } from "./format";
 import { type VariantAnchor, variantQuery } from "./queries";
 
 /**
- * Each live measure, folded to its name, dataset and shift; opening one loads
- * its DAX. The variant in the address opens by itself.
+ * Each live measure with its name, dataset, shift and DAX. A variant can be
+ * folded away, and the one in the address is marked.
  */
 export function Variants({
   variants,
@@ -44,24 +44,15 @@ export function Variants({
               : "py-3 first:pt-0 last:pb-0"
           }
         >
-          <VariantCard
-            variant={variant}
-            current={variant.id === currentVariant}
-          />
+          <VariantCard variant={variant} />
         </li>
       ))}
     </ul>
   );
 }
 
-function VariantCard({
-  variant,
-  current,
-}: {
-  variant: VariantAnchor;
-  current: boolean;
-}) {
-  const [open, setOpen] = useFold(current);
+function VariantCard({ variant }: { variant: VariantAnchor }) {
+  const [open, setOpen] = useFold(true);
   const body = useId();
   const shift = variant.shift;
   const details = [
@@ -106,24 +97,60 @@ function VariantCard({
           {details.length > 0 && ` · ${details.join(" · ")}`}
         </p>
       </header>
-      {open && (
-        <div id={body} className="flex flex-col gap-3">
-          <VariantDetails variant={variant} />
-        </div>
-      )}
+      {open && <VariantDetails id={body} variant={variant} />}
     </article>
   );
 }
 
-function VariantDetails({ variant }: { variant: VariantAnchor }) {
-  const { data, error, isPending } = useQuery(variantQuery(variant.id));
-  if (isPending) return <p className="text-ui text-ink-3">Loading the DAX</p>;
-  if (error !== null)
-    return (
-      <p role="alert" className="text-ui text-ink-2">
-        The DAX could not be loaded: {error.message}
-      </p>
+/** Asks for a variant's DAX as it nears the screen, so a metric with hundreds of variants does not ask for them all at once. */
+function VariantDetails({
+  id,
+  variant,
+}: {
+  id: string;
+  variant: VariantAnchor;
+}) {
+  const place = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    if (place.current === null) return;
+    const watcher = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+      },
+      { rootMargin: "600px" },
     );
+    watcher.observe(place.current);
+    return () => {
+      watcher.disconnect();
+    };
+  }, []);
+  const { data, error, isPending } = useQuery({
+    ...variantQuery(variant.id),
+    enabled: near,
+  });
+  return (
+    <div id={id} ref={place} className="flex flex-col gap-3">
+      {isPending ? (
+        <p className="text-ui text-ink-3">Loading the DAX</p>
+      ) : error !== null ? (
+        <p role="alert" className="text-ui text-ink-2">
+          The DAX could not be loaded: {error.message}
+        </p>
+      ) : (
+        <VariantCode variant={variant} data={data} />
+      )}
+    </div>
+  );
+}
+
+function VariantCode({
+  variant,
+  data,
+}: {
+  variant: VariantAnchor;
+  data: { expression: string | null; table: { name: string } };
+}) {
   return (
     <>
       {data.expression === null ? (

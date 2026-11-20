@@ -19,6 +19,24 @@ type DatasetHeaderData = {
   description_pbi: string | null;
 };
 
+/** A page's short facts beside its title, the empty ones left out. */
+export function Facts({
+  facts,
+}: {
+  facts: readonly (string | null | false)[];
+}) {
+  return (
+    <p className="flex flex-wrap font-mono text-meta text-ink-3">
+      {facts.filter(Boolean).map((fact, i) => (
+        <span key={String(fact)} className="whitespace-nowrap">
+          {i > 0 && <span className="px-2 text-line-strong">/</span>}
+          {fact}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 export function DatasetHeader({
   dataset,
   unknown,
@@ -39,7 +57,7 @@ export function DatasetHeader({
         ? "Relationships from the scanner"
         : "Relationships from INFO views",
     `Synced ${formatTime(dataset.synced_at)}`,
-  ].filter(Boolean);
+  ];
   return (
     <header className="flex flex-col gap-1">
       <PageIcon
@@ -62,14 +80,7 @@ export function DatasetHeader({
         <h1 className="text-title font-semibold text-ink">
           <Breakable text={dataset.name} />
         </h1>
-        <p className="flex flex-wrap font-mono text-meta text-ink-3">
-          {facts.map((fact, i) => (
-            <span key={fact} className="whitespace-nowrap">
-              {i > 0 && <span className="px-2 text-line-strong">/</span>}
-              {fact}
-            </span>
-          ))}
-        </p>
+        <Facts facts={facts} />
       </div>
       <p className="truncate text-ui text-ink-2">
         {dataset.description ?? dataset.description_pbi ?? ""}

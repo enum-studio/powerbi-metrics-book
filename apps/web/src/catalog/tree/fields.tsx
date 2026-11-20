@@ -63,9 +63,9 @@ export function columnIcon(type: string | null): LucideIcon {
 
 /**
  * A table's fields, under its row in the tree: its measures' display folders,
- * the measures in no folder, then its columns. Each row goes to the table's
- * panel with that field marked. The way to the field on screen opens, and a
- * person's own opens and closes hold.
+ * the measures in no folder, then its columns. A column's row goes to its
+ * page, and a measure's to its table's page with the measure marked. The way
+ * to the field on screen opens, and a person's own opens and closes hold.
  */
 export function FieldRows({
   datasetId,
@@ -126,9 +126,9 @@ export function FieldRows({
     hidden = false,
     column = false,
   ) =>
-    column && hasDotName(table, name) ? (
+    hasDotName(table) || (column && hasDotName(name)) ? (
       <span
-        key={`column:${name}`}
+        key={`${column ? "column" : "measure"}:${name}`}
         className={`${NAV_ROW} ${hidden ? "text-ink-3" : ""}`}
         style={indent(at, false)}
       >
@@ -141,10 +141,10 @@ export function FieldRows({
         to={
           column
             ? "/catalog/datasets/$id/tables/$table/columns/$column"
-            : "/catalog/datasets/$id"
+            : "/catalog/datasets/$id/tables/$table"
         }
         params={{ id: datasetId, table, column: name }}
-        search={column ? {} : { tab: "diagram", table, field: name }}
+        search={column ? {} : { tab: "measures", field: name }}
         activeOptions={{ exact: true, includeSearch: true }}
         title={name}
         className={`${NAV_ROW} ${hidden ? "text-ink-3" : ""}`}
@@ -238,10 +238,25 @@ export function FieldRows({
   );
 }
 
-/**
- * A list that shows its first rows and, below them, a row that shows the
- * rest. A row to keep, such as the field on screen, shows even past the cap.
- */
+/** A long list's first rows, with any row to keep, such as the field on screen, even past the cap. */
+export function useCapped<T>(items: readonly T[], keep: (item: T) => boolean) {
+  const [all, setAll] = useState(false);
+  const shown = all
+    ? items
+    : [
+        ...items.slice(0, FIELDS_SHOWN),
+        ...items.slice(FIELDS_SHOWN).filter(keep),
+      ];
+  return {
+    shown,
+    more: items.length - shown.length,
+    showAll: () => {
+      setAll(true);
+    },
+  };
+}
+
+/** A list that shows its first rows and, below them, a row that shows the rest. */
 function Capped<T>({
   items,
   depth,
@@ -253,28 +268,20 @@ function Capped<T>({
   keep: (item: T) => boolean;
   row: (item: T) => ReactNode;
 }) {
-  const [all, setAll] = useState(false);
-  const shown = all
-    ? items
-    : [
-        ...items.slice(0, FIELDS_SHOWN),
-        ...items.slice(FIELDS_SHOWN).filter(keep),
-      ];
+  const { shown, more, showAll } = useCapped(items, keep);
   return (
     <>
       {shown.map(row)}
-      {shown.length < items.length && (
+      {more > 0 && (
         <button
           type="button"
           className={`${NAV_ROW} justify-between text-left`}
           style={indent(depth, false)}
-          onClick={() => {
-            setAll(true);
-          }}
+          onClick={showAll}
         >
           Show more
           <span className="font-mono text-label font-normal text-ink-3">
-            {(items.length - shown.length).toLocaleString("en")}
+            {more.toLocaleString("en")}
           </span>
         </button>
       )}

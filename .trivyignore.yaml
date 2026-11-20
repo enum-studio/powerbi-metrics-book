@@ -438,6 +438,18 @@ vulnerabilities:
       requires x/net 0.61.0 (checked 2026-11-07). Raise the pin when a Cerbos
       release with x/net 0.62.0 lands.
     expired_at: 2027-01-07
+  - id: CVE-2026-97054
+    purls:
+      - "pkg:golang/stdlib"
+    statement: The flaw crashes a Go HTTP/1 server whose handler reads a
+      request body past a MaxBytesReader limit while it writes the response
+      header. Cerbos's HTTP API sits on the internal app network, reachable by
+      the api and worker alone, and they send it only the check requests they
+      build. Nobody outside can send it a body. Cerbos 0.57.0, built with Go
+      1.27.3, is its newest release (checked 2026-11-19), so raising the pin
+      fixes nothing yet. Raise it when a Cerbos release built with Go 1.27.4 or
+      1.26.11 lands.
+    expired_at: 2026-12-19
   - id: CVE-2026-112321
     purls:
       - "pkg:deb/debian/libgssapi-krb5-2"

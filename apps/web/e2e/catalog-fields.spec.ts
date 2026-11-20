@@ -60,11 +60,17 @@ test("catalog fields have pages", async ({ page, baseURL }) => {
     .click();
   const path =
     folderPaths(nested.display_folder).find((path) => path.length > 1) ?? [];
-  for (const part of path)
-    await page
-      .getByRole("table")
-      .getByRole("link", { name: part, exact: true })
-      .click();
+  await page
+    .getByRole("navigation", { name: "Table" })
+    .getByRole("button", {
+      name: nested.kind === "measure" ? /^Measures/ : /^Columns/,
+    })
+    .click();
+  await page
+    .getByRole("table")
+    .getByRole("link", { name: path.join(" / "), exact: true })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/folders\/.+%5C.+/);
   await page.goto(
     `/catalog/datasets/${id}/tables/${encodeURIComponent(column.table.name)}/columns/${encodeURIComponent(column.name)}`,
