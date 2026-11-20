@@ -6018,12 +6018,19 @@ export interface operations {
                   hidden_measures: boolean;
                   display_folders: string[];
                   tables: string[];
-                  name_patterns: string[];
+                  name_prefixes: string[];
+                  names: string[];
                 };
-                dismiss: {
-                  name_pattern: string;
-                  reason: string;
-                }[];
+                dismiss: (
+                  | {
+                      prefix: string;
+                      reason: string;
+                    }
+                  | {
+                      name: string;
+                      reason: string;
+                    }
+                )[];
               };
               trust: {
                 agent_verify_requires:
@@ -6263,12 +6270,19 @@ export interface operations {
                   hidden_measures: boolean;
                   display_folders: string[];
                   tables: string[];
-                  name_patterns: string[];
+                  name_prefixes: string[];
+                  names: string[];
                 };
-                dismiss: {
-                  name_pattern: string;
-                  reason: string;
-                }[];
+                dismiss: (
+                  | {
+                      prefix: string;
+                      reason: string;
+                    }
+                  | {
+                      name: string;
+                      reason: string;
+                    }
+                )[];
               };
               trust: {
                 agent_verify_requires:

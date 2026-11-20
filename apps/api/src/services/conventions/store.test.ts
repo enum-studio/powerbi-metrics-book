@@ -143,8 +143,10 @@ describe("resolve", () => {
     [{ naming: { kinds: ["total"] } }, "naming.kinds.0"],
     [{ naming: { qualifier_order: ["vat", "channel"] } }, "naming.qualifiers"],
     [
-      { drafting: { dismiss: [{ name_pattern: "(", reason: "Broken" }] } },
-      "drafting.dismiss.0.name_pattern",
+      {
+        drafting: { dismiss: [{ prefix: "_", name: "Test", reason: "Both" }] },
+      },
+      "drafting.dismiss.0",
     ],
     [
       {

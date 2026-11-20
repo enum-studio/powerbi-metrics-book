@@ -64,8 +64,10 @@ export function summariseRules(rules: Rules): string[] {
     skip.display_folders.length > 0 &&
       `measures in the display folders ${words(skip.display_folders)}`,
     skip.tables.length > 0 && `measures in the tables ${words(skip.tables)}`,
-    skip.name_patterns.length > 0 &&
-      `measures whose name matches ${words(skip.name_patterns)}`,
+    skip.name_prefixes.length > 0 &&
+      `measures whose name starts with ${words(skip.name_prefixes)} (case-insensitive)`,
+    skip.names.length > 0 &&
+      `measures named ${words(skip.names)} (case-insensitive)`,
   ].filter((part) => part !== false);
   return [
     naming.case === "snake_case" &&
@@ -114,7 +116,7 @@ export function summariseRules(rules: Rules): string[] {
     skipped.length > 0 && `The sync drafts nothing from: ${words(skipped)}.`,
     ...drafting.dismiss.map(
       (rule) =>
-        `A measure whose name matches ${rule.name_pattern} is drafted as dismissed: ${rule.reason}`,
+        `A measure whose name ${"prefix" in rule ? `starts with ${rule.prefix}` : `equals ${rule.name}`} (case-insensitive) is drafted as dismissed: ${rule.reason}`,
     ),
     trust.agent_verify_requires === "all_checks"
       ? "An agent verifies a metric once every check that is on passes."

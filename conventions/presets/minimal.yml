@@ -77,7 +77,8 @@ drafting:
     hidden_measures: false
     display_folders: []
     tables: []
-    name_patterns: []
+    name_prefixes: []
+    names: []
   dismiss: []
 trust:
   agent_verify_requires: all_checks

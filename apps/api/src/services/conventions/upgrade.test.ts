@@ -28,6 +28,55 @@ const stored = async () =>
   ).rows;
 
 describe("upgradeStoredConventions", () => {
+  const withPattern = (pattern: string) => {
+    const rules = resolve({});
+    return {
+      ...rules,
+      drafting: {
+        ...rules.drafting,
+        skip: { ...rules.drafting.skip, name_patterns: [pattern] },
+        dismiss: [{ name_pattern: pattern, reason: "Internal." }],
+      },
+    };
+  };
+
+  it.each(["^a.b", "foo", "(a|b)"])(
+    "leaves an older version with pattern %s unchanged and warns with its version and pattern",
+    async (pattern) => {
+      const old = withPattern(pattern);
+      await store(3, old);
+      await store(4, resolve({}));
+      const warnings: unknown[] = [];
+      expect(
+        await upgradeStoredConventions(migrator, {
+          warn: (message, fields) => warnings.push({ message, fields }),
+        }),
+      ).toBe(1);
+      expect((await stored())[0]?.document).toEqual(old);
+      expect(warnings).toEqual([
+        {
+          message: expect.any(String) as unknown,
+          fields: { version: 3, pattern },
+        },
+      ]);
+    },
+  );
+
+  it("rolls back all changes when the newest version has an unconvertible pattern", async () => {
+    await store(3, resolve({}));
+    await store(4, withPattern("^a.b"));
+    const before = await stored();
+    await migrator.query("begin");
+    try {
+      await expect(upgradeStoredConventions(migrator)).rejects.toThrow(
+        "Conventions version 4 has the drafting pattern ^a.b, which this release cannot turn into a prefix or a name. Rewrite it as a prefix or a name with `pbmb conventions edit` on the release before this one, then deploy again. Nothing was applied.",
+      );
+    } finally {
+      await migrator.query("rollback");
+    }
+    expect(await stored()).toEqual(before);
+  });
+
   it("turns each complete document into the company's part, resolving to the same rules", async () => {
     const preset = resolve({});
     const minimal = resolve({ preset: "minimal" });

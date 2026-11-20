@@ -457,7 +457,8 @@ describe("draftDatasets on the sample mirror", () => {
             hidden_measures: true,
             display_folders: ["Comparisons"],
             tables: ["Web sessions"],
-            name_patterns: ["^Units sold"],
+            name_prefixes: ["uNITS SOLD"],
+            names: ["nET SALES"],
           },
         },
       });
@@ -468,6 +469,7 @@ describe("draftDatasets on the sample mirror", () => {
         { dataset: SALES, measure: "Net sales vs LY" },
         { dataset: "Marketing", measure: "Sessions" },
         { dataset: SALES, measure: "Units sold" },
+        { dataset: SALES, measure: "Net sales" },
       ];
       for (const measure of skipped) {
         expect(await variantOf(tx, sample.measureId(measure))).toBeUndefined();
