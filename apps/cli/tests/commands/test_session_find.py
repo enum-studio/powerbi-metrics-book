@@ -887,13 +887,10 @@ def test_the_saved_login_is_never_sent_as_a_description(
     link = tmp_path / "innocent.txt"
     link.symlink_to(credentials.credentials_path())
 
-    for path, refusal in (
-        (credentials.credentials_path(), "Not sending your saved login"),
-        (link, "is a symbolic link"),
-    ):
+    for path in (credentials.credentials_path(), link):
         result = run("dax", "run", "ds_1", "--file", str(path))
         assert result.exit_code == 2
-        assert refusal in result.stderr
+        assert "Not sending your saved login" in result.stderr
     assert "saved-access" not in result.stderr
     assert seen == []
 

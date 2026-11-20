@@ -8,8 +8,9 @@ from typing import NamedTuple
 import typer
 import yaml
 
+from powerbi_metrics_book.atomic import atomic_file
 from powerbi_metrics_book.client import Json
-from powerbi_metrics_book.files import atomic_file, read_text_file
+from powerbi_metrics_book.files import read_text_file
 
 MAX_FILE_BYTES = 1024 * 1024
 MAX_GUIDE_BYTES = 256 * 1024
@@ -59,8 +60,8 @@ READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
 
 
 def read_file(path: Path) -> str:
-    """A deployment file's text, refusing links before reading."""
-    return read_text_file(path)
+    """A deployment file's text. A symbolic or hard link is refused."""
+    return read_text_file(path, links=False)
 
 
 def _read_guide(folder: Path, guide: str) -> str:
@@ -86,7 +87,7 @@ def _read_guide(folder: Path, guide: str) -> str:
     finally:
         os.close(directory)
     return read_text_file(
-        Path(f"guide {guide}"), MAX_GUIDE_BYTES, descriptor=descriptor
+        folder / guide, MAX_GUIDE_BYTES, links=False, descriptor=descriptor
     )
 
 

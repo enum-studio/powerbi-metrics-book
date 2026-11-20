@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from powerbi_metrics_book.files import atomic_file
+from powerbi_metrics_book.atomic import atomic_file
 
 # The api registers this public client; `pbmb login` and the refresh both name it.
 CLIENT_ID = "pbmb-cli"

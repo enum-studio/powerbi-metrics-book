@@ -12,13 +12,13 @@ import httpx
 import typer
 
 from powerbi_metrics_book.answers import object_of, plain, string_field
+from powerbi_metrics_book.atomic import atomic_file
 from powerbi_metrics_book.client import (
     TIMEOUT_SECONDS,
     ApiError,
     UnreachableError,
     api_path,
 )
-from powerbi_metrics_book.files import atomic_file
 from powerbi_metrics_book.output import FAILED, Session
 
 
