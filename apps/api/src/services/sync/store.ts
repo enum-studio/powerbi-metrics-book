@@ -214,6 +214,7 @@ async function storeDataset(
     description_pbi: dataset.description ?? null,
     configured_by: dataset.configuredBy ?? null,
     target_storage_mode: dataset.targetStorageMode ?? null,
+    has_row_level_security: dataset.isEffectiveIdentityRolesRequired ?? false,
     schema_error: schemaError(dataset),
     relationships_source: carries ? ("scanner" as const) : null,
     relationships_read_at: carries ? now : null,

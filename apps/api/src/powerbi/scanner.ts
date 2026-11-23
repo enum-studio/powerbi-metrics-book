@@ -89,6 +89,8 @@ const dataset = z.object({
   description: text,
   configuredBy: text,
   targetStorageMode: enumeration.optional(),
+  /** Whether the model defines row-level security roles; Power BI then answers its queries only for a person. */
+  isEffectiveIdentityRolesRequired: flag,
   tables: z.array(table).optional(),
   relationships: z.array(relationship).optional(),
   schemaRetrievalError: text,
