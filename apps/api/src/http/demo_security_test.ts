@@ -120,8 +120,25 @@ describe("with the demo person seeded", () => {
     );
   });
 
+  /** The GET routes whose pattern answers the path an entry opens, with "sample" in each parameter; Hono lists a route once per handler. */
+  const servedBy = (entry: string) => {
+    const path = samplePath(entry.slice("GET ".length));
+    return [
+      ...new Set(
+        demo.routes
+          .filter(
+            ({ method, path: route }) =>
+              method === "GET" && pathMatcher([`GET ${route}`])(path, "GET"),
+          )
+          .map(({ path: route }) => route),
+      ),
+    ];
+  };
+
   // A new GET route a DEMO_PATHS pattern happens to match fails here, rather
-  // than opening in the demo unseen.
+  // than opening in the demo unseen. An entry with a fixed word where its
+  // route has a parameter opens that route too, which the route's own
+  // sample path would not show.
   it("opens these GET routes and no other", () => {
     const opened = demo.routes
       .filter(
@@ -129,7 +146,8 @@ describe("with the demo person seeded", () => {
           method === "GET" && inDemo(samplePath(path), "GET"),
       )
       .map(({ path }) => path);
-    expect([...new Set(opened)].sort()).toEqual([
+    const served = DEMO_PATHS.flatMap(servedBy);
+    expect([...new Set([...opened, ...served])].sort()).toEqual([
       "/",
       "/api/auth/config",
       "/api/branding/logo",
@@ -168,6 +186,27 @@ describe("with the demo person seeded", () => {
       "/docs/*",
       "/health",
     ]);
+  });
+
+  // A route with a parameter where an entry has a fixed word, registered
+  // before the route the entry means, would answer the entry's path unseen.
+  it("serves each entry's path by one GET route", () => {
+    expect(
+      DEMO_PATHS.map((entry) => ({ entry, routes: servedBy(entry) })).filter(
+        ({ routes }) => routes.length !== 1,
+      ),
+    ).toEqual([]);
+  });
+
+  it("opens the documentation of a dataset, table and column, and of no other kind", async () => {
+    const docs = (kind: string) =>
+      `/api/v1/elements/${kind}/d1000000-0000-4000-8000-000000000001/docs`;
+    for (const kind of ["dataset", "table", "column"])
+      expect(inDemo(docs(kind), "GET")).toBe(true);
+    for (const kind of ["workspace", "app", "measure", "metric", "term"]) {
+      expect(inDemo(docs(kind), "GET")).toBe(false);
+      expect((await fromPeer(docs(kind))).status).toBe(404);
+    }
   });
 
   it("opens the docs' root and the catalog's bare paths, which redirect", async () => {
