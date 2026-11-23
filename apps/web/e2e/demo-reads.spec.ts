@@ -55,6 +55,11 @@ test("the demo's screens send only requests the demo answers @once", async ({
   const open = async (address: string) => {
     on = address;
     await page.goto(address, { waitUntil: "networkidle" });
+    // A failed read retries for about 7 seconds before its error shows.
+    await expect(
+      page.getByRole("status").filter({ hasText: /^Loading/ }),
+      `still loading ${address}`,
+    ).toHaveCount(0, { timeout: 15_000 });
     await expect(page.getByRole("alert"), `an error on ${address}`).toHaveCount(
       0,
     );

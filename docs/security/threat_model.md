@@ -618,20 +618,22 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   reads include the documentation of a dataset, table and column, no other
   kind, and the conventions, which the Documentation tab shows; the
   conventions give exceptions as a count per rule, never their targets.
-  `demo_security_test` also checks that each entry's path is answered by
-  one route, so a later route with a parameter where an entry has a fixed
-  word cannot take an entry's path unseen.
+  `demo_security_test` also checks that each entry's paths could be
+  answered by one GET route only, so a later route whose pattern overlaps
+  an entry cannot take its paths unseen. It reads the route table, where
+  two registrations of the very same pattern count as one.
+  `/api/mcp`, the OAuth, device and setup routes, the Power BI connect
+  route and the CSV link answer 404. A SPA screen not listed, such as
+  `/sign-in`, redirects to `/` with 302.
 - The web's end-to-end test `apps/web/e2e/demo-reads.spec.ts` opens each
   screen the list opens, with one sample value per parameter, and each of
   its tabs, at a desktop's and a phone's width. It runs as the Viewer on
   the dev stack, with the SPA's demo flag on and every `/api/` request the
   list leaves out answered 404 or 403, as the demo answers it. It fails on
-  any such request and on any screen that shows an error. It does not
-  click through a screen's other controls (the diagram, the tree, a
-  variant), so a read made only there is not caught.
-  `/api/mcp`, the OAuth, device and setup routes, the Power BI connect
-  route and the CSV link answer 404. A SPA screen not listed, such as
-  `/sign-in`, redirects to `/` with 302.
+  any such request, and on a screen that shows an error once it has
+  stopped loading. It does not click through a screen's other controls
+  (the diagram, the tree, a variant), so a read made only there is not
+  caught.
 - Each client address gets 240 requests a minute in demo mode, through the
   Postgres limiter, keyed `demo:<address>`, an IPv6 address counted as
   its /64 so a client cannot rotate through one; over it the api answers 429
@@ -656,8 +658,8 @@ clients pruned, clients being authorized spared),
 origin check and its bearer rule, the CSP header, the dev
 sign-in locks (`dev_sign_in_security_test`), `demo_security_test` (every route of
 `app.routes` refuses a write and, if not in `DEMO_PATHS`, answers 404 or
-302; each entry is answered by one route, and the documentation of a
-dataset, table and column only; a cookie or token is the demo person; the
+302; each entry's paths could be answered by one GET route only, and the
+documentation of a dataset, table and column only; a cookie or token is the demo person; the
 241st request answers 429), `demo-reads.spec.ts` (the demo's screens send
 no request the demo refuses),
 `locks_security_test` (each lock refuses start alone),

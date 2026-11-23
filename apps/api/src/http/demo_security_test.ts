@@ -34,6 +34,27 @@ const WRITES = ["POST", "PUT", "PATCH", "DELETE"] as const;
 const samplePath = (pattern: string) =>
   pattern.replace(/:[^/]+/g, "sample").replace(/\*/g, "sample");
 
+/**
+ * Whether one path matches both patterns: segment by segment the same word,
+ * or a parameter on either side. A `*` takes one or more segments to the end,
+ * as pathMatcher reads it, and an optional `:name?` may also be absent. Where
+ * a pattern's reading is unclear this says they overlap, so a route is
+ * counted as opened rather than missed.
+ */
+function overlaps(a: readonly string[], b: readonly string[]): boolean {
+  const [x, ...xs] = a;
+  const [y, ...ys] = b;
+  if (x === "*") return b.length > 0;
+  if (y === "*") return a.length > 0;
+  if (x === undefined || y === undefined) return x === y;
+  const optional = (word: string) => word.startsWith(":") && word.endsWith("?");
+  return (
+    ((x === y || x.startsWith(":") || y.startsWith(":")) && overlaps(xs, ys)) ||
+    (optional(x) && overlaps(xs, b)) ||
+    (optional(y) && overlaps(a, ys))
+  );
+}
+
 describe("before the demo person exists", () => {
   it("answers 503 on the api, and the sign-in config as the demo", async () => {
     const me = await fromPeer("/api/v1/me");
@@ -120,34 +141,25 @@ describe("with the demo person seeded", () => {
     );
   });
 
-  /** The GET routes whose pattern answers the path an entry opens, with "sample" in each parameter; Hono lists a route once per handler. */
+  /** The GET routes that could answer a path an entry opens; Hono lists a route once per handler. */
   const servedBy = (entry: string) => {
-    const path = samplePath(entry.slice("GET ".length));
+    const path = entry.slice("GET ".length).split("/");
     return [
       ...new Set(
         demo.routes
           .filter(
             ({ method, path: route }) =>
-              method === "GET" && pathMatcher([`GET ${route}`])(path, "GET"),
+              method === "GET" && overlaps(route.split("/"), path),
           )
           .map(({ path: route }) => route),
       ),
     ];
   };
 
-  // A new GET route a DEMO_PATHS pattern happens to match fails here, rather
-  // than opening in the demo unseen. An entry with a fixed word where its
-  // route has a parameter opens that route too, which the route's own
-  // sample path would not show.
+  // A new GET route that could answer a path DEMO_PATHS opens fails here,
+  // rather than opening in the demo unseen.
   it("opens these GET routes and no other", () => {
-    const opened = demo.routes
-      .filter(
-        ({ method, path }) =>
-          method === "GET" && inDemo(samplePath(path), "GET"),
-      )
-      .map(({ path }) => path);
-    const served = DEMO_PATHS.flatMap(servedBy);
-    expect([...new Set([...opened, ...served])].sort()).toEqual([
+    expect([...new Set(DEMO_PATHS.flatMap(servedBy))].sort()).toEqual([
       "/",
       "/api/auth/config",
       "/api/branding/logo",
@@ -188,9 +200,9 @@ describe("with the demo person seeded", () => {
     ]);
   });
 
-  // A route with a parameter where an entry has a fixed word, registered
-  // before the route the entry means, would answer the entry's path unseen.
-  it("serves each entry's path by one GET route", () => {
+  // A route that overlaps an entry's route, registered before it, would
+  // answer the entry's paths unseen.
+  it("serves each entry's paths by one GET route", () => {
     expect(
       DEMO_PATHS.map((entry) => ({ entry, routes: servedBy(entry) })).filter(
         ({ routes }) => routes.length !== 1,
