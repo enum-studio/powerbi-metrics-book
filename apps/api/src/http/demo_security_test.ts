@@ -34,6 +34,27 @@ const WRITES = ["POST", "PUT", "PATCH", "DELETE"] as const;
 const samplePath = (pattern: string) =>
   pattern.replace(/:[^/]+/g, "sample").replace(/\*/g, "sample");
 
+/**
+ * Whether one path matches both patterns: segment by segment the same word,
+ * or a parameter on either side. A `*` takes one or more segments to the end,
+ * as pathMatcher reads it, and an optional `:name?` may also be absent. Where
+ * a pattern's reading is unclear this says they overlap, so a route is
+ * counted as opened rather than missed.
+ */
+function overlaps(a: readonly string[], b: readonly string[]): boolean {
+  const [x, ...xs] = a;
+  const [y, ...ys] = b;
+  if (x === "*") return b.length > 0;
+  if (y === "*") return a.length > 0;
+  if (x === undefined || y === undefined) return x === y;
+  const optional = (word: string) => word.startsWith(":") && word.endsWith("?");
+  return (
+    ((x === y || x.startsWith(":") || y.startsWith(":")) && overlaps(xs, ys)) ||
+    (optional(x) && overlaps(xs, b)) ||
+    (optional(y) && overlaps(a, ys))
+  );
+}
+
 describe("before the demo person exists", () => {
   it("answers 503 on the api, and the sign-in config as the demo", async () => {
     const me = await fromPeer("/api/v1/me");
@@ -120,26 +141,37 @@ describe("with the demo person seeded", () => {
     );
   });
 
-  // A new GET route a DEMO_PATHS pattern happens to match fails here, rather
-  // than opening in the demo unseen.
+  /** The GET routes that could answer a path an entry opens; Hono lists a route once per handler. */
+  const servedBy = (entry: string) => {
+    const path = entry.slice("GET ".length).split("/");
+    return [
+      ...new Set(
+        demo.routes
+          .filter(
+            ({ method, path: route }) =>
+              method === "GET" && overlaps(route.split("/"), path),
+          )
+          .map(({ path: route }) => route),
+      ),
+    ];
+  };
+
+  // A new GET route that could answer a path DEMO_PATHS opens fails here,
+  // rather than opening in the demo unseen.
   it("opens these GET routes and no other", () => {
-    const opened = demo.routes
-      .filter(
-        ({ method, path }) =>
-          method === "GET" && inDemo(samplePath(path), "GET"),
-      )
-      .map(({ path }) => path);
-    expect([...new Set(opened)].sort()).toEqual([
+    expect([...new Set(DEMO_PATHS.flatMap(servedBy))].sort()).toEqual([
       "/",
       "/api/auth/config",
       "/api/branding/logo",
       "/api/v1/book/summary",
       "/api/v1/categories",
+      "/api/v1/conventions",
       "/api/v1/datasets",
       "/api/v1/datasets/:id",
       "/api/v1/datasets/:id/columns",
       "/api/v1/datasets/:id/columns/:column_id",
       "/api/v1/datasets/:id/measures",
+      "/api/v1/elements/:kind/:id/docs",
       "/api/v1/me",
       "/api/v1/metrics",
       "/api/v1/metrics/:name",
@@ -166,6 +198,27 @@ describe("with the demo person seeded", () => {
       "/docs/*",
       "/health",
     ]);
+  });
+
+  // A route that overlaps an entry's route, registered before it, would
+  // answer the entry's paths unseen.
+  it("serves each entry's paths by one GET route", () => {
+    expect(
+      DEMO_PATHS.map((entry) => ({ entry, routes: servedBy(entry) })).filter(
+        ({ routes }) => routes.length !== 1,
+      ),
+    ).toEqual([]);
+  });
+
+  it("opens the documentation of a dataset, table and column, and of no other kind", async () => {
+    const docs = (kind: string) =>
+      `/api/v1/elements/${kind}/d1000000-0000-4000-8000-000000000001/docs`;
+    for (const kind of ["dataset", "table", "column"])
+      expect(inDemo(docs(kind), "GET")).toBe(true);
+    for (const kind of ["workspace", "app", "measure", "metric", "term"]) {
+      expect(inDemo(docs(kind), "GET")).toBe(false);
+      expect((await fromPeer(docs(kind))).status).toBe(404);
+    }
   });
 
   it("opens the docs' root and the catalog's bare paths, which redirect", async () => {

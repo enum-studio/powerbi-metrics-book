@@ -21,6 +21,7 @@ export function PageTabs<T extends string>({
         <button
           key={value}
           type="button"
+          aria-current={current === value ? "page" : undefined}
           onClick={() => {
             onChange(value);
           }}

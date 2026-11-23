@@ -8,7 +8,7 @@ import { refuseDemoOffTheSample } from "../demo/locks.js";
 import { onTheMock } from "../auth/sign-in-config.js";
 import type { Environment } from "../settings/env.js";
 import { newSetupLink } from "../setup/link.js";
-import { seedSampleBook, type Send } from "./book.js";
+import { seedSampleBook, seedSampleDocs, type Send } from "./book.js";
 import { SAMPLE } from "./tenant.js";
 
 const SYNC_TIMEOUT_MS = 5 * 60 * 1000;
@@ -322,6 +322,7 @@ export async function seedSample(
         checklists.set(id, result.details?.items ?? []);
       }
     print(await seedSampleBook(web));
+    print(await seedSampleDocs(web));
     const listed = z
       .object({ items: z.array(z.object({ id: z.string() })) })
       .parse(
