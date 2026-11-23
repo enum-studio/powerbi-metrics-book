@@ -379,6 +379,51 @@ async function everyItem(send: Send, path: string): Promise<Item[]> {
 
 const WRITES_AT_ONCE = 8;
 
+const UNIT_RULE = "column_fields.unit";
+const companySchema = z.looseObject({
+  exceptions: z
+    .array(
+      z.looseObject({
+        rule: z.string(),
+        dataset: z.string().optional(),
+        column: z.string().optional(),
+      }),
+    )
+    .optional(),
+});
+type Exception = {
+  rule: string;
+  reason: string;
+  dataset: string;
+  column: string;
+};
+
+/** Files an exception to the unit rule for each column DOCS says has none, beside the company's own; one already there is left as it is. */
+async function fileExceptions(
+  send: Send,
+  wanted: Exception[],
+): Promise<number> {
+  const company = companySchema.parse(
+    await call(send, "GET", "/conventions/company"),
+  );
+  const have = company.exceptions ?? [];
+  const missing = wanted.filter(
+    (one) =>
+      !have.some(
+        (each) =>
+          each.rule === one.rule &&
+          each.dataset === one.dataset &&
+          each.column === one.column,
+      ),
+  );
+  if (missing.length > 0)
+    await call(send, "PUT", "/conventions", {
+      ...company,
+      exceptions: [...have, ...missing],
+    });
+  return missing.length;
+}
+
 /** The element DOCS names, or a loud failure: a renamed element must not lose its documentation quietly. */
 function named<T>(found: T | undefined, what: string): T {
   if (found === undefined)
@@ -395,6 +440,7 @@ function named<T>(found: T | undefined, what: string): T {
  */
 export async function seedSampleDocs(send: Send): Promise<string> {
   const written = { dataset: 0, table: 0, column: 0, measure: 0 };
+  const exceptions: Exception[] = [];
   async function fill(
     kind: keyof typeof written,
     id: string,
@@ -445,9 +491,18 @@ export async function seedSampleDocs(send: Send): Promise<string> {
         `table '${table}' in ${name}`,
       );
       writes.push(() => fill("table", found.id, own));
-      for (const [column, wanted] of Object.entries(columnDocs)) {
+      for (const [column, { no_unit, ...wanted }] of Object.entries(
+        columnDocs,
+      )) {
         const listed = find(columns, "column", table, column);
         writes.push(() => fill("column", listed.id, wanted, listed));
+        if (no_unit !== undefined)
+          exceptions.push({
+            rule: UNIT_RULE,
+            reason: no_unit,
+            dataset: name,
+            column: `'${table}'[${column}]`,
+          });
       }
       for (const [measure, description] of Object.entries(measureDocs ?? {})) {
         const listed = find(measures, "measure", table, measure);
@@ -457,8 +512,9 @@ export async function seedSampleDocs(send: Send): Promise<string> {
     for (let at = 0; at < writes.length; at += WRITES_AT_ONCE)
       await Promise.all(writes.slice(at, at + WRITES_AT_ONCE).map((w) => w()));
   }
+  const filed = await fileExceptions(send, exceptions);
   const { dataset, table, column, measure } = written;
-  return dataset + table + column + measure === 0
+  return dataset + table + column + measure + filed === 0
     ? "Sample docs: already written, nothing changed."
-    : `Sample docs: ${String(dataset)} datasets, ${String(table)} tables, ${String(column)} columns and ${String(measure)} measures documented.`;
+    : `Sample docs: ${String(dataset)} datasets, ${String(table)} tables, ${String(column)} columns and ${String(measure)} measures documented, ${String(filed)} columns with no unit excepted.`;
 }

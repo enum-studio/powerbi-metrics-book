@@ -12,7 +12,12 @@ export type ColumnDocs = {
   description: string;
   unit?: Unit;
   blank_means?: string;
+  /** Why a numeric column has no unit: the seed files it as an exception to column_fields.unit. */
+  no_unit?: string;
 };
+
+const IDENTIFIER = "An identifier, not an amount: no unit fits.";
+const DATE_PART = "A part of the date, not an amount: no unit fits.";
 export type TableDocs = {
   description: string;
   grain_and_filters: string;
@@ -51,9 +56,11 @@ function salesLines(
       "Order id": {
         description:
           "The order's number, 100001 to 101515. All lines of one order share it, so count orders with DISTINCTCOUNT.",
+        no_unit: IDENTIFIER,
       },
       "Order line": {
         description: "The line's number within its order: 1, 2 or 3.",
+        no_unit: IDENTIFIER,
       },
       Date: {
         description:
@@ -114,6 +121,7 @@ const date = (joined: string): TableDocs => ({
     Year: {
       description:
         "The calendar year, 2024 to 2026. It sits in the Fiscal display folder, but the model has no fiscal year: this is the calendar's.",
+      no_unit: DATE_PART,
     },
     Quarter: {
       description:
@@ -526,8 +534,12 @@ export const DOCS: Record<string, DatasetDocs> = {
           "Order id": {
             description:
               "The order's number, 5001 to 5014. All lines of one order share it.",
+            no_unit: IDENTIFIER,
           },
-          Line: { description: "The line's number within its order, 1 to 3." },
+          Line: {
+            description: "The line's number within its order, 1 to 3.",
+            no_unit: IDENTIFIER,
+          },
           "Order date": {
             description:
               "The day the order was placed. It joins Date[Date], so every date filter reads it.",
@@ -630,7 +642,10 @@ export const DOCS: Record<string, DatasetDocs> = {
         caveats:
           "A return has no order id, customer or store, so it cannot be matched to its order line, and a Store or Customer filter does not reach it. Its date is the day it came back, not the order date.",
         columns: {
-          "Return id": { description: "The return's number, 900 to 903." },
+          "Return id": {
+            description: "The return's number, 900 to 903.",
+            no_unit: IDENTIFIER,
+          },
           "Return date": {
             description: "The day the goods came back. It joins Date[Date].",
           },
@@ -740,10 +755,14 @@ export const DOCS: Record<string, DatasetDocs> = {
             description:
               "The month as text, such as 2026-02. It joins Month[Month].",
           },
-          Year: { description: "The calendar year: 2026 on every row." },
+          Year: {
+            description: "The calendar year: 2026 on every row.",
+            no_unit: DATE_PART,
+          },
           Week: {
             description:
               "The week of the year in blocks of 7 days from 1 January, 1 to 13. It is not the ISO week: week 1 is 1 to 7 January.",
+            no_unit: DATE_PART,
           },
           Weekday: { description: "The day's name, such as Monday." },
           "Is holiday": {
@@ -765,7 +784,7 @@ export const DOCS: Record<string, DatasetDocs> = {
             description: "The month's name: January, February or March.",
           },
           Quarter: { description: "The quarter as text: 2026 Q1." },
-          Year: { description: "The year: 2026." },
+          Year: { description: "The year: 2026.", no_unit: DATE_PART },
         },
       },
       Product: {
