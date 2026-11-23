@@ -117,6 +117,10 @@ export const powerbiDataset = pgTable(
     has_row_level_security: boolean("has_row_level_security")
       .notNull()
       .default(false),
+    /** Power BI answers its queries only for a person: it has row-level security, single sign-on to its source, or a live connection's roles. */
+    requires_effective_identity: boolean("requires_effective_identity")
+      .notNull()
+      .default(false),
     endorsement: text("endorsement"),
     sensitivity_label: text("sensitivity_label"),
     schema_error: text("schema_error"),

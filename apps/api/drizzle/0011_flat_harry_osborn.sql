@@ -1,0 +1,1 @@
+ALTER TABLE "powerbi_dataset" ADD COLUMN "requires_effective_identity" boolean DEFAULT false NOT NULL;

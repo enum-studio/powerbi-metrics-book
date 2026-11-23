@@ -98,6 +98,8 @@ export type Dataset = {
   configured_by: string;
   storage_mode: string;
   has_row_level_security: boolean;
+  /** Power BI answers it only for a person although the model defines no roles: single sign-on to a DirectQuery source, or a live connection whose roles are on the server. */
+  effective_identity_required: boolean;
   /** A scan result that failed for this dataset carries this text instead of a schema. */
   schema_retrieval_error: string | null;
   tables: Table[];

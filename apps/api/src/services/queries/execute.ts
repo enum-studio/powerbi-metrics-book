@@ -136,16 +136,21 @@ async function execute(
       name: found.name,
       workspace_id: found.workspace_id,
     };
-    // Power BI refuses it too, and a service account has no person's row-level security to hold it.
-    if (
-      context.principal.kind === "service_account" &&
-      found.attr.has_row_level_security
-    )
-      throw new ServiceError(
-        "refused",
-        `${found.name} has row-level security, and Power BI answers a model with row-level security only to a person. Ask a person to run this query.`,
-      );
     await context.access.require(context.principal, found.resource, "query");
+    // Power BI refuses it too, and a service account has no person's row-level security to hold it.
+    // After Cerbos, so a principal refused the query does not learn how the model is secured.
+    if (context.principal.kind === "service_account") {
+      if (found.attr.has_row_level_security)
+        throw new ServiceError(
+          "refused",
+          `${found.name} has row-level security, and Power BI answers a model with row-level security only to a person. Ask a person to run this query.`,
+        );
+      if (found.requires_effective_identity)
+        throw new ServiceError(
+          "refused",
+          `${found.name} needs a person's identity in Power BI, through single sign-on to its source or a live connection's roles, so Power BI answers it only to a person. Ask a person to run this query.`,
+        );
+    }
     checkDax(input.dax);
     // A service account never reads PII, so it is always checked.
     let names =
@@ -299,6 +304,7 @@ async function describedDataset(context: ServiceContext, reference: string) {
       id: powerbiDataset.id,
       name: powerbiDataset.name,
       workspace_id: powerbiDataset.workspace_id,
+      requires_effective_identity: powerbiDataset.requires_effective_identity,
       attr: {
         workspace_id: powerbiDataset.workspace_id,
         workspace_name: powerbiWorkspace.name,

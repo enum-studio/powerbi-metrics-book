@@ -125,6 +125,8 @@ Every request that reads or changes data asks Cerbos about a resource and an act
 
 The principal carries its roles, its kind (`person` or `service_account`), and what Power BI says it can reach: `powerbi_workspace_ids`, `powerbi_app_ids` and `powerbi_dataset_ids`. Read the default policies in `access/policies/` of the repository: they are short, and they are the best examples.
 
+`has_row_level_security` is true when the model defines row-level security roles, as Power BI's scan reports it. Before the release of 23 November 2026 the sync never stored it, so it was false on every dataset, and a rule that reads it starts to apply at the first full scan after that release (`powerbi.sync.full_scan_schedule`).
+
 Lists and search apply `describe` inside their SQL, using Cerbos's query plan. A `describe` rule may therefore use only `workspace_id`, `has_row_level_security`, `endorsement`, `sensitivity_label`, the dataset id and `app_ids`, with `and`, `or`, `not`, `==`, `in` and `hasIntersection`. A condition the api cannot translate fails every list loudly instead of showing too much. A `query` rule is checked for one dataset at a time and may use any attribute, including `custom`.
 
 Searching the query log applies `read` inside its SQL the same way. A `query_log` rule may use only `principal_kind`, `principal_id` and the entry's id, with `and`, `or`, `not`, `==` and `in`. Write `!(R.attr.principal_id == P.id)`, because `!=` is not translated and fails every search of the log loudly.

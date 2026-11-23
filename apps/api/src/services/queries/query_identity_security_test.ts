@@ -274,6 +274,24 @@ describe("a query", () => {
     });
     expect(outbound).toEqual([]);
   });
+
+  it("is refused to a service account on a model that needs a person's identity without roles of its own, before any token is fetched", async () => {
+    const archive = named("Campaign archive");
+    expect(archive.has_row_level_security).toBe(false);
+    await f.settings.set("powerbi.service_account_queries", true);
+    outbound.length = 0;
+    await expect(
+      executeDax(serviceAccount(archive.workspace_id), {
+        dataset: archive.id,
+        dax: "EVALUATE 'Campaign'",
+      }),
+    ).rejects.toMatchObject({
+      kind: "refused",
+      message:
+        "Campaign archive needs a person's identity in Power BI, through single sign-on to its source or a live connection's roles, so Power BI answers it only to a person. Ask a person to run this query.",
+    });
+    expect(outbound).toEqual([]);
+  });
 });
 
 describe("a read of a dataset's relationships", () => {

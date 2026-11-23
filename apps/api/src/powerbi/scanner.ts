@@ -44,6 +44,8 @@ export function mirrorSpelling(value: string): string {
  */
 const text = z.string().optional();
 const flag = z.boolean().optional();
+/** A flag the sync keeps as stored when the scan does not give it; null is not giving it. */
+const kept = z.boolean().nullish();
 const enumeration = z.string().transform(mirrorSpelling);
 const column = z.object({
   name: z.string(),
@@ -89,6 +91,10 @@ const dataset = z.object({
   description: text,
   configuredBy: text,
   targetStorageMode: enumeration.optional(),
+  /** Whether the model defines row-level security roles. */
+  isEffectiveIdentityRolesRequired: kept,
+  /** Whether Power BI answers its queries only for a person: roles, single sign-on to its source, or a live connection's roles. */
+  isEffectiveIdentityRequired: kept,
   tables: z.array(table).optional(),
   relationships: z.array(relationship).optional(),
   schemaRetrievalError: text,

@@ -351,6 +351,8 @@ export function sampleTenant(
         {
           description: "Invented campaigns of earlier years.",
           storage_mode: "DirectQuery",
+          // Single sign-on to its source: Power BI answers it only for a person.
+          effective_identity_required: true,
           schema_retrieval_error:
             "The model has never been refreshed, so its schema could not be read.",
         },
@@ -378,6 +380,7 @@ function dataset(
     configured_by: ADMIN_EMAIL,
     storage_mode: "Import",
     has_row_level_security: false,
+    effective_identity_required: false,
     schema_retrieval_error: null,
     tables: [],
     relationships: [],

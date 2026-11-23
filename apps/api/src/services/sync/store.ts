@@ -197,6 +197,24 @@ export async function storeWorkspace(
   });
 }
 
+/**
+ * Whether the model has row-level security, and whether Power BI answers it
+ * only for a person, as the scan gives them. A flag the scan leaves out is
+ * not in the row, so the stored one stays: a missing key never turns a
+ * refusal off.
+ */
+function identity(dataset: ScannedDataset) {
+  const roles = dataset.isEffectiveIdentityRolesRequired;
+  const person = dataset.isEffectiveIdentityRequired;
+  return {
+    ...(typeof roles === "boolean" ? { has_row_level_security: roles } : {}),
+    // Roles alone say yes; only the scan's own answer says no.
+    ...(typeof person === "boolean" || roles === true
+      ? { requires_effective_identity: roles === true || person === true }
+      : {}),
+  };
+}
+
 /** One dataset, with its access list and its schema; answers it when its schema changed. */
 async function storeDataset(
   tx: Db,
@@ -214,6 +232,7 @@ async function storeDataset(
     description_pbi: dataset.description ?? null,
     configured_by: dataset.configuredBy ?? null,
     target_storage_mode: dataset.targetStorageMode ?? null,
+    ...identity(dataset),
     schema_error: schemaError(dataset),
     relationships_source: carries ? ("scanner" as const) : null,
     relationships_read_at: carries ? now : null,
