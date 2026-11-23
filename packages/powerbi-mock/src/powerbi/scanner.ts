@@ -77,7 +77,8 @@ function datasetInfo(
     description: dataset.description,
     configuredBy: dataset.configured_by,
     targetStorageMode: dataset.storage_mode,
-    isEffectiveIdentityRequired: dataset.has_row_level_security,
+    isEffectiveIdentityRequired:
+      dataset.has_row_level_security || dataset.effective_identity_required,
     isEffectiveIdentityRolesRequired: dataset.has_row_level_security,
   });
   if (flags.users) {

@@ -133,6 +133,14 @@ export function queryRoutes(state: MockState, runtime: Runtime): Hono {
         "Service principals cannot query a dataset with row-level security.",
       );
     }
+    if (
+      caller.kind === "service_principal" &&
+      dataset.effective_identity_required
+    ) {
+      return refusal(
+        "Service principals cannot query a dataset that requires an effective identity.",
+      );
+    }
 
     const request = parseRequest(await readJsonObject(c));
     if (typeof request === "string") {

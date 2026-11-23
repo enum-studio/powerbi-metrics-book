@@ -119,6 +119,7 @@ export function createTestTenant(): Tenant {
         configured_by: "ada@example.test",
         storage_mode: "Import",
         has_row_level_security: false,
+        effective_identity_required: false,
         schema_retrieval_error: null,
         tables: [
           {

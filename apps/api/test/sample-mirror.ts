@@ -63,6 +63,8 @@ export async function loadSampleMirror(tx: Db): Promise<SampleMirror> {
       configured_by: dataset.configured_by,
       target_storage_mode: mirrorSpelling(dataset.storage_mode),
       has_row_level_security: dataset.has_row_level_security,
+      requires_effective_identity:
+        dataset.has_row_level_security || dataset.effective_identity_required,
       schema_error: dataset.schema_retrieval_error,
     })),
   );
