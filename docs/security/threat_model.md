@@ -614,7 +614,14 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   until someone lists it. It lists `/health`, the auth config and logo,
   the SPA's shell and its home and catalog screens, `/docs/*`, and the
   `/api/v1` reads those screens make, and leaves out every GET that
-  writes, above all `GET /api/v1/powerbi/connect` and the CSV link.
+  writes, above all `GET /api/v1/powerbi/connect` and the CSV link. The
+  reads include an element's documentation and the conventions, which the
+  Documentation tab shows; the conventions give exceptions as a count per
+  rule, never their targets. The web's end-to-end test
+  `apps/web/e2e/demo-reads.spec.ts` opens every screen the list opens, and
+  each of its tabs, as a viewer, and fails on any request the list leaves
+  out, so a screen that starts reading a new route is caught before the
+  demo answers it 404.
   `/api/mcp`, the OAuth, device and setup routes, the Power BI connect
   route and the CSV link answer 404. A SPA screen not listed, such as
   `/sign-in`, redirects to `/` with 302.

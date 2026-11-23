@@ -72,6 +72,13 @@ export const DEMO_PATHS: readonly string[] = [
   "GET /api/v1/datasets/:id/columns",
   "GET /api/v1/datasets/:id/columns/:column_id",
   "GET /api/v1/datasets/:id/measures",
+  // The Documentation tab of a dataset, table and column
+  // (apps/web/src/catalog/datasets/documentation.tsx): the element's
+  // documentation, read through the same reach and PII checks as the
+  // dataset reads above, and the conventions, for the custom fields it lists.
+  // The conventions name no person and give exceptions as counts per rule.
+  "GET /api/v1/elements/:kind/:id/docs",
+  "GET /api/v1/conventions",
 ];
 
 const demoPath = pathMatcher(DEMO_PATHS);
