@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DOCS } from "./docs.js";
 
 export type Send = (
   target: string,
@@ -342,4 +343,122 @@ export async function seedSampleBook(send: Send): Promise<string> {
   return categories + metrics + terms === 0
     ? "Sample book: already seeded, nothing changed."
     : `Sample book: ${String(categories)} categories made, ${String(metrics)} metrics described and filed, ${String(terms)} term changes.`;
+}
+
+const docsSchema = z.record(z.string(), z.unknown());
+const modelSchema = z.object({
+  tables: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+// A column or measure in a list carries the book's own fields beside Power BI's description.
+const pageSchema = z.object({
+  items: z.array(
+    z.looseObject({
+      id: z.string(),
+      name: z.string(),
+      table: z.object({ name: z.string() }),
+    }),
+  ),
+  next_cursor: z.string().nullable(),
+});
+type Item = z.infer<typeof pageSchema>["items"][number];
+
+async function everyItem(send: Send, path: string): Promise<Item[]> {
+  const items: Item[] = [];
+  let cursor: string | null = null;
+  do {
+    const after =
+      cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`;
+    const page = pageSchema.parse(
+      await call(send, "GET", `${path}?limit=500${after}`),
+    );
+    items.push(...page.items);
+    cursor = page.next_cursor;
+  } while (cursor !== null);
+  return items;
+}
+
+const WRITES_AT_ONCE = 8;
+
+/** The element DOCS names, or a loud failure: a renamed element must not lose its documentation quietly. */
+function named<T>(found: T | undefined, what: string): T {
+  if (found === undefined)
+    throw new Error(
+      `The sample tenant has no ${what}, which docs.ts documents.`,
+    );
+  return found;
+}
+
+/**
+ * Writes DOCS through the sample admin's browser session, each field only
+ * while it is empty, so a second run sends no PUT and a person's own text
+ * stays.
+ */
+export async function seedSampleDocs(send: Send): Promise<string> {
+  const written = { dataset: 0, table: 0, column: 0, measure: 0 };
+  async function fill(
+    kind: keyof typeof written,
+    id: string,
+    wanted: Record<string, string | undefined>,
+    listed?: Record<string, unknown>,
+  ) {
+    const path = `/elements/${kind}/${id}/docs`;
+    const have = listed ?? docsSchema.parse(await call(send, "GET", path));
+    const empty = Object.entries(wanted).filter(
+      ([field, value]) =>
+        value !== undefined &&
+        (typeof have[field] !== "string" || have[field].trim() === ""),
+    );
+    if (empty.length === 0) return;
+    await call(send, "PUT", path, Object.fromEntries(empty));
+    written[kind]++;
+  }
+  const { items: datasets } = datasetsSchema.parse(
+    await call(send, "GET", "/datasets?limit=500"),
+  );
+  for (const [name, { tables, ...fields }] of Object.entries(DOCS)) {
+    const dataset = named(
+      datasets.find((each) => each.name === name),
+      `dataset ${name}`,
+    );
+    const path = `/datasets/${dataset.id}`;
+    const model = modelSchema.parse(await call(send, "GET", path));
+    const columns = await everyItem(send, `${path}/columns`);
+    const measures = await everyItem(send, `${path}/measures`);
+    // The dataset's elements are all found before its first write; the writes go a few at a time.
+    const writes = [() => fill("dataset", dataset.id, fields)];
+    const find = (
+      items: Item[],
+      kind: string,
+      table: string,
+      element: string,
+    ) =>
+      named(
+        items.find(
+          (each) => each.table.name === table && each.name === element,
+        ),
+        `${kind} '${table}'[${element}] in ${name}`,
+      );
+    for (const [table, docs] of Object.entries(tables)) {
+      const { columns: columnDocs, measures: measureDocs, ...own } = docs;
+      const found = named(
+        model.tables.find((each) => each.name === table),
+        `table '${table}' in ${name}`,
+      );
+      writes.push(() => fill("table", found.id, own));
+      for (const [column, wanted] of Object.entries(columnDocs)) {
+        const listed = find(columns, "column", table, column);
+        writes.push(() => fill("column", listed.id, wanted, listed));
+      }
+      for (const [measure, description] of Object.entries(measureDocs ?? {})) {
+        const listed = find(measures, "measure", table, measure);
+        writes.push(() => fill("measure", listed.id, { description }, listed));
+      }
+    }
+    for (let at = 0; at < writes.length; at += WRITES_AT_ONCE)
+      await Promise.all(writes.slice(at, at + WRITES_AT_ONCE).map((w) => w()));
+  }
+  const { dataset, table, column, measure } = written;
+  return dataset + table + column + measure === 0
+    ? "Sample docs: already written, nothing changed."
+    : `Sample docs: ${String(dataset)} datasets, ${String(table)} tables, ${String(column)} columns and ${String(measure)} measures documented.`;
 }

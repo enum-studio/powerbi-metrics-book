@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
-import { CATEGORIES, MERGES, METRICS, TERMS } from "./book.js";
+import { expect, test } from "vitest";
+import {
+  CATEGORIES,
+  MERGES,
+  METRICS,
+  seedSampleDocs,
+  TERMS,
+  type Send,
+} from "./book.js";
 
 const paths = new Set(CATEGORIES.map((each) => each.path));
 
@@ -50,4 +57,34 @@ test("Return keeps no column, so it stays a concept", () => {
 
 test("no seeded metric sets trust: the api does", () => {
   for (const metric of METRICS) assert.ok(!("trust_state" in metric));
+});
+
+test("a table the tenant does not have fails the docs seed, naming it", async () => {
+  // Every dataset is there with every field written, and no dataset has a table.
+  const send: Send = (target, { method = "GET" } = {}) => {
+    const path = new URL(target, "http://api").pathname;
+    if (method !== "GET") throw new Error(`${method} ${path} was sent`);
+    const answer = path.endsWith("/docs")
+      ? {
+          description: "Written.",
+          when_to_use: "Written.",
+          owner: "Written.",
+          freshness: "Written.",
+          caveats: "Written.",
+        }
+      : path === "/api/v1/datasets"
+        ? {
+            items: [
+              { id: "sales", name: "Sales" },
+              { id: "finance", name: "Finance" },
+            ],
+          }
+        : path.endsWith("/columns") || path.endsWith("/measures")
+          ? { items: [], next_cursor: null }
+          : { tables: [] };
+    return Promise.resolve(Response.json(answer));
+  };
+  await expect(seedSampleDocs(send)).rejects.toThrow(
+    "The sample tenant has no table 'Sales lines' in Sales, which docs.ts documents.",
+  );
 });

@@ -84,6 +84,18 @@ Int64, Double, Decimal, DateTime, Boolean and Binary (Product[Image]); keys
 are hidden. 'Sales lines'[Ship date] to Date is inactive, Ad spend to
 Channel filters both ways, and Exchange rate is disconnected.
 
+## The sample book comes documented
+
+`server sample-seed` writes documentation for every dataset, table, column
+and measure, from `apps/api/src/services/sample/docs.ts`: each dataset's
+definition, when to use it, owner, freshness and caveats; each table's
+definition and grain; each column's definition, with the unit of an amount
+or count; and each measure's definition, read from its DAX. A measure that is odd on purpose says how in
+its definition: Order lines LQ goes back 28 days, not a quarter. The seed
+writes only a field that is still empty, so a second run changes nothing,
+and it fails naming any dataset, table, column or measure in `docs.ts` that
+the tenant no longer has. A change to the model changes `docs.ts` with it.
+
 ## Measures and why each odd one is here
 
 | Measure (dataset) | Why it is here | The drafter, default conventions |

@@ -12,8 +12,11 @@ import {
   testPool,
 } from "../../../test/deps.js";
 import { loadConfig } from "../../config.js";
+import type { AppDeps } from "../../context.js";
 import { buildDeps } from "../../deps.js";
 import { hasAdmin } from "../admin/people.js";
+import { personPrincipal } from "../auth/principal.js";
+import { docsChecks } from "../book/docs.js";
 import { runJobs } from "../jobs/runner.js";
 import { seedSample, setupLine } from "./seed.js";
 import "../jobs/all.js";
@@ -24,6 +27,43 @@ afterAll(async () => {
   await closeTestPools();
   await rm(directory, { recursive: true });
 });
+
+/** Each failing documentation check the sample admin sees, on every page of GET /api/v1/docs/checks. */
+async function failingDocs(deps: AppDeps): Promise<string[]> {
+  const { rows } = await testPool("migrator").query<{
+    id: string;
+    email: string;
+  }>(`select id, email from "user" where email = 'admin@sample.example'`);
+  const [admin] = rows;
+  if (admin === undefined) throw new Error("The seed made no sample admin.");
+  const principal = await personPrincipal(
+    deps,
+    { ...admin, email_verified: true },
+    { via: "browser", client_id: null },
+  );
+  const failing: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await docsChecks(
+      { ...deps, principal },
+      { limit: 500, cursor },
+    );
+    for (const { dataset, table, name, results } of page.items)
+      for (const { rule, passed } of results)
+        if (!passed) failing.push(`${dataset} ${table ?? ""} ${name}: ${rule}`);
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor !== undefined);
+  return failing;
+}
+
+const UNDESCRIBED = ["dataset", "table", "column", "measure"]
+  .map(
+    (kind) =>
+      `select '${kind}' as kind, name from powerbi_${kind} where removed_at is null and description is null`,
+  )
+  .join(" union all ");
+const DOCS_CHANGES =
+  "select count(*)::int as count from book_change where action = 'docs'";
 
 async function withMock(
   run: (env: ReturnType<typeof testEnvironment>) => Promise<void>,
@@ -67,7 +107,7 @@ it("refuses in demo mode with usage capture on, before writing anything", async 
   );
 }, 60_000);
 
-it("seeds an admin and sales on an empty database, then changes no category", async () => {
+it("seeds an admin, sales and documentation on an empty database, then changes nothing", async () => {
   const mock = await startMockPowerBi({
     tenant: sampleTenant({ public_base_url: "https://metrics.example.com" }),
     control: true,
@@ -109,6 +149,9 @@ it("seeds an admin and sales on an empty database, then changes no category", as
     expect(
       lines.some((line) => line.startsWith("Relationships read for ")),
     ).toBe(true);
+    expect(await failingDocs(api)).toEqual([]);
+    expect((await testPool("migrator").query(UNDESCRIBED)).rows).toEqual([]);
+    const documented = await testPool("migrator").query(DOCS_CHANGES);
     const categories = () =>
       testPool("migrator").query("select * from category order by key");
     const first = (await categories()).rows;
@@ -132,6 +175,10 @@ it("seeds an admin and sales on an empty database, then changes no category", as
     ).toEqual([{ role: "viewer" }]);
     expect((await categories()).rows).toEqual(first);
     expect(lines).toContain("Sample book: already seeded, nothing changed.");
+    expect(lines).toContain("Sample docs: already written, nothing changed.");
+    expect((await testPool("migrator").query(DOCS_CHANGES)).rows).toEqual(
+      documented.rows,
+    );
     expect(lines.at(-1)).toMatch(/steps pass\. Open: none$/);
     expect(
       (
@@ -145,7 +192,8 @@ it("seeds an admin and sales on an empty database, then changes no category", as
     await Promise.all(running);
     await Promise.all([api.close(), worker.close(), mock.close()]);
   }
-}, 120_000);
+  // Two seeds and some 300 documentation writes: past two minutes on a busy machine.
+}, 240_000);
 
 it("names each open step with its check's sentence and failing items", () => {
   const state = {
