@@ -138,7 +138,7 @@ const date = (joined: string): TableDocs => ({
     "Is weekend": { description: "True on Saturdays and Sundays." },
     "Date last year": {
       description:
-        "The same weekday 52 weeks earlier: the date less 364 days. In 2024 it falls in 2023, before the calendar starts.",
+        "The same weekday 52 weeks earlier: the date less 364 days. Before 30 December 2024 it falls in 2023, before the calendar starts.",
     },
     "Date last month": {
       description:
@@ -178,7 +178,7 @@ export const DOCS: Record<string, DatasetDocs> = {
     freshness:
       "Refreshed every day at 06:00, with orders up to the end of the day before.",
     caveats:
-      "Sales lines[Ship date] to Date is inactive, so shipped views need USERELATIONSHIP. Some measures do not shift as their names say: Order lines LQ goes back 28 days, Order lines held does not go back at all, and Units sold LY takes the whole previous year.",
+      "Sales lines[Ship date] to Date is inactive, so counting by ship date needs USERELATIONSHIP. Some measures do not shift as their names say: Order lines LQ goes back 28 days, Order lines held does not go back at all, and Units sold LY takes the whole previous year.",
     tables: {
       "Sales lines": salesLines(
         "Sales",
@@ -381,11 +381,11 @@ export const DOCS: Record<string, DatasetDocs> = {
         },
         measures: {
           "Revenue USD":
-            "Revenue in US dollars: each line's net amount times the USD rate, 1.08. It ignores the currency picker.",
+            "Revenue in US dollars: each line's net amount times the USD rate, 1.08. Its rate lookup sees only the currencies picked in Exchange rate[Currency], so it is blank when the pick leaves USD out.",
           "Revenue in selected currency":
-            "Revenue in the currency picked in Exchange rate[Currency]. With none or several picked, it stays in euros.",
+            "Revenue in the currency picked in Exchange rate[Currency], and in euros when none is picked. With several picked it shows euros if EUR is among them, and is blank if not.",
           "_Currency format":
-            "Hidden helper: the format string for the picked currency, such as #,0.00 USD. A dynamic format string reads it; it is not a number to report.",
+            "Hidden helper: the format string for the picked currency, such as #,0.00 USD. Nothing in the model reads it, and it is not a number to report.",
         },
       },
     },
@@ -506,8 +506,7 @@ export const DOCS: Record<string, DatasetDocs> = {
     when_to_use:
       "To look back at campaigns before 2024, once the model has been refreshed. For ad spend from 2024 on, use Marketing.",
     owner: "Growth marketing",
-    freshness:
-      "Never refreshed since it was published, as a DirectQuery model.",
+    freshness: "Never refreshed since it was published.",
     caveats:
       "Power BI cannot read its schema because the model has never been refreshed, so the book lists no tables, columns or measures for it, and an agent has nothing to write DAX against.",
     tables: {},
@@ -516,10 +515,10 @@ export const DOCS: Record<string, DatasetDocs> = {
     description:
       "Orders, returns, stock and budget of four stores from January to March 2026, with products, brands, customers and regions.",
     when_to_use:
-      "Use it for store questions: sales against budget, stock, returns by reason, brands and new customers. For order trends from 2024 and sales by channel, use Sales. For revenue and margin as Finance reports them, use Finance.",
+      "Use it for store questions: sales against budget, stock, returns by reason and brands. For order trends from 2024 and sales by channel, use Sales. For revenue and margin as Finance reports them, use Finance.",
     owner: "Retail analytics",
     freshness:
-      "Refreshed every day at 06:30. Stock is counted on the first of each month, and the budget is set per month.",
+      "Refreshed every day at 06:30. Stock was counted on 1 January and 1 February 2026, with no count for March. The budget is set per month.",
     caveats:
       "Row-level security is on: each person sees only the rows their role allows, so two people can get different totals, and Power BI refuses queries from a service principal. Order amounts are in the order's own currency, and Net sales, Gross sales and Gross margin add them as they are; Net amount EUR is the converted column. Budget joins Month, not Date. Ship date to Date and Customer to Region are inactive, and Exchange rate to Currency filters both ways.",
     tables: {
@@ -676,7 +675,7 @@ export const DOCS: Record<string, DatasetDocs> = {
       },
       Stock: {
         description:
-          "Units in stock per product and store, counted on the first of each month.",
+          "Units in stock per product and store, on the days stock was counted.",
         grain_and_filters:
           "One row per product per stock count: 6 products, counted on 1 January and 1 February 2026, each in one store.",
         caveats:
@@ -684,7 +683,7 @@ export const DOCS: Record<string, DatasetDocs> = {
         columns: {
           "Snapshot date": {
             description:
-              "The day the stock was counted: the first of the month. It joins Date[Date].",
+              "The day the stock was counted: 1 January or 1 February 2026. It joins Date[Date].",
           },
           "Product key": {
             description:
@@ -710,7 +709,7 @@ export const DOCS: Record<string, DatasetDocs> = {
           "Stock value":
             "Stock at cost, added up over the filter. With more than one count in view, it adds them together.",
           "Weeks of cover":
-            "Not a working cover figure. Its DAX divides Units on hand by the bare Units in stock column, which a measure cannot read without an aggregation, and multiplies by 13. It reads no sales, so even with SUM added it would always show 13.",
+            "Returns an error in Power BI. Its DAX divides Units on hand by the bare Units in stock column, which a measure cannot read without an aggregation, and multiplies by 13. It reads no sales, so even with SUM added it would always show 13.",
         },
       },
       Budget: {
