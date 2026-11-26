@@ -9,7 +9,7 @@
 # issuers and URLs, default http://localhost:PORT) and MOCK_CONTROL=1 (mounts
 # the /_mock control routes).
 
-FROM node:24-trixie-slim@sha256:0820eaa85e07d0490446dd01d14707e17e6108a36988cf374899cd057eb3812d AS pnpm
+FROM node:24-trixie-slim@sha256:4d00acb4bcc42c454c4eb801526f7ad7f772ea3bd4fd168c5cc2e384abcbb9d4 AS pnpm
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 # Corepack installs the pnpm that the root package.json pins.
@@ -30,7 +30,15 @@ FROM pnpm AS runtime_deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod --filter @powerbi-metrics-book/powerbi-mock
 
-FROM node:24-trixie-slim@sha256:0820eaa85e07d0490446dd01d14707e17e6108a36988cf374899cd057eb3812d
+FROM node:24-trixie-slim@sha256:4d00acb4bcc42c454c4eb801526f7ad7f772ea3bd4fd168c5cc2e384abcbb9d4
+# Match the API's system-library fix and leave out unused package managers.
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends libzstd1=1.5.7+dfsg-1+deb13u1
+RUN rm -rf /var/lib/apt/lists
+RUN rm -rf /usr/local/lib/node_modules
+RUN rm -rf /opt/yarn-v1.22.22
+RUN rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+  /usr/local/bin/yarn /usr/local/bin/yarnpkg
 ENV NODE_ENV=production PORT=3001
 # A user of its own with no home, numeric so that a runtime can check it is not root.
 RUN useradd --system --uid 10001 --user-group --no-create-home --home-dir /nonexistent \

@@ -67,21 +67,6 @@ vulnerabilities:
       - "pkg:deb/debian/ncurses-bin"
     statement: No fixed version in Debian 13 yet (checked 2026-10-27).
     expired_at: 2027-01-27
-  - id: CVE-2026-109518
-    purls:
-      - "pkg:deb/debian/apt"
-      - "pkg:deb/debian/libapt-pkg7.0"
-    statement:
-      Fixed in Debian as 3.0.4 (DSA-6607-1), and the node digest has it,
-      but the newest pgvector image (built 2026-10-31, checked 2026-11-05) still
-      ships 3.0.3. The flaw needs apt to install a package over tampered HTTP, and
-      nothing runs apt in the postgres container or builds on it with apt. That
-      alone protects root, since Azure's database-init job runs as root and on
-      Railway the entry point starts as root. The server runs as user 999 on
-      Compose and Railway, and user 999 cannot install. This entry would also hide
-      the finding on an old node digest, because trivy cannot scope it to one
-      image. Take the fix by raising the pgvector digest when a rebuild lands.
-    expired_at: 2026-11-27
   - id: CVE-2026-119373
     purls:
       - "pkg:deb/debian/libsqlite3-0"
@@ -127,7 +112,10 @@ vulnerabilities:
   - id: CVE-2026-16742
     purls:
       - "pkg:deb/debian/libsystemd0"
-    statement: The flaw is in systemd-homed, which is not present in the image.
+      - "pkg:deb/debian/libsystemd-shared"
+      - "pkg:deb/debian/systemd"
+    statement: The flaw is in systemd-homed, which is not present in the image
+      (checked against pgvector PostgreSQL 18.7 on 2026-11-26).
     expired_at: 2027-01-27
   - id: CVE-2026-16742
     purls:

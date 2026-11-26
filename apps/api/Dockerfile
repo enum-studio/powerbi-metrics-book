@@ -14,7 +14,7 @@
 # api and the worker refuse to start, naming it.
 
 # Node 24, pinned by digest; a new Node release is a reviewed change here.
-FROM node:24-trixie-slim@sha256:0820eaa85e07d0490446dd01d14707e17e6108a36988cf374899cd057eb3812d AS node
+FROM node:24-trixie-slim@sha256:4d00acb4bcc42c454c4eb801526f7ad7f772ea3bd4fd168c5cc2e384abcbb9d4 AS node
 
 FROM node AS pnpm
 ENV PNPM_HOME=/pnpm

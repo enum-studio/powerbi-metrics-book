@@ -10,7 +10,7 @@
 # server only, which listens on 127.0.0.1.
 services:
   postgres:
-    image: pgvector/pgvector:pg18-trixie@sha256:5895949dfcdf308eb0cd31c950c93c14895c77f33fbedfecf1fa511ab1d4bcd2
+    image: pgvector/pgvector:pg18-trixie@sha256:ab49524d18df7200b74ac9a475e1db6297fc1eb57da4c214c63d10ecc4b754fa
     # The default bridge rather than a network per project: every checkout is
     # its own project, and a network each would use up Docker's address pools.
     network_mode: bridge

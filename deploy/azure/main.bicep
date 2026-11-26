@@ -37,7 +37,7 @@ param location string = resourceGroup().location
 param image string
 
 @description('The pinned Postgres image of compose.yml, for the database job.')
-param postgresImage string = 'pgvector/pgvector:pg18-trixie@sha256:5895949dfcdf308eb0cd31c950c93c14895c77f33fbedfecf1fa511ab1d4bcd2'
+param postgresImage string = 'pgvector/pgvector:pg18-trixie@sha256:ab49524d18df7200b74ac9a475e1db6297fc1eb57da4c214c63d10ecc4b754fa'
 
 @description('Empty on the first deployment, which then makes everything but the three apps. Then the digest az acr build gave the Cerbos image: sha256:<digest>.')
 param cerbosDigest string = ''

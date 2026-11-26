@@ -8,6 +8,9 @@ test("the sample guide reads on screen and exports the documented book", async (
 }, info) => {
   await page.goto("/catalog/guide");
   await expect(
+    page.getByRole("navigation", { name: "Breadcrumb" }),
+  ).toBeVisible();
+  await expect(
     page.getByRole("heading", { name: "How the business works" }),
   ).toBeVisible();
   await expect(

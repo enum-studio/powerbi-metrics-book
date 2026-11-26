@@ -394,7 +394,7 @@ The first test fails when a service other than the built image runs an image not
 
    ```text
      image: &image ghcr.io/enum-studio/powerbi-metrics-book:0.1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000
-       image: pgvector/pgvector:pg18-trixie@sha256:5895949dfcdf308eb0cd31c950c93c14895c77f33fbedfecf1fa511ab1d4bcd2
+       image: pgvector/pgvector:pg18-trixie@sha256:ab49524d18df7200b74ac9a475e1db6297fc1eb57da4c214c63d10ecc4b754fa
        image: ghcr.io/cerbos/cerbos:0.57.0@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300
    ```
 
