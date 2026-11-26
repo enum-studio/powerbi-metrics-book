@@ -6,15 +6,19 @@ lives in this repository into the package, so the wheel carries it.
 
 The copies are checked in, and the --check run is part of the CLI's checks, so
 a change to stack/compose.yml cannot ship without its copy.
+The package README also follows the repository README, with absolute links
+for the PyPI project description.
 """
 
 import argparse
+import re
 import shutil
 import sys
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 ASSETS = REPOSITORY / "apps/cli/src/powerbi_metrics_book/assets"
+README = REPOSITORY / "apps/cli/README.md"
 
 # One entry per file or folder: where it lives, then where its copy goes under
 # assets/. A folder is copied whole, so a policy added to access/policies/ is
@@ -74,6 +78,22 @@ def sync(copies: dict[Path, Path]) -> None:
         shutil.copy2(source, target)
 
 
+def package_readme() -> str:
+    """Keep the repository description, with links that also work on PyPI."""
+    text = (REPOSITORY / "README.md").read_text()
+    repository_url = "https://github.com/enum-studio/powerbi-metrics-book"
+    text = re.sub(
+        r"\]\((?![a-z]+:|#|/)([^)]+)\)",
+        rf"]({repository_url}/blob/main/\1)",
+        text,
+    )
+    return re.sub(
+        r'src="(?![a-z]+:|/)([^"]+)"',
+        rf'src="{repository_url}/raw/refs/heads/main/\1"',
+        text,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -81,8 +101,11 @@ def main() -> int:
     )
     arguments = parser.parse_args()
     copies = expected_files()
+    readme = package_readme()
     if arguments.check:
         problems = stale(copies)
+        if not README.is_file() or README.read_text() != readme:
+            problems.append(README)
         for path in problems:
             print(f"{path.relative_to(REPOSITORY)} is out of date", file=sys.stderr)
         if problems:
@@ -92,6 +115,7 @@ def main() -> int:
             )
         return 1 if problems else 0
     sync(copies)
+    README.write_text(readme)
     print(f"Copied {len(copies)} files into {ASSETS.relative_to(REPOSITORY)}.")
     return 0
 

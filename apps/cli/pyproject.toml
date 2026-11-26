@@ -1,7 +1,8 @@
 [project]
 name = "powerbi-metrics-book"
-version = "0.1.0"
-description = "The pbmb command for Power BI Metrics Book: read the book, run queries and administer a deployment."
+version = "0.1.1"
+description = "Connect AI agents to an existing Power BI setup through a metrics book: metrics, variants, terms and documented datasets, over MCP, a CLI and an API."
+readme = "README.md"
 requires-python = "==3.13.*"
 license = "Apache-2.0"
 dependencies = [
@@ -16,6 +17,13 @@ dependencies = [
 
 [project.scripts]
 pbmb = "powerbi_metrics_book.cli:app"
+
+[project.urls]
+Homepage = "https://powerbimetricsbook.io"
+Documentation = "https://powerbimetricsbook.io/docs/"
+Repository = "https://github.com/enum-studio/powerbi-metrics-book"
+Issues = "https://github.com/enum-studio/powerbi-metrics-book/issues"
+Changelog = "https://github.com/enum-studio/powerbi-metrics-book/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling==1.32.4"]

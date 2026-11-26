@@ -3,7 +3,7 @@
   "info": {
     "title": "Power BI Metrics Book",
     "description": "The REST API of Power BI Metrics Book. Every route checks its own credential.",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "components": {
     "securitySchemes": {

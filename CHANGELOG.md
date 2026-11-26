@@ -2,6 +2,12 @@
 
 What each release of Power BI Metrics Book changes, newest first. Upgrade notes sit under the release that needs them.
 
+## 0.1.1
+
+### Fixed
+
+- The PyPI page now includes the repository README, the same short description as GitHub, and links to the website, documentation, source, issues and changelog.
+
 ## 0.1.0
 
 First public release of the app, CLI and container image.
