@@ -4,7 +4,7 @@ Power BI Metrics Book is Agent First BI: a metrics book over a company's own Pow
 
 You run it yourself as four containers, open source, and point it at your Power BI tenant. It is the sister product of [Metrics Book](https://github.com/enum-studio/metrics-book) (coming soon), and the two share one look and one set of words.
 
-**Current version: 0.1.0.** The app and source are available. See the [changelog](CHANGELOG.md) for what is included. To develop against the mock tenant, follow [CONTRIBUTING.md](CONTRIBUTING.md).
+**Current version: 0.1.1.** The app and source are available. See the [changelog](CHANGELOG.md) for what is included. To develop against the mock tenant, follow [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Agent First BI
 
