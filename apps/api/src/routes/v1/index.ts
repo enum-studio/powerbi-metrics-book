@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../app.js";
 import type { AppDeps } from "../../context.js";
+import { documentationRoutes } from "./documentation.js";
 import { docsChecksRoutes } from "./docs-checks.js";
 import { adminRoutes } from "./admin.js";
 import { conventionsRoutes } from "./conventions.js";
@@ -22,6 +23,7 @@ import { threadsRoutes } from "./threads.js";
  * registered with one line here.
  */
 const ROUTE_MODULES: readonly ((deps: AppDeps) => Hono<AppEnv>)[] = [
+  documentationRoutes,
   meRoutes,
   grantsRoutes,
   powerbiRoutes,

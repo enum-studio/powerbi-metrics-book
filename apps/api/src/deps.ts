@@ -1,7 +1,7 @@
 import type { Config } from "./config.js";
 import type { AppDeps, SettingsStore } from "./context.js";
 import { createDb, createPool } from "./db/client.js";
-import { createGuardedFetcher } from "./http/fetcher.js";
+import { createGuardedFetcher, protectNativeFetch } from "./http/fetcher.js";
 import { createLogger } from "./log.js";
 import { createAccess } from "./services/access/cerbos.js";
 import { createVault } from "./services/connection/vault.js";
@@ -36,6 +36,7 @@ export async function buildDeps(
   config: Config,
   env: Environment = process.env,
 ): Promise<BuiltDeps> {
+  protectNativeFetch();
   const logger = createLogger(config.log_level);
   const pool = createPool(config.database_url);
   const auditPool = createPool(config.audit_database_url);

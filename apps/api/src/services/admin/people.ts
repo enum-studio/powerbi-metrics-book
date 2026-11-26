@@ -13,9 +13,11 @@ import {
 import pg from "pg";
 import type { Db, ServiceContext, SettingValue } from "../../context.js";
 import { session, user } from "../../db/schema/auth.js";
+import { metric } from "../../db/schema/book.js";
+import { recordBookChange } from "../book/changes.js";
 import { invite, openInvite } from "../../db/schema/invites.js";
 import { personIdentity } from "../../db/schema/mirror.js";
-import { personDeactivation } from "../../db/schema/people.js";
+import { personDeactivation, personProfile } from "../../db/schema/people.js";
 import { personSignIn, roleAssignment } from "../../db/schema/roles.js";
 import { request, searchLog } from "../../db/schema/usage.js";
 import { ServiceError } from "../../errors.js";
@@ -121,12 +123,14 @@ export async function listPeople(context: ServiceContext) {
     .select({
       id: user.id,
       name: user.name,
+      title: personProfile.title,
       email: user.email,
       email_verified: user.emailVerified,
       deactivated_at: personDeactivation.deactivated_at,
     })
     .from(user)
     .leftJoin(personDeactivation, eq(personDeactivation.user_id, user.id))
+    .leftJoin(personProfile, eq(personProfile.person_id, user.id))
     .orderBy(asc(user.email));
   const grants = await listAllGrants(context.db);
   const listed = [];
@@ -139,6 +143,7 @@ export async function listPeople(context: ServiceContext) {
     listed.push({
       id: person.id,
       name: person.name,
+      title: person.title ?? "",
       email: person.email,
       status:
         person.deactivated_at === null
@@ -712,6 +717,33 @@ export async function deletePerson(
             eq(table.principal_id, userId),
           ),
         );
+    }
+    const [profile] = await tx
+      .select({ name: user.name, title: personProfile.title })
+      .from(user)
+      .leftJoin(personProfile, eq(personProfile.person_id, user.id))
+      .where(eq(user.id, userId));
+    if (!profile) throw new ServiceError("not_found", "No such person.");
+    const owned = await tx
+      .select()
+      .from(metric)
+      .where(eq(metric.owner_person, userId))
+      .for("update");
+    for (const before of owned) {
+      const set = {
+        owner_person: null,
+        owner_person_name: profile.name,
+        owner_person_title: profile.title,
+      };
+      await tx.update(metric).set(set).where(eq(metric.id, before.id));
+      await recordBookChange(tx, {
+        principal: context.principal,
+        element_kind: "metric",
+        element_id: before.id,
+        action: "owner_left",
+        before,
+        after: { ...before, ...set },
+      });
     }
     await tx.delete(user).where(eq(user.id, userId));
     return person;

@@ -551,6 +551,8 @@ pbmb categories create [OPTIONS] PATH
 | --- | --- | --- | --- |
 | `--name` | str |   | Its name in words; else made from the key. |
 | `--description` | str |   | What is filed here. |
+| `--question` | str |   | The question this area answers. |
+| `--kicker` | str |   | The short line above the area name. |
 
 ### `pbmb categories delete`
 
@@ -599,6 +601,8 @@ pbmb categories rename [OPTIONS] PATH
 | `--name` | str |   | Its new name in words. |
 | `--key` | str |   | Its new key; the path of what is below changes. |
 | `--description` | str |   | Its new description. |
+| `--question` | str |   | The question this area answers. |
+| `--kicker` | str |   | The short line above the area name. |
 
 ### `pbmb categories tree`
 
@@ -806,6 +810,14 @@ can change, with why, under `fixed`.
 
 ```bash
 pbmb conventions show
+```
+
+### `pbmb conventions upgrade`
+
+Split legacy when_to_use text into use_for and dont_use_for drafts for review.
+
+```bash
+pbmb conventions upgrade
 ```
 
 ### `pbmb conventions validate`
@@ -1025,6 +1037,22 @@ pbmb events [OPTIONS]
 | `--kinds` | str |   | Only these kinds of event, separated by commas. |
 | `--follow` |   |   | Keep running and print new events as they come, polling every 5 seconds. Stop with Ctrl-C. |
 
+## `pbmb guide`
+
+Read or export the curated guide to the metrics book.
+
+```bash
+pbmb guide COMMAND
+```
+
+### `pbmb guide show`
+
+Read the guide as Markdown, with only the metrics you may see.
+
+```bash
+pbmb guide show
+```
+
 ## `pbmb icons`
 
 Set, clear and browse icons for the book.
@@ -1209,6 +1237,18 @@ pbmb metrics create [OPTIONS] NAME
 | `--label` | str |   | Its name in words. |
 | `--definition` | str |   | What the metric measures. |
 | `--aliases` | str |   | Other names people search for, comma-separated, or `none`. |
+| `--tier` | str |   | Tier. |
+| `--importance` | str |   | Importance. |
+| `--importance-why` | str |   | Importance why. |
+| `--direction` | str |   | Direction. |
+| `--use-for` | str |   | Use for. |
+| `--dont-use-for` | str |   | Dont use for. |
+| `--caveats` | str |   | Caveats. |
+| `--decisions` | str |   | Decisions. |
+| `--actions` | str |   | Actions. |
+| `--owner-team` | str |   | Owner team. |
+| `--primary-dimensions` | str |   | A term name; repeat to list dimensions. |
+| `--building-block`, `--no-building-block` |   |   | Whether this metric builds others. |
 | `--when-to-use` | str |   | When to use this metric rather than a similar one. |
 | `--not-the-same-as` | str |   | How it differs from a metric it is mistaken for, or `none`. |
 | `--grain` | str |   | The grain and the filters it applies. |
@@ -1245,6 +1285,37 @@ pbmb metrics dismiss [OPTIONS] NAME
 | --- | --- | --- | --- |
 | `--reason` | str |   | Why it is not a metric. |
 
+### `pbmb metrics edge`
+
+Add a child to the metric's sum or product.
+
+```bash
+pbmb metrics edge [OPTIONS] NAME CHILD
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+| `child` | yes |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--sign` | int | `1` |   |
+| `--operation` | str | `sum` |   |
+| `--note` | str | `` |   |
+
+### `pbmb metrics follow`
+
+Follow this metric as yourself.
+
+```bash
+pbmb metrics follow NAME
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+
 ### `pbmb metrics history`
 
 List the changes made to a metric, newest first. --json has the before
@@ -1257,6 +1328,25 @@ pbmb metrics history NAME
 | Argument | Required | What |
 | --- | --- | --- |
 | `name` | yes |   |
+
+### `pbmb metrics link`
+
+Describe how two metrics move together: same, opposite or depends.
+
+```bash
+pbmb metrics link [OPTIONS] NAME OTHER MOVEMENT REASON
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+| `other` | yes |   |
+| `movement` | yes |   |
+| `reason` | yes |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--other-reason` | str | `` |   |
 
 ### `pbmb metrics list`
 
@@ -1298,6 +1388,40 @@ pbmb metrics merge [OPTIONS] FROM_NAME
 | Option | Takes | Default | What |
 | --- | --- | --- | --- |
 | `--into` | str |   | The metric that keeps the variants. |
+
+### `pbmb metrics owner`
+
+Assign the person responsible for a metric.
+
+```bash
+pbmb metrics owner COMMAND
+```
+
+#### `pbmb metrics owner set`
+
+Assign a person by their email, or pass none to clear the owner.
+
+```bash
+pbmb metrics owner set NAME EMAIL
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+| `email` | yes |   |
+
+### `pbmb metrics remove-edge`
+
+Remove a child from the metric's formula.
+
+```bash
+pbmb metrics remove-edge NAME CHILD
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+| `child` | yes |   |
 
 ### `pbmb metrics rename`
 
@@ -1344,6 +1468,31 @@ pbmb metrics show NAME
 | --- | --- | --- |
 | `name` | yes |   |
 
+### `pbmb metrics unfollow`
+
+Stop following this metric as yourself.
+
+```bash
+pbmb metrics unfollow NAME
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+
+### `pbmb metrics unlink`
+
+Remove a moves-with link.
+
+```bash
+pbmb metrics unlink NAME OTHER
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+| `other` | yes |   |
+
 ### `pbmb metrics update`
 
 Change the fields you name and leave the rest. A change by a token moves
@@ -1362,6 +1511,18 @@ pbmb metrics update [OPTIONS] NAME
 | `--label` | str |   | Its name in words. |
 | `--definition` | str |   | What the metric measures. |
 | `--aliases` | str |   | Other names people search for, comma-separated, or `none`. |
+| `--tier` | str |   | Tier. |
+| `--importance` | str |   | Importance. |
+| `--importance-why` | str |   | Importance why. |
+| `--direction` | str |   | Direction. |
+| `--use-for` | str |   | Use for. |
+| `--dont-use-for` | str |   | Dont use for. |
+| `--caveats` | str |   | Caveats. |
+| `--decisions` | str |   | Decisions. |
+| `--actions` | str |   | Actions. |
+| `--owner-team` | str |   | Owner team. |
+| `--primary-dimensions` | str |   | A term name; repeat to list dimensions. |
+| `--building-block`, `--no-building-block` |   |   | Whether this metric builds others. |
 | `--when-to-use` | str |   | When to use this metric rather than a similar one. |
 | `--not-the-same-as` | str |   | How it differs from a metric it is mistaken for, or `none`. |
 | `--grain` | str |   | The grain and the filters it applies. |
@@ -1383,6 +1544,30 @@ pbmb metrics verify NAME
 | Argument | Required | What |
 | --- | --- | --- |
 | `name` | yes |   |
+
+## `pbmb people`
+
+Update your title, or another person's as an admin.
+
+```bash
+pbmb people COMMAND
+```
+
+### `pbmb people title`
+
+Set the title shown beside a person's name.
+
+```bash
+pbmb people title [OPTIONS] TITLE
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `title` | yes |   |
+
+| Option | Takes | Default | What |
+| --- | --- | --- | --- |
+| `--person` | str | `me` | The person's id, or me. |
 
 ## `pbmb queries`
 
@@ -1902,6 +2087,19 @@ pbmb terms delete NAME
 | Argument | Required | What |
 | --- | --- | --- |
 | `name` | yes |   |
+
+### `pbmb terms group`
+
+Set the glossary group of a term.
+
+```bash
+pbmb terms group NAME GROUP
+```
+
+| Argument | Required | What |
+| --- | --- | --- |
+| `name` | yes |   |
+| `group` | yes |   |
 
 ### `pbmb terms link`
 

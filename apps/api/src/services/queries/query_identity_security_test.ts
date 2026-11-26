@@ -1,3 +1,9 @@
+import { metric, metricVariant } from "../../db/schema/book.js";
+import { powerbiMeasure } from "../../db/schema/mirror.js";
+import { createMetric } from "../book/metrics.js";
+import { followMetric } from "../book/ownership.js";
+import { myMetrics } from "../book/my-metrics.js";
+import { readResult } from "./store.js";
 import { createHash } from "node:crypto";
 import { setTimeout } from "node:timers/promises";
 import { sampleTenant, type Tenant } from "@powerbi-metrics-book/powerbi-mock";
@@ -364,4 +370,72 @@ describe("a read of a dataset's relationships", () => {
       /^Relationships are unknown for now/,
     );
   });
+});
+
+it("my_metrics queries only the asking person and keeps their results private", async () => {
+  const analyst = await connected("analyst");
+  const viewer = await connected("sales-viewer");
+  const curator = {
+    ...analyst.context,
+    principal: { ...analyst.context.principal, roles: ["curator"] },
+  };
+  const entry = await createMetric(curator, {
+    name: "check_in_net_sales",
+    label: "Check-in net sales",
+  });
+  const sales = named("Sales");
+  sales.recorded_queries.push(
+    {
+      dax: 'EVALUATE ROW("Value", [Net sales])',
+      rows: [{ "[Value]": 120 }],
+    },
+    {
+      dax: 'EVALUATE ROW("Value", [Net sales LY])',
+      rows: [{ "[Value]": 100 }],
+    },
+  );
+  const measures = await f.deps.db
+    .select()
+    .from(powerbiMeasure)
+    .where(eq(powerbiMeasure.dataset_id, sales.id));
+  try {
+    for (const [name, period] of [
+      ["Net sales", "current"],
+      ["Net sales LY", "previous_year"],
+    ]) {
+      const measure = measures.find((row) => row.name === name);
+      if (!measure) throw new Error("Missing sample measure");
+      await f.deps.db.insert(metricVariant).values({
+        metric_id: entry.id,
+        measure_id: measure.id,
+        period,
+        assigned_by: "curator",
+      });
+    }
+    await followMetric(analyst.context, entry.id, true);
+    sent.length = 0;
+    const checkIn = await myMetrics(analyst.context, {
+      with_values: true,
+      dataset: sales.id,
+    });
+    const owned = checkIn.items.find((row) => row.id === entry.id);
+    expect(owned?.values).toHaveLength(2);
+    expect(sent.map((claims) => claims.oid)).toEqual([
+      analyst.who.object_id,
+      analyst.who.object_id,
+    ]);
+    expect(
+      (await myMetrics(viewer.context, { with_values: true })).items,
+    ).toEqual([]);
+    for (const value of owned?.values ?? []) {
+      expect(
+        (await readResult(analyst.context, value.result.result_id, {})).rows,
+      ).toHaveLength(1);
+      await expect(
+        readResult(viewer.context, value.result.result_id, {}),
+      ).rejects.toMatchObject({ kind: "not_found" });
+    }
+  } finally {
+    await f.deps.db.delete(metric).where(eq(metric.id, entry.id));
+  }
 });

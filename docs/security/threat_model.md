@@ -574,6 +574,48 @@ Crossing: people's browsers, MCP clients, the CLI and service accounts.
   it names, which must be on its list; from the book and conventions
   services only their reads. `human_verified` is set only from a browser
   session under the default conventions.
+- Metric documentation, the reading guide and both export routes use the
+  same dataset and personal-data visibility predicates as metric reads.
+  Relationship neighbors are filtered too; a formula with any hidden child
+  is omitted in full. The responses are private and are not cached.
+  Markdown escapes HTML and formatting in book text. The PDF route checks
+  its own setting and returns an acknowledgement, never Markdown; the
+  browser prints the visible page. Each export records `book.export` in
+  the audit stream when usage capture is enabled. MCP continuation chunks
+  with a matching revision do not count as new exports; a stale revision
+  is refused before recording. An offset without a revision counts as a
+  new export. These events measure usage, not proof that a person read it.
+- Relationship and owner writes require curation rights and record book
+  history. Both relationship endpoints lose human approval when a token
+  changes their relationship. An identical retry preserves approval and
+  history. Access settings are read before borrowing the transaction's
+  connection, so lock waiters cannot exhaust the pool the holder needs.
+  Graph mutations take a shared advisory lock
+  before metric row locks, in id order. Foreign keys prevent an unnoticed
+  relationship loss on metric deletion or merge. Database constraints
+  reject self links, missing endpoints, mixed formula operations and cycles.
+  Choice values come from the current conventions and the shipped preset.
+- Following is personal: the server takes the person from the credential,
+  never the request. Service accounts cannot follow or use `my_metrics`.
+  A person may change their own title; changing another person's title
+  requires `manage_people`. Owners expose names and titles, never email.
+  Deleting a person records their latest name and title on owned metrics,
+  marks them as left, and deletes their follows. Owner assignment and title
+  changes share the lifecycle lock and recheck the caller's current roles
+  and deactivation under it. A deactivated person cannot be assigned.
+  Public metric schemas strip stored owner snapshots before serialization.
+- MCP `read` accepts `metric` and `guide`. The guide is the same Markdown
+  as the browser export and obeys its switch. `my_metrics` reads only the
+  caller's owned and followed metrics that remain visible. Values are
+  optional and use `executeDax` with the unchanged caller context, preserving
+  delegated tokens, Cerbos checks, query limits and result ownership.
+  Document chunks carry an offset and revision, checked again on each read.
+  A check-in page executes at most one metric and keeps stored result ids;
+  fitting a response never retries a query.
+  Ambiguous datasets, currencies, axes or report selections produce a note
+  instead of a guessed query. Neither tool changes the book.
+  `documentation_security_test` and `authorization_matrix_security_test`
+  cover these routes; `connector_surface_security_test` guards the tools.
 - The rules that decide who may verify, `trust.*` in the conventions, change
   only from a person's browser session: a CLI or MCP token, a service
   account, or a `book.yml` import by one is refused. `setConventions`
@@ -1077,6 +1119,15 @@ and URLs someone else chose.
 
 - Every outbound request goes through the guarded fetcher; semgrep refuses
   `fetch` anywhere else.
+- The guarded fetcher advertises only gzip, deflate and Brotli. Its dispatcher
+  refuses any `Content-Encoding` containing zstd before Undici constructs a
+  decoder, including unsolicited, mixed and duplicate headers. Node 24
+  bundles a zstd decoder affected by CVE-2026-124851; a decoded-size limit
+  cannot protect native decoding. Remove this refusal only after the pinned
+  runtime carries the upstream fix (`fetcher_security_test.ts`). At process
+  startup `buildDeps` installs the same interceptor on the global dispatcher,
+  covering native fetch in authentication libraries too. This adds no address
+  restrictions to those libraries; their existing endpoint checks still apply.
 - Fixed hosts (`fetchFixed`): `https` to the configured Microsoft identity,
   Power BI, Graph, embedding and Resend hosts only, redirects never followed (and refused unless the caller asks for the 3xx back), with size
   and time limits. A Resend request carries the invite or reset link and

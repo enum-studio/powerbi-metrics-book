@@ -19,6 +19,7 @@ export const PERSON: Person = {
   deactivated_at: null,
   direct_role: "viewer",
   pii_reader: { source: "none", assignments: [] },
+  title: "",
   sign_in_method: "microsoft",
   last_seen_at: null,
   powerbi_connection: "connected",

@@ -47,7 +47,9 @@ export function Panel({
           )}
         </Property>
         <Property term="Owner">
-          {metric.owner ?? <span className="text-ink-3">Nobody yet</span>}
+          {metric.owner_person
+            ? `${metric.owner_person.name}${metric.owner_person.title ? `, ${metric.owner_person.title}` : ""}${metric.owner_person.left ? " (left)" : ""}`
+            : (metric.owner ?? <span className="text-ink-3">Nobody yet</span>)}
         </Property>
         <Property term="Also called">
           {metric.aliases === null || metric.aliases.length === 0 ? (

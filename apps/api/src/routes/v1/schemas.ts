@@ -46,6 +46,8 @@ export const Category = z
     path: z.string(),
     name: z.string(),
     description: z.string().nullable(),
+    question: z.string().nullable(),
+    kicker: z.string().nullable(),
     icon: z.string().nullable(),
     position: z.number(),
   })
@@ -108,6 +110,56 @@ export const Metric = z
     icon: z.string().nullable(),
     definition: z.string(),
     aliases: z.array(z.string()).nullable(),
+    tier: z.string(),
+    importance: z.string(),
+    direction: z.string(),
+    importance_why: z.string(),
+    formula: z.string().nullable().optional(),
+    use_for: z.string(),
+    dont_use_for: z.string(),
+    caveats: z.string(),
+    decisions: z.string(),
+    actions: z.string(),
+    owner_team: z.string(),
+    primary_dimensions: z.array(z.string()),
+    building_block: z.boolean(),
+    owner_person: z
+      .object({
+        id: z.string().nullable(),
+        name: z.string(),
+        title: z.string(),
+        left: z.boolean(),
+      })
+      .nullable(),
+    following: z.boolean(),
+    who_may_see: z.string(),
+    moves_with: z.array(
+      z.object({
+        metric: z.object({
+          id: z.string(),
+          name: z.string(),
+          label: z.string(),
+          importance: z.string(),
+          tier: z.string(),
+        }),
+        movement: z.enum(["same", "opposite", "depends"]),
+        reason: z.string(),
+      }),
+    ),
+    edges: z.array(
+      z.object({
+        metric: z.object({
+          id: z.string(),
+          name: z.string(),
+          label: z.string(),
+          importance: z.string(),
+          tier: z.string(),
+        }),
+        sign: z.number(),
+        operation: z.enum(["sum", "product"]),
+        note: z.string().nullable(),
+      }),
+    ),
     when_to_use: z.string(),
     not_the_same_as: z.string().nullable(),
     grain_and_filters: z.string(),
@@ -175,6 +227,14 @@ export const Metric = z
     terms: z.array(anchor("term")),
   })
   .meta({ id: "Metric" });
+export const MetricDocument = Metric.omit({
+  base_variants: true,
+  other_variants: true,
+  failing_checks: true,
+  following: true,
+  terms: true,
+  verified_by_name: true,
+}).meta({ id: "MetricDocument" });
 export const Variant = z
   .object({
     kind: z.literal("variant"),
@@ -211,6 +271,7 @@ export const Term = z
     aliases: z.array(z.string()).nullable(),
     not_the_same_as: z.string().nullable(),
     values: z.unknown(),
+    group: z.string().nullable(),
     owner: z.string().nullable(),
     trust_state: z.enum(TRUST_STATES),
     custom: z.record(z.string(), z.unknown()),

@@ -1,6 +1,12 @@
 import { promises as dns, type LookupAddress } from "node:dns";
 import { BlockList, isIP, type LookupFunction } from "node:net";
-import { Agent, fetch } from "undici";
+import {
+  Agent,
+  fetch,
+  getGlobalDispatcher,
+  setGlobalDispatcher,
+  type Dispatcher,
+} from "undici";
 import type { GuardedFetcher } from "../context.js";
 import { ServiceError } from "../errors.js";
 
@@ -111,8 +117,51 @@ function checkedLookup(resolve: Lookup, publicOnly: boolean): LookupFunction {
   };
 }
 
-function agent(resolve: Lookup, publicOnly: boolean): Agent {
-  return new Agent({ connect: { lookup: checkedLookup(resolve, publicOnly) } });
+/** Refuse before fetch constructs a decoder: Node 24 bundles vulnerable zstd. */
+const rejectZstd: Dispatcher.DispatchInterceptor =
+  (dispatch) => (options, handler) =>
+    dispatch(options, {
+      onRequestStart: handler.onRequestStart?.bind(handler),
+      onRequestUpgrade: handler.onRequestUpgrade?.bind(handler),
+      onResponseStarted: handler.onResponseStarted?.bind(handler),
+      onResponseData: handler.onResponseData?.bind(handler),
+      onResponseEnd: handler.onResponseEnd?.bind(handler),
+      onResponseError: handler.onResponseError?.bind(handler),
+      onBodySent: handler.onBodySent?.bind(handler),
+      onRequestSent: handler.onRequestSent?.bind(handler),
+      onResponseStart(controller, status, headers, message) {
+        const encoding = headers["content-encoding"];
+        const codings = (
+          Array.isArray(encoding) ? encoding.join(",") : (encoding ?? "")
+        )
+          .split(",")
+          .map((coding) => coding.trim().toLowerCase());
+        if (codings.includes("zstd")) {
+          controller.abort(
+            upstream(
+              "Refused a zstd-compressed response: this runtime's decoder is not safe to use.",
+            ),
+          );
+          return;
+        }
+        handler.onResponseStart?.(controller, status, headers, message);
+      },
+    });
+
+let protectedDispatcher: Dispatcher | undefined;
+
+/** Also protects native fetch used by authentication libraries outside our agents. */
+export function protectNativeFetch(): void {
+  const current = getGlobalDispatcher();
+  if (current === protectedDispatcher) return;
+  protectedDispatcher = current.compose(rejectZstd);
+  setGlobalDispatcher(protectedDispatcher);
+}
+
+function agent(resolve: Lookup, publicOnly: boolean): Dispatcher {
+  return new Agent({
+    connect: { lookup: checkedLookup(resolve, publicOnly) },
+  }).compose(rejectZstd);
 }
 
 function parse(url: string | URL): URL {
@@ -196,7 +245,7 @@ function explain(
 async function send(
   target: URL,
   init: RequestInit,
-  dispatcher: Agent,
+  dispatcher: Dispatcher,
   limits: Limits,
   redirect: Redirect = "refuse",
 ) {
@@ -206,6 +255,7 @@ async function send(
     // Node's own Request encodes the caller's body, so undici receives bytes: undici's
     // fetch would send Node's global FormData as the text "[object FormData]".
     const request = new Request(target, init);
+    request.headers.set("Accept-Encoding", "gzip, deflate, br");
     const payload = request.body ? await request.arrayBuffer() : null;
     const signal = AbortSignal.any([timeout, stop.signal, request.signal]);
     const response = await fetch(target, {

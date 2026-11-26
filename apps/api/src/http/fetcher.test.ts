@@ -1,3 +1,4 @@
+import zlib, { gzipSync, zstdCompressSync } from "node:zlib";
 import type { LookupAddress } from "node:dns";
 import { createServer, type RequestListener, type Server } from "node:http";
 import type { AddressInfo, LookupFunction } from "node:net";
@@ -280,5 +281,50 @@ describe("fetchFixed", () => {
       message: `Refused the answer from ${origin}: it redirects (302), and redirects are not followed.`,
     });
     expect(requests).toEqual(["GET /start"]);
+  });
+});
+
+describe("response compression", () => {
+  it.each(["zstd", "ZsTd", "gzip, zstd", "zstd, br"])(
+    "refuses %s before decoding even when unsolicited",
+    async (encoding) => {
+      const decoder = vi.spyOn(zlib, "createZstdDecompress");
+      const body = zstdCompressSync(Buffer.from("benign compressed sample"));
+      const { origin, fetcher } = await publicHost((request, response) => {
+        expect(request.headers["accept-encoding"]).toBe("gzip, deflate, br");
+        response.writeHead(200, { "content-encoding": encoding });
+        response.end(body);
+      });
+      await expect(
+        fetcher.fetchUntrusted(origin, {
+          headers: { "Accept-Encoding": "zstd" },
+        }),
+      ).rejects.toMatchObject({
+        kind: "upstream",
+        message:
+          "Refused a zstd-compressed response: this runtime's decoder is not safe to use.",
+      });
+      expect(decoder).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses zstd from configured hosts too and still decodes gzip", async () => {
+    const { origin, fetcher } = await fixedHost((request, response) => {
+      const zstd = request.url === "/zstd";
+      response.writeHead(200, { "content-encoding": zstd ? "zstd" : "gzip" });
+      response.end(
+        zstd
+          ? zstdCompressSync(Buffer.from("sample"))
+          : gzipSync(Buffer.from("sample")),
+      );
+    });
+    await expect(fetcher.fetchFixed(`${origin}/zstd`)).rejects.toMatchObject({
+      kind: "upstream",
+      message:
+        "Refused a zstd-compressed response: this runtime's decoder is not safe to use.",
+    });
+    expect(await (await fetcher.fetchFixed(`${origin}/gzip`)).text()).toBe(
+      "sample",
+    );
   });
 });

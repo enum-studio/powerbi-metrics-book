@@ -100,6 +100,9 @@ async function checkedMetrics(
   const named =
     names === undefined ? undefined : inArray(metric.name, [...names]);
   const which = and(isNull(metric.dismissed_at), named);
+  const termNames = new Set(
+    (await db.select({ name: term.name }).from(term)).map((t) => t.name),
+  );
   const rows = await db.select().from(metric).where(which);
   if (rows.length === 0) return [];
   const bases = await liveVariants(db, which);
@@ -125,6 +128,7 @@ async function checkedMetrics(
     return {
       target: { metric: row.name },
       results: checkMetric(row, {
+        term_names: termNames,
         ...run,
         other_labels: sharing(
           row.id,

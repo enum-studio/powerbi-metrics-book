@@ -196,6 +196,7 @@ const Person = z.object({
   id: z.string(),
   /** The display name the sign-in provider gave; the email for someone who set a password. */
   name: z.string(),
+  title: z.string(),
   email: z.string(),
   sign_in_method: z.string().nullable(),
   last_seen_at: nullableStamp,

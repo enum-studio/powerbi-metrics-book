@@ -112,9 +112,26 @@ naming:
     currency: [eur, usd, gbp, dkk, sek, nok, chf]
   label: sentence_case
 metric_fields:
+  tier: { required: true, values: [north_star, driver, guardrail, diagnostic] }
+  importance: { required: true, values: [critical, high, medium, low] }
+  direction:
+    { required: true, values: [higher_is_better, lower_is_better, neither] }
+  importance_why:
+    {
+      required: false,
+      required_when: { field: importance, values: [critical, high] },
+    }
+  use_for: { required: true }
+  dont_use_for: { required: true }
+  caveats: { required: false }
+  decisions: { required: true }
+  actions: { required: false }
+  owner_team: { required: true }
+  primary_dimensions: { required: false }
+  building_block: { required: false }
   definition: { required: true }
   aliases: { required: true }
-  when_to_use: { required: true }
+  when_to_use: { required: false }
   not_the_same_as:
     required: when_label_shares_a_word
     # beside the words of the kinds and the qualifiers, the label words that are not content words

@@ -17,7 +17,8 @@ const BASE = devStackUrl();
 const DEV_STACK = fileURLToPath(
   new URL("../../../scripts/dev-stack.mjs", import.meta.url),
 );
-const SUBJECT = "Admin invited you to Power BI Metrics Book";
+const SUBJECT =
+  "Admin, Sample book reader invited you to Power BI Metrics Book";
 const ENDED =
   "This invite is no longer valid. Sign in, or ask an admin for a new one.";
 const unique = () => randomUUID().slice(0, 8);

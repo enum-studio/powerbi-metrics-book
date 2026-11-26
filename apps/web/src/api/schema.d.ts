@@ -123,6 +123,178 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/conventions/upgrade": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Split legacy metric usage into reviewable drafts */
+    post: operations["postApiV1ConventionsUpgrade"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/guide": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read the curated metrics guide */
+    get: operations["getApiV1Guide"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/book/exports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read available book exports */
+    get: operations["getApiV1BookExports"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/guide/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Export visible book documentation */
+    get: operations["getApiV1GuideExport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/metrics/{name}/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Export visible book documentation */
+    get: operations["getApiV1MetricsByNameExport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/metrics/{name}/owner": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Assign the person who owns a metric */
+    put: operations["putApiV1MetricsByNameOwner"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/metrics/{name}/follow": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Follow or unfollow a metric as yourself */
+    put: operations["putApiV1MetricsByNameFollow"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/people/{id}/title": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Set a person's title */
+    put: operations["putApiV1PeopleByIdTitle"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/metrics/{name}/links/{other}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Change a metric relationship */
+    put: operations["putApiV1MetricsByNameLinksByOther"];
+    post?: never;
+    /** Change a metric relationship */
+    delete: operations["deleteApiV1MetricsByNameLinksByOther"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/metrics/{name}/edges/{other}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Change a metric relationship */
+    put: operations["putApiV1MetricsByNameEdgesByOther"];
+    post?: never;
+    /** Change a metric relationship */
+    delete: operations["deleteApiV1MetricsByNameEdgesByOther"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/me": {
     parameters: {
       query?: never;
@@ -2023,69 +2195,174 @@ export interface components {
       message: string;
       code?: string;
     };
-    Me: {
-      id: string;
-      /** @enum {string} */
-      kind: "person" | "service_account";
-      email: string | null;
-      name: string | null;
-      roles: string[];
-      sign_in_method: string | null;
-      /** @enum {string} */
-      via: "browser" | "mcp" | "api" | "cli";
-      powerbi_connection:
-        | ("connected" | "needs_reconnect" | "disconnected" | "not_connected")
-        | null;
-      powerbi_connect_url: string;
-      questions: boolean;
-      sample_data: boolean;
-      usage: {
-        capture: boolean;
-        retention_days: number;
+    Guide: {
+      areas: {
+        /** @constant */
+        kind: "category";
+        id: string;
+        key: string;
+        path: string;
+        name: string;
+        description: string | null;
+        question: string | null;
+        kicker: string | null;
+        icon: string | null;
+        position: number;
+        metrics: components["schemas"]["MetricDocument"][];
+        headlines: components["schemas"]["MetricDocument"][];
+      }[];
+      metrics: components["schemas"]["MetricDocument"][];
+      sum: components["schemas"]["MetricDocument"] | null;
+      featured: components["schemas"]["MetricDocument"] | null;
+      glossary: {
+        /** @constant */
+        kind: "term";
+        id: string;
+        name: string;
+        group: string | null;
+        definition: string;
+        metrics: {
+          /** @constant */
+          kind: "metric";
+          id: string;
+          name: string;
+        }[];
+      }[];
+      naming: {
+        /** @enum {string} */
+        case: "snake_case" | "none";
+        kinds: string[];
+        forbidden_words: string[];
+        money_qualifier: {
+          required: boolean;
+          values: string[];
+          units: string[];
+        };
+        qualifier_order: string[];
+        qualifiers: {
+          [key: string]: string[];
+        };
+        /** @enum {string} */
+        label: "sentence_case" | "none";
       };
-      /** @description Whether the admin section opens for the caller: the admin status page's own guard (admin:read_status). */
-      may_admin: boolean;
-      warnings: string[];
-      /** @description The address this request counted against for rate limits and audit, the caller's own. Null for a request made in process. */
-      client_address: string | null;
+      exports: {
+        markdown: boolean;
+        pdf: boolean;
+        guide: boolean;
+      };
     };
-    PowerBiConnection: {
-      /** @enum {string} */
-      status:
-        "connected" | "needs_reconnect" | "disconnected" | "not_connected";
-      account: string | null;
-      connected_at: string | null;
-      last_used_at: string | null;
-      reason: string | null;
-    };
-    Grant: {
+    MetricDocument: {
+      open_questions?: number;
+      accepted_answers?: {
+        thread_id: string;
+        question: string | null;
+        answer: string;
+        /** @constant */
+        excerpt_truncated?: true;
+        answered_by: {
+          /** @enum {string} */
+          kind: "person" | "service_account";
+          id: string;
+        };
+        /** @description Who accepted: the asker, the asker on their own reply, a curator, or someone else a policy allows. */
+        accepted_by_role:
+          | ("asker" | "asker_own_reply" | "curator" | "other" | "unknown")
+          | null;
+        /** @description A person, or a service_account (an agent). */
+        accepted_by_kind: ("person" | "service_account") | null;
+        /** @description Where it was accepted from: browser, mcp (an agent), api or cli. */
+        accepted_by_via: ("browser" | "mcp" | "api" | "cli") | null;
+      }[];
+      /** @constant */
+      kind: "metric";
       id: string;
-      client_id: string;
-      client_name: string | null;
+      name: string;
+      label: string;
+      icon: string | null;
+      definition: string;
+      aliases: string[] | null;
+      tier: string;
+      importance: string;
+      direction: string;
+      importance_why: string;
+      formula?: string | null;
+      use_for: string;
+      dont_use_for: string;
+      caveats: string;
+      decisions: string;
+      actions: string;
+      owner_team: string;
+      primary_dimensions: string[];
+      building_block: boolean;
+      owner_person: {
+        id: string | null;
+        name: string;
+        title: string;
+        left: boolean;
+      } | null;
+      who_may_see: string;
+      moves_with: {
+        metric: {
+          id: string;
+          name: string;
+          label: string;
+          importance: string;
+          tier: string;
+        };
+        /** @enum {string} */
+        movement: "same" | "opposite" | "depends";
+        reason: string;
+      }[];
+      edges: {
+        metric: {
+          id: string;
+          name: string;
+          label: string;
+          importance: string;
+          tier: string;
+        };
+        sign: number;
+        /** @enum {string} */
+        operation: "sum" | "product";
+        note: string | null;
+      }[];
+      when_to_use: string;
+      not_the_same_as: string | null;
+      grain_and_filters: string;
+      unit: string | null;
+      category_id: string | null;
+      category: components["schemas"]["Category"] | null;
+      owner: string | null;
       /** @enum {string} */
-      via: "mcp" | "cli";
-      scopes: string[];
+      trust_state: "draft" | "agent_verified" | "human_verified";
+      verified_by: string | null;
+      verified_at: string | null;
+      /** @enum {string} */
+      origin: "sync" | "curator";
+      name_is_generated: boolean;
+      touched_at: string | null;
+      dismissed_at: string | null;
+      dismissed_reason: string | null;
       /** Format: date-time */
-      granted_at: string;
-      last_used_at: string | null;
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+      custom: {
+        [key: string]: unknown;
+      };
     };
-    Dataset: {
+    Category: {
       /** @constant */
-      kind: "dataset";
+      kind: "category";
       id: string;
+      key: string;
+      path: string;
       name: string;
-    };
-    Workspace: {
-      /** @constant */
-      kind: "workspace";
-      id: string;
-      name: string;
-    };
-    Measure: {
-      /** @constant */
-      kind: "measure";
-      id: string;
-      name: string;
+      description: string | null;
+      question: string | null;
+      kicker: string | null;
+      icon: string | null;
+      position: number;
     };
     Metric: {
       open_questions?: number;
@@ -2117,6 +2394,52 @@ export interface components {
       icon: string | null;
       definition: string;
       aliases: string[] | null;
+      tier: string;
+      importance: string;
+      direction: string;
+      importance_why: string;
+      formula?: string | null;
+      use_for: string;
+      dont_use_for: string;
+      caveats: string;
+      decisions: string;
+      actions: string;
+      owner_team: string;
+      primary_dimensions: string[];
+      building_block: boolean;
+      owner_person: {
+        id: string | null;
+        name: string;
+        title: string;
+        left: boolean;
+      } | null;
+      following: boolean;
+      who_may_see: string;
+      moves_with: {
+        metric: {
+          id: string;
+          name: string;
+          label: string;
+          importance: string;
+          tier: string;
+        };
+        /** @enum {string} */
+        movement: "same" | "opposite" | "depends";
+        reason: string;
+      }[];
+      edges: {
+        metric: {
+          id: string;
+          name: string;
+          label: string;
+          importance: string;
+          tier: string;
+        };
+        sign: number;
+        /** @enum {string} */
+        operation: "sum" | "product";
+        note: string | null;
+      }[];
       when_to_use: string;
       not_the_same_as: string | null;
       grain_and_filters: string;
@@ -2181,16 +2504,23 @@ export interface components {
         name: string;
       }[];
     };
-    Category: {
+    Dataset: {
       /** @constant */
-      kind: "category";
+      kind: "dataset";
       id: string;
-      key: string;
-      path: string;
       name: string;
-      description: string | null;
-      icon: string | null;
-      position: number;
+    };
+    Workspace: {
+      /** @constant */
+      kind: "workspace";
+      id: string;
+      name: string;
+    };
+    Measure: {
+      /** @constant */
+      kind: "measure";
+      id: string;
+      name: string;
     };
     Shift: {
       period: string;
@@ -2201,6 +2531,52 @@ export interface components {
       custom_axes: {
         [key: string]: unknown;
       };
+    };
+    Me: {
+      id: string;
+      /** @enum {string} */
+      kind: "person" | "service_account";
+      email: string | null;
+      name: string | null;
+      roles: string[];
+      sign_in_method: string | null;
+      /** @enum {string} */
+      via: "browser" | "mcp" | "api" | "cli";
+      powerbi_connection:
+        | ("connected" | "needs_reconnect" | "disconnected" | "not_connected")
+        | null;
+      powerbi_connect_url: string;
+      questions: boolean;
+      sample_data: boolean;
+      usage: {
+        capture: boolean;
+        retention_days: number;
+      };
+      /** @description Whether the admin section opens for the caller: the admin status page's own guard (admin:read_status). */
+      may_admin: boolean;
+      warnings: string[];
+      /** @description The address this request counted against for rate limits and audit, the caller's own. Null for a request made in process. */
+      client_address: string | null;
+    };
+    PowerBiConnection: {
+      /** @enum {string} */
+      status:
+        "connected" | "needs_reconnect" | "disconnected" | "not_connected";
+      account: string | null;
+      connected_at: string | null;
+      last_used_at: string | null;
+      reason: string | null;
+    };
+    Grant: {
+      id: string;
+      client_id: string;
+      client_name: string | null;
+      /** @enum {string} */
+      via: "mcp" | "cli";
+      scopes: string[];
+      /** Format: date-time */
+      granted_at: string;
+      last_used_at: string | null;
     };
     Variant: {
       /** @constant */
@@ -2282,6 +2658,7 @@ export interface components {
       aliases: string[] | null;
       not_the_same_as: string | null;
       values: unknown;
+      group: string | null;
       owner: string | null;
       /** @enum {string} */
       trust_state: "draft" | "agent_verified" | "human_verified";
@@ -2737,6 +3114,8 @@ export interface components {
       path: string;
       name: string;
       description: string | null;
+      question: string | null;
+      kicker: string | null;
       icon: string | null;
       position: number;
       metric_count: number;
@@ -3391,6 +3770,869 @@ export interface operations {
       };
     };
   };
+  postApiV1ConventionsUpgrade: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Split legacy metric usage into reviewable drafts */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            updated: string[];
+            note: string;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1Guide: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Read the curated metrics guide */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Guide"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1BookExports: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Read available book exports */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            markdown: boolean;
+            pdf: boolean;
+            guide: boolean;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1GuideExport: {
+    parameters: {
+      query?: {
+        format?: "markdown" | "pdf";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Export visible book documentation */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            markdown: string;
+          };
+        };
+      };
+      /** @description Validation Error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: false;
+            error: unknown[];
+            data: unknown;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getApiV1MetricsByNameExport: {
+    parameters: {
+      query?: {
+        format?: "markdown" | "pdf";
+      };
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Export visible book documentation */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            markdown: string;
+          };
+        };
+      };
+      /** @description Validation Error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: false;
+            error: unknown[];
+            data: unknown;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  putApiV1MetricsByNameOwner: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          email: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Assign the person who owns a metric */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Metric"];
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  putApiV1MetricsByNameFollow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          following: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Follow or unfollow a metric as yourself */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            following: boolean;
+          };
+        };
+      };
+      /** @description Validation Error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: false;
+            error: unknown[];
+            data: unknown;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  putApiV1PeopleByIdTitle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          title: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Set a person's title */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            id: string;
+            title: string;
+          };
+        };
+      };
+      /** @description Validation Error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {boolean} */
+            success: false;
+            error: unknown[];
+            data: unknown;
+          };
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  putApiV1MetricsByNameLinksByOther: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+        other: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          movement: "same" | "opposite" | "depends";
+          reason: string;
+          other_reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Change a metric relationship */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            moves_with: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              /** @enum {string} */
+              movement: "same" | "opposite" | "depends";
+              reason: string;
+            }[];
+            edges: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              sign: number;
+              /** @enum {string} */
+              operation: "sum" | "product";
+              note: string | null;
+            }[];
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description It conflicts with the book as it is. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  deleteApiV1MetricsByNameLinksByOther: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+        other: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Change a metric relationship */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            moves_with: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              /** @enum {string} */
+              movement: "same" | "opposite" | "depends";
+              reason: string;
+            }[];
+            edges: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              sign: number;
+              /** @enum {string} */
+              operation: "sum" | "product";
+              note: string | null;
+            }[];
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description It conflicts with the book as it is. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  putApiV1MetricsByNameEdgesByOther: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+        other: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          sign: 1 | -1;
+          /** @enum {string} */
+          operation: "sum" | "product";
+          note?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Change a metric relationship */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            moves_with: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              /** @enum {string} */
+              movement: "same" | "opposite" | "depends";
+              reason: string;
+            }[];
+            edges: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              sign: number;
+              /** @enum {string} */
+              operation: "sum" | "product";
+              note: string | null;
+            }[];
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description It conflicts with the book as it is. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  deleteApiV1MetricsByNameEdgesByOther: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        name: string;
+        other: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Change a metric relationship */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            moves_with: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              /** @enum {string} */
+              movement: "same" | "opposite" | "depends";
+              reason: string;
+            }[];
+            edges: {
+              metric: {
+                id: string;
+                name: string;
+                label: string;
+                importance: string;
+                tier: string;
+              };
+              sign: number;
+              /** @enum {string} */
+              operation: "sum" | "product";
+              note: string | null;
+            }[];
+          };
+        };
+      };
+      /** @description The request is not valid. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Sign in first. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The caller's role or credential does not allow it. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No such thing, or none the caller may see. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description It conflicts with the book as it is. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
   getApiV1Me: {
     parameters: {
       query?: never;
@@ -3928,6 +5170,18 @@ export interface operations {
           label: string;
           definition?: string;
           aliases?: string[] | null;
+          tier?: string;
+          importance?: string;
+          direction?: string;
+          importance_why?: string;
+          use_for?: string;
+          dont_use_for?: string;
+          caveats?: string;
+          decisions?: string;
+          actions?: string;
+          owner_team?: string;
+          primary_dimensions?: string[];
+          building_block?: boolean;
           when_to_use?: string;
           not_the_same_as?: string | null;
           grain_and_filters?: string;
@@ -4131,6 +5385,18 @@ export interface operations {
               label?: string;
               definition?: string;
               aliases?: string[] | null;
+              tier?: string;
+              importance?: string;
+              direction?: string;
+              importance_why?: string;
+              use_for?: string;
+              dont_use_for?: string;
+              caveats?: string;
+              decisions?: string;
+              actions?: string;
+              owner_team?: string;
+              primary_dimensions?: string[];
+              building_block?: boolean;
               when_to_use?: string;
               not_the_same_as?: string | null;
               grain_and_filters?: string;
@@ -4692,6 +5958,8 @@ export interface operations {
         "application/json": {
           name: string;
           description?: string | null;
+          question?: string | null;
+          kicker?: string | null;
         };
       };
     };
@@ -4837,6 +6105,8 @@ export interface operations {
               name?: string;
               key?: string;
               description?: string | null;
+              question?: string | null;
+              kicker?: string | null;
             };
       };
     };
@@ -4967,6 +6237,7 @@ export interface operations {
     requestBody?: {
       content: {
         "application/json": {
+          group?: string | null;
           definition?: string;
           aliases?: string[] | null;
           not_the_same_as?: string | null;
@@ -5110,6 +6381,7 @@ export interface operations {
     requestBody?: {
       content: {
         "application/json": {
+          group?: string | null;
           definition?: string;
           aliases?: string[] | null;
           not_the_same_as?: string | null;
@@ -5947,6 +7219,50 @@ export interface operations {
                 aliases: {
                   required: boolean;
                 };
+                tier: {
+                  required: boolean;
+                  values: string[];
+                };
+                importance: {
+                  required: boolean;
+                  values: string[];
+                };
+                direction: {
+                  required: boolean;
+                  values: string[];
+                };
+                importance_why: {
+                  required: boolean;
+                  required_when?: {
+                    /** @constant */
+                    field: "importance";
+                    values: string[];
+                  };
+                };
+                use_for: {
+                  required: boolean;
+                };
+                dont_use_for: {
+                  required: boolean;
+                };
+                caveats: {
+                  required: boolean;
+                };
+                decisions: {
+                  required: boolean;
+                };
+                actions: {
+                  required: boolean;
+                };
+                owner_team: {
+                  required: boolean;
+                };
+                primary_dimensions: {
+                  required: boolean;
+                };
+                building_block: {
+                  required: boolean;
+                };
                 when_to_use: {
                   required: boolean;
                 };
@@ -6139,8 +7455,20 @@ export interface operations {
                 | "metric_money_qualifier"
                 | "naming.qualifier_order"
                 | "metric_qualifier_order"
-                | "metric_fields.definition"
+                | "metric_fields.tier"
                 | "metric_fields"
+                | "metric_fields.importance"
+                | "metric_fields.direction"
+                | "metric_fields.importance_why"
+                | "metric_fields.use_for"
+                | "metric_fields.dont_use_for"
+                | "metric_fields.caveats"
+                | "metric_fields.decisions"
+                | "metric_fields.actions"
+                | "metric_fields.owner_team"
+                | "metric_fields.primary_dimensions"
+                | "metric_fields.building_block"
+                | "metric_fields.definition"
                 | "metric_fields.aliases"
                 | "metric_fields.when_to_use"
                 | "metric_fields.grain_and_filters"
@@ -6250,6 +7578,50 @@ export interface operations {
                 aliases: {
                   required: boolean;
                 };
+                tier: {
+                  required: boolean;
+                  values: string[];
+                };
+                importance: {
+                  required: boolean;
+                  values: string[];
+                };
+                direction: {
+                  required: boolean;
+                  values: string[];
+                };
+                importance_why: {
+                  required: boolean;
+                  required_when?: {
+                    /** @constant */
+                    field: "importance";
+                    values: string[];
+                  };
+                };
+                use_for: {
+                  required: boolean;
+                };
+                dont_use_for: {
+                  required: boolean;
+                };
+                caveats: {
+                  required: boolean;
+                };
+                decisions: {
+                  required: boolean;
+                };
+                actions: {
+                  required: boolean;
+                };
+                owner_team: {
+                  required: boolean;
+                };
+                primary_dimensions: {
+                  required: boolean;
+                };
+                building_block: {
+                  required: boolean;
+                };
                 when_to_use: {
                   required: boolean;
                 };
@@ -6442,8 +7814,20 @@ export interface operations {
                 | "metric_money_qualifier"
                 | "naming.qualifier_order"
                 | "metric_qualifier_order"
-                | "metric_fields.definition"
+                | "metric_fields.tier"
                 | "metric_fields"
+                | "metric_fields.importance"
+                | "metric_fields.direction"
+                | "metric_fields.importance_why"
+                | "metric_fields.use_for"
+                | "metric_fields.dont_use_for"
+                | "metric_fields.caveats"
+                | "metric_fields.decisions"
+                | "metric_fields.actions"
+                | "metric_fields.owner_team"
+                | "metric_fields.primary_dimensions"
+                | "metric_fields.building_block"
+                | "metric_fields.definition"
                 | "metric_fields.aliases"
                 | "metric_fields.when_to_use"
                 | "metric_fields.grain_and_filters"
@@ -6484,6 +7868,18 @@ export interface operations {
                   | "naming.forbidden_words"
                   | "naming.money_qualifier"
                   | "naming.qualifier_order"
+                  | "metric_fields.tier"
+                  | "metric_fields.importance"
+                  | "metric_fields.direction"
+                  | "metric_fields.importance_why"
+                  | "metric_fields.use_for"
+                  | "metric_fields.dont_use_for"
+                  | "metric_fields.caveats"
+                  | "metric_fields.decisions"
+                  | "metric_fields.actions"
+                  | "metric_fields.owner_team"
+                  | "metric_fields.primary_dimensions"
+                  | "metric_fields.building_block"
                   | "metric_fields.definition"
                   | "metric_fields.aliases"
                   | "metric_fields.when_to_use"
@@ -6701,6 +8097,18 @@ export interface operations {
                 | "naming.forbidden_words"
                 | "naming.money_qualifier"
                 | "naming.qualifier_order"
+                | "metric_fields.tier"
+                | "metric_fields.importance"
+                | "metric_fields.direction"
+                | "metric_fields.importance_why"
+                | "metric_fields.use_for"
+                | "metric_fields.dont_use_for"
+                | "metric_fields.caveats"
+                | "metric_fields.decisions"
+                | "metric_fields.actions"
+                | "metric_fields.owner_team"
+                | "metric_fields.primary_dimensions"
+                | "metric_fields.building_block"
                 | "metric_fields.definition"
                 | "metric_fields.aliases"
                 | "metric_fields.when_to_use"
@@ -11366,6 +12774,7 @@ export interface operations {
               };
               id: string;
               name: string;
+              title: string;
               email: string;
               sign_in_method: string | null;
               last_seen_at: string | null;

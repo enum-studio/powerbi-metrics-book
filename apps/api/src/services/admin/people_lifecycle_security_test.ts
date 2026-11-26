@@ -1,3 +1,5 @@
+import { createMetric, getMetric } from "../book/metrics.js";
+import { setOwner, setTitle } from "../book/ownership.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import pg from "pg";
@@ -1050,4 +1052,50 @@ it("revoking a viewer invite leaves the invites its user sent open", async () =>
       detail: { email: pending.email },
     },
   ]);
+});
+
+it("retains a departed owner's latest name and title and records the change", async () => {
+  await person("admin");
+  const owner = await person("viewer");
+  const entry = await createMetric(admin, {
+    name: `owned_${randomUUID().replaceAll("-", "")}`,
+    label: "Owned metric",
+  });
+  await setTitle(admin, owner.id, "Analyst");
+  await setOwner(admin, entry.id, owner.email);
+  await deps.db
+    .update(user)
+    .set({ name: "Sample owner" })
+    .where(eq(user.id, owner.id));
+  await setTitle(admin, owner.id, "Finance lead");
+  await people.deactivatePerson(admin, owner.id);
+  expect((await getMetric(admin, entry.id)).owner_person).toMatchObject({
+    name: "Sample owner",
+    title: "Finance lead",
+    left: true,
+  });
+  await expect(setOwner(admin, entry.id, owner.email)).rejects.toMatchObject({
+    kind: "invalid",
+  });
+  await people.deletePerson(admin, owner.id);
+  expect((await getMetric(admin, entry.id)).owner_person).toEqual({
+    id: null,
+    name: "Sample owner",
+    title: "Finance lead",
+    left: true,
+  });
+});
+
+it("refuses another person's title without revealing whether the person exists", async () => {
+  const viewer = await person("viewer");
+  const other = await person("viewer");
+  const context = {
+    ...admin,
+    principal: { ...admin.principal, id: viewer.id, roles: ["viewer"] },
+  };
+  for (const id of [other.id, randomUUID()]) {
+    await expect(setTitle(context, id, "Changed")).rejects.toMatchObject({
+      kind: "refused",
+    });
+  }
 });

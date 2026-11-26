@@ -17,6 +17,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { iconCheck } from "../../services/book/icon-glyphs.js";
 import { declareGrants, type Privilege } from "../grants.js";
+import { user } from "./auth.js";
 import { powerbiColumn, powerbiMeasure } from "./mirror.js";
 
 /*
@@ -78,6 +79,11 @@ export const conventions = pgTable(
   (t) => [isObject("conventions_document_check", t.document)],
 );
 
+export const conventionsPreset = pgTable("conventions_preset", {
+  name: text("name").primaryKey(),
+  document: jsonb("document").$type<Record<string, unknown>>().notNull(),
+});
+
 /** A parent's children go before it does: the keys do not cascade, so deleting a category that holds anything is refused. */
 export const category = pgTable(
   "category",
@@ -87,6 +93,8 @@ export const category = pgTable(
     name: text("name").notNull(),
     key: text("key").notNull(),
     description: text("description"),
+    question: text("question"),
+    kicker: text("kicker"),
     icon: text("icon"),
     position: integer("position").notNull().default(0),
     ...createdAndUpdated(),
@@ -115,6 +123,21 @@ export const metric = pgTable(
     label: text("label").notNull(),
     definition: text("definition").notNull().default(""),
     aliases: text("aliases").array(),
+    tier: text("tier").notNull().default(""),
+    importance: text("importance").notNull().default(""),
+    direction: text("direction").notNull().default(""),
+    importance_why: text("importance_why").notNull().default(""),
+    use_for: text("use_for").notNull().default(""),
+    dont_use_for: text("dont_use_for").notNull().default(""),
+    caveats: text("caveats").notNull().default(""),
+    decisions: text("decisions").notNull().default(""),
+    actions: text("actions").notNull().default(""),
+    owner_team: text("owner_team").notNull().default(""),
+    primary_dimensions: text("primary_dimensions")
+      .array()
+      .notNull()
+      .default([]),
+    building_block: boolean("building_block").notNull().default(false),
     when_to_use: text("when_to_use").notNull().default(""),
     not_the_same_as: text("not_the_same_as"),
     grain_and_filters: text("grain_and_filters").notNull().default(""),
@@ -122,6 +145,11 @@ export const metric = pgTable(
     category_id: uuid("category_id").references(() => category.id),
     icon: text("icon"),
     owner: text("owner"),
+    owner_person: text("owner_person").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    owner_person_name: text("owner_person_name"),
+    owner_person_title: text("owner_person_title"),
     trust_state: text("trust_state", { enum: TRUST_STATES })
       .notNull()
       .default("draft"),
@@ -146,6 +174,77 @@ export const metric = pgTable(
     check("metric_icon_check", sql.raw(iconCheck("icon"))),
     isObject("metric_custom_check", t.custom),
   ],
+);
+
+export const metricEdge = pgTable(
+  "metric_edge",
+  {
+    parent_id: uuid("parent_id")
+      .notNull()
+      .references(() => metric.id),
+    child_id: uuid("child_id")
+      .notNull()
+      .references(() => metric.id),
+    sign: integer("sign").notNull().default(1),
+    operation: text("operation", { enum: ["sum", "product"] })
+      .notNull()
+      .default("sum"),
+    note: text("note"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.parent_id, t.child_id] }),
+    check("metric_edge_self_check", sql`${t.parent_id} <> ${t.child_id}`),
+    check("metric_edge_sign_check", sql`${t.sign} in (-1, 1)`),
+    check(
+      "metric_edge_operation_check",
+      sql`${t.operation} in ('sum', 'product')`,
+    ),
+  ],
+);
+
+export const metricLink = pgTable(
+  "metric_link",
+  {
+    metric_id: uuid("metric_id")
+      .notNull()
+      .references(() => metric.id),
+    other_metric_id: uuid("other_metric_id")
+      .notNull()
+      .references(() => metric.id),
+    movement: text("movement", {
+      enum: ["same", "opposite", "depends"],
+    }).notNull(),
+    reason: text("reason").notNull().default(""),
+    other_reason: text("other_reason").notNull().default(""),
+  },
+  (t) => [
+    primaryKey({ columns: [t.metric_id, t.other_metric_id] }),
+    check(
+      "metric_link_order_check",
+      sql`${t.metric_id} < ${t.other_metric_id}`,
+    ),
+    check(
+      "metric_link_movement_check",
+      sql`${t.movement} in ('same', 'opposite', 'depends')`,
+    ),
+    check(
+      "metric_link_reason_check",
+      sql`btrim(${t.reason}) <> '' or btrim(${t.other_reason}) <> ''`,
+    ),
+  ],
+);
+
+export const metricFollow = pgTable(
+  "metric_follow",
+  {
+    person_id: text("person_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    metric_id: uuid("metric_id")
+      .notNull()
+      .references(() => metric.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.person_id, t.metric_id] })],
 );
 
 /** A variant has no meaning without its metric or its measure, so it goes with either. */
@@ -196,6 +295,7 @@ export const term = pgTable(
     definition: text("definition").notNull().default(""),
     aliases: text("aliases").array(),
     not_the_same_as: text("not_the_same_as"),
+    group: text("group"),
     values: jsonb("values").$type<unknown>(),
     icon: text("icon"),
     owner: text("owner"),
@@ -296,10 +396,22 @@ const both = { api_rw: ALL, worker_rw: ALL, audit_writer: [] } as const;
 
 declareGrants({
   // The worker reads the conventions to draft by them and never changes them.
+  conventions_preset: {
+    api_rw: ["select"],
+    worker_rw: ["select"],
+    audit_writer: [],
+  },
   conventions: { api_rw: ALL, worker_rw: ["select"], audit_writer: [] },
   category: curatedByApi,
   metric: both,
   metric_variant: both,
+  metric_edge: { api_rw: ALL, worker_rw: [], audit_writer: [] },
+  metric_link: { api_rw: ALL, worker_rw: [], audit_writer: [] },
+  metric_follow: {
+    api_rw: ["select", "insert", "delete"],
+    worker_rw: [],
+    audit_writer: [],
+  },
   term: curatedByApi,
   term_column: curatedByApi,
   term_metric: curatedByApi,

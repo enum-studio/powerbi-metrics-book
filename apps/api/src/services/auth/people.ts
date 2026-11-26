@@ -1,6 +1,7 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context.js";
 import { user } from "../../db/schema/auth.js";
+import { personProfile } from "../../db/schema/people.js";
 import { serviceAccount } from "../../db/schema/service-accounts.js";
 
 /** What an id reads as when no account holds it now. */
@@ -30,10 +31,19 @@ export async function namesOf(
   const persons = idsOf("person");
   if (persons.length > 0)
     for (const row of await db
-      .select({ id: user.id, name: user.name, email: user.email })
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        title: personProfile.title,
+      })
       .from(user)
+      .leftJoin(personProfile, eq(personProfile.person_id, user.id))
       .where(inArray(user.id, persons)))
-      names.set(whoKey({ kind: "person", id: row.id }), row[show]);
+      names.set(
+        whoKey({ kind: "person", id: row.id }),
+        show === "name" && row.title ? `${row.name}, ${row.title}` : row[show],
+      );
   const accounts = idsOf("service_account");
   if (accounts.length > 0)
     for (const row of await db

@@ -159,11 +159,11 @@ it("refuses all service entry points before authorization or reads", async () =>
   vi.restoreAllMocks();
 });
 
-it("lists 26 tools and treats all six hidden tools exactly as unknown names", async () => {
+it("lists 28 tools and treats all six hidden tools exactly as unknown names", async () => {
   const listed = (await (await rpc("tools/list")).json()) as {
     result: { tools: { name: string }[] };
   };
-  expect(listed.result.tools).toHaveLength(26);
+  expect(listed.result.tools).toHaveLength(28);
   for (const name of [
     "post_thread",
     "reply_in_thread",
@@ -229,7 +229,7 @@ it("hides stored thread events and preserves the same thread when enabled again"
     const listed = (await (await rpc("tools/list")).json()) as {
       result: { tools: unknown[] };
     };
-    expect(listed.result.tools).toHaveLength(32);
+    expect(listed.result.tools).toHaveLength(34);
     expect(
       await toolAnswer(await rpc("tools/call", { name: "whoami" })),
     ).toHaveProperty("questions", true);

@@ -86,6 +86,32 @@ const signInProviders = z
   });
 
 export const SETTINGS: { readonly [K in SettingKey]: SettingEntry<K> } = {
+  "guide.enabled": {
+    schema: z.boolean(),
+    default: true,
+    description: "Show the curated reading page.",
+  },
+  "guide.result_metric": {
+    schema: z.string().max(500).nullable(),
+    default: null,
+    description:
+      "The metric whose edges explain the result on the reading page.",
+  },
+  "guide.featured_metric": {
+    schema: z.string().max(500).nullable(),
+    default: null,
+    description: "The metric shown up close; otherwise the first north star.",
+  },
+  "exports.markdown": {
+    schema: z.boolean(),
+    default: true,
+    description: "Allow Markdown exports of the guide and metrics.",
+  },
+  "exports.pdf": {
+    schema: z.boolean(),
+    default: true,
+    description: "Allow PDF exports through browser printing.",
+  },
   "questions.enabled": {
     schema: z.boolean(),
     default: false,

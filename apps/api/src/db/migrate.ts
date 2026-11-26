@@ -5,6 +5,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 import { readDatabaseUrl } from "../config.js";
+import { resolve } from "../services/conventions/store.js";
+import { PRESET_NAMES } from "../services/conventions/schema.js";
 import { upgradeStoredConventions } from "../services/conventions/upgrade.js";
 import { applyGrants } from "./grants.js";
 // Loaded for its side effect: each schema module declares its grants on import.
@@ -117,6 +119,12 @@ export async function migrateDatabase(
         await client.query(await readFile(join(SQL_FOLDER, file), "utf8"));
       }
       await upgradeStoredConventions(client);
+      for (const name of PRESET_NAMES) {
+        await client.query(
+          "insert into conventions_preset (name, document) values ($1, $2) on conflict (name) do update set document = excluded.document",
+          [name, JSON.stringify(resolve({ preset: name }))],
+        );
+      }
       await client.query("commit");
     } catch (error) {
       await client.query("rollback");

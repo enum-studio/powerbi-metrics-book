@@ -10,6 +10,7 @@ import {
   peopleQuery,
   revokeGrant,
   setPersonRole,
+  setPersonTitle,
   setPersonPii,
   deactivatePerson,
   reactivatePerson,
@@ -182,6 +183,7 @@ export function PeopleTable() {
                   }}
                 >
                   {person.name}
+                  {person.title ? `, ${person.title}` : ""}
                   <span className="block text-meta text-ink-3">
                     {person.email}
                   </span>
@@ -304,6 +306,29 @@ export function PeopleTable() {
           }}
         >
           <p className="mb-4 text-ui text-ink-2">{person.email}</p>
+          <SectionBox title="Title">
+            <form
+              className="flex gap-2"
+              key={person.id}
+              onSubmit={(event) => {
+                event.preventDefault();
+                const field = event.currentTarget.elements.namedItem("title");
+                if (field instanceof HTMLInputElement) {
+                  const value = field.value;
+                  void run(() => setPersonTitle(person.id, value));
+                }
+              }}
+            >
+              <input
+                aria-label="Title"
+                name="title"
+                defaultValue={person.title}
+                maxLength={500}
+                className={INPUT}
+              />
+              <Button disabled={busy}>Save title</Button>
+            </form>
+          </SectionBox>
           <SectionBox title="Roles and sources">
             <RoleSources roles={person.roles} />
           </SectionBox>

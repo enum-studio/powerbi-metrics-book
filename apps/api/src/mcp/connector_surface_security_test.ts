@@ -22,7 +22,7 @@ import { TOOLS } from "./tools/index.js";
 
 /** The tools of the spec, "The connector (MCP) and the API", and the requests of docs/specs/2026-11-11-requests-and-usage-report.md. */
 const SPEC_TOOLS = [
-  "search", "list_metrics", "get_metric", "list_variants", "get_variant",
+  "read", "my_metrics", "search", "list_metrics", "get_metric", "list_variants", "get_variant",
   "list_categories", "list_terms", "get_term", "get_conventions",
   "list_workspaces", "list_apps", "list_datasets", "get_dataset", "list_relationships",
   "list_columns", "list_measures", "execute_dax", "read_query_result",
@@ -37,6 +37,7 @@ const SPEC_TOOLS = [
  * reads here, in a change that gets the security review.
  */
 const ALLOWED: Record<string, readonly string[]> = {
+  "routes/v1/schemas.ts": ["Metric"],
   "config.ts": ["connectionsPage"],
   "services/text.ts": ["excerpt"],
   "errors.ts": ["ServiceError"],
@@ -56,6 +57,8 @@ const ALLOWED: Record<string, readonly string[]> = {
     "THREAD_KINDS",
     "THREAD_STATUSES",
   ],
+  "services/book/guide.ts": ["exportBook"],
+  "services/book/my-metrics.ts": ["myMetrics"],
   "services/book/metrics.ts": ["getMetric", "listMetrics", "summarizeBook"],
   "services/book/variants.ts": ["getVariant", "listVariants"],
   "services/book/categories.ts": ["categoryTree"],
@@ -104,6 +107,8 @@ const FORBIDDEN: Record<string, readonly string[]> = {
  * from services/book or services/conventions.
  */
 const BOOK_READS: Record<string, readonly string[]> = {
+  "services/book/guide.ts": ["exportBook"],
+  "services/book/my-metrics.ts": ["myMetrics"],
   "services/book/metrics.ts": ["getMetric", "listMetrics", "summarizeBook"],
   "services/book/variants.ts": ["getVariant", "listVariants"],
   "services/book/categories.ts": ["categoryTree"],
@@ -210,10 +215,10 @@ const code = (file: string) =>
 describe("the connector's tools", () => {
   it("are all on the spec's list, each once", () => {
     const names = TOOLS.map(({ name }) => name);
-    expect(SPEC_TOOLS).toHaveLength(32);
-    expect(TOOLS).toHaveLength(32);
+    expect(SPEC_TOOLS).toHaveLength(34);
+    expect(TOOLS).toHaveLength(34);
     expect(TOOLS.filter((tool) => tool.requires === undefined)).toHaveLength(
-      26,
+      28,
     );
     expect(
       TOOLS.filter((tool) => tool.requires === "questions.enabled")

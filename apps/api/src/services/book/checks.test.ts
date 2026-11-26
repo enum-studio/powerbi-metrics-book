@@ -38,6 +38,13 @@ function metric(overrides: Partial<CheckableMetric> = {}): CheckableMetric {
     grain_and_filters: "One order. Cancelled and test orders left out.",
     unit: "money",
     category_id: "4f4e2b8a-1d7c-4b8e-9a51-2f0c6d3e8b17",
+    tier: "driver",
+    importance: "medium",
+    direction: "higher_is_better",
+    use_for: "Compare baskets.",
+    dont_use_for: "Items per order.",
+    decisions: "Sales sets targets.",
+    owner_team: "Sales",
     custom: {},
     ...overrides,
   };
@@ -142,7 +149,8 @@ describe("every metric check under metrics_book", () => {
   it.each<Partial<CheckableMetric>>([
     { aliases: null },
     { definition: " " },
-    { when_to_use: null },
+    { use_for: "" },
+    { dont_use_for: "" },
     { grain_and_filters: "" },
     { unit: null },
     { unit: "dollars" },
@@ -388,6 +396,19 @@ describe("every metric check under metrics_book", () => {
       (result) => result.check === "metric_fields",
     );
     expect(fields.map((result) => result.rule)).toEqual([
+      "metric_fields.tier",
+      "metric_fields.importance",
+      "metric_fields.direction",
+      "metric_fields.importance_why",
+      "metric_fields.use_for",
+      "metric_fields.dont_use_for",
+      "metric_fields.caveats",
+      "metric_fields.decisions",
+      "metric_fields.actions",
+      "metric_fields.owner_team",
+      "metric_fields.primary_dimensions",
+      "metric_fields.building_block",
+
       "metric_fields.definition",
       "metric_fields.aliases",
       "metric_fields.when_to_use",
@@ -856,5 +877,39 @@ describe("element checks", () => {
         (r) => !r.passed,
       ),
     ).toHaveLength(2);
+  });
+});
+
+describe("metric documentation conventions", () => {
+  it("makes importance reasons conditional and respects a deployment's choice values", () => {
+    expect(
+      failingRules(metricsBook, { importance: "high", importance_why: "" }),
+    ).toContain("metric_fields.importance_why");
+    expect(
+      failingRules(metricsBook, { importance: "low", importance_why: "" }),
+    ).not.toContain("metric_fields.importance_why");
+    const changed = resolve({
+      preset: "minimal",
+      metric_fields: { tier: { values: ["outcome"], required: true } },
+    });
+    expect(failingRules(changed, { tier: "outcome" })).not.toContain(
+      "metric_fields.tier",
+    );
+    expect(failingRules(changed, { tier: "driver" })).toContain(
+      "metric_fields.tier",
+    );
+  });
+  it("keeps legacy usage optional and checks dimension references against terms", () => {
+    expect(failingRules(metricsBook, { when_to_use: null })).toEqual([]);
+    const checks = checkMetric(
+      metric({ primary_dimensions: ["Missing"] }),
+      context(metricsBook, { term_names: new Set(["Channel"]) }),
+    );
+    expect(
+      checks.find((c) => c.rule === "metric_fields.primary_dimensions"),
+    ).toMatchObject({
+      passed: false,
+      message: "Create the term Missing, or choose a term already in the book.",
+    });
   });
 });

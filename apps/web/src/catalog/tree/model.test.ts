@@ -14,6 +14,8 @@ const category = (
   path,
   name,
   description: null,
+  question: null,
+  kicker: null,
   icon: null,
   position: 0,
   metric_count,

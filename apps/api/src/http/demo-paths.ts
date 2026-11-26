@@ -34,6 +34,7 @@ export const DEMO_PATHS: readonly string[] = [
   // The catalog's screens from SPA_PATHS. Any other screen (sign-in,
   // settings, setup, admin, review) redirects to "/".
   "GET /catalog",
+  "GET /catalog/guide",
   "GET /catalog/search",
   "GET /catalog/categories/*",
   "GET /catalog/metrics/:name",
@@ -54,6 +55,12 @@ export const DEMO_PATHS: readonly string[] = [
   // (apps/web/src/api/me.ts): here always the demo person.
   "GET /api/v1/me",
   // The home screen: the book's size and search (apps/web/src/home/).
+  // Documentation reads are filtered as metric reads are. Export logging
+  // stays off under the demo's mandatory usage.capture=false lock.
+  "GET /api/v1/guide",
+  "GET /api/v1/guide/export",
+  "GET /api/v1/book/exports",
+  "GET /api/v1/metrics/:name/export",
   "GET /api/v1/book/summary",
   "GET /api/v1/search",
   // The catalog's reads (apps/web/src/catalog/queries.ts and the screens

@@ -233,3 +233,11 @@ export const reactivatePerson = (id: string) =>
   );
 export const deletePerson = (id: string) =>
   done(api.DELETE("/api/v1/admin/people/{id}", { params: { path: { id } } }));
+
+export const setPersonTitle = (id: string, title: string) =>
+  done(
+    api.PUT("/api/v1/people/{id}/title", {
+      params: { path: { id } },
+      body: { title },
+    }),
+  );

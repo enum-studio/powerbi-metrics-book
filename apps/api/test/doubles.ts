@@ -25,6 +25,11 @@ import { SETTING_KEYS, SETTINGS } from "../src/services/settings/registry.js";
 
 /** The defaults in the spec's settings table. */
 export const DEFAULT_SETTINGS: SettingValues = {
+  "guide.enabled": true,
+  "guide.result_metric": null,
+  "guide.featured_metric": null,
+  "exports.markdown": true,
+  "exports.pdf": true,
   "questions.enabled": false,
   "usage.capture": true,
   "usage.retention_days": 180,

@@ -6,6 +6,41 @@
 # names the finding, why, and the date to look again (expired_at, after which
 # the finding fails again).
 vulnerabilities:
+  - id: CVE-2026-124851
+    purls:
+      - "pkg:deb/debian/libzstd1"
+      - "pkg:deb/debian/zstd"
+    statement: Fixed by Debian in 1.5.7+dfsg-1+deb13u1, installed explicitly
+      in the API image. The pinned pgvector base and its newest digest still
+      ship 1.5.7+dfsg-1 (checked 2026-11-26). PostgreSQL accepts no zstd SQL
+      stream, TOAST uses pglz or lz4, and the stack leaves WAL compression off.
+      The shipped backup uses pg_dump custom format with gzip; restore reads
+      that deployment's age-encrypted backup. Only shipped shell init files
+      are mounted. Operator-supplied zstd init files or restores are outside
+      this assessment. Replace the pgvector digest when it carries the fix.
+      Node's bundled decoder is separate; the guarded fetcher refuses zstd
+      before constructing a decoder, with a security regression test.
+    expired_at: 2026-12-10
+  - id: CVE-2026-107494
+    purls:
+      - "pkg:deb/debian/libssl3t64"
+      - "pkg:deb/debian/openssl"
+      - "pkg:deb/debian/openssl-provider-legacy"
+    statement: No Debian fix as of 2026-11-26. This affects OpenSSL QUIC.
+      The API and PostgreSQL use TCP only; neither creates a QUIC connection.
+      Only the separate Caddy proxy terminates HTTP/3 and it forwards TCP HTTP
+      to the API. Caddy uses Go TLS rather than these Debian OpenSSL packages.
+    expired_at: 2026-12-10
+  - id: CVE-2026-124709
+    purls:
+      - "pkg:deb/debian/libssl3t64"
+      - "pkg:deb/debian/openssl"
+      - "pkg:deb/debian/openssl-provider-legacy"
+    statement: No Debian fix as of 2026-11-26. The affected OpenSSL QUIC path
+      is not used by the API or PostgreSQL, whose connections are TCP. HTTP/3
+      terminates in the separate Caddy proxy, using Go TLS, and reaches the
+      API over TCP HTTP.
+    expired_at: 2026-12-10
   # Debian 13.7 packages of the node:24-trixie-slim and pgvector:pg18-trixie
   # bases. Debian has no fixed version for these (affected, or fix_deferred by
   # its security team) as of 2026-10-27, so raising the base digest fixes none.
@@ -32,21 +67,6 @@ vulnerabilities:
       - "pkg:deb/debian/ncurses-bin"
     statement: No fixed version in Debian 13 yet (checked 2026-10-27).
     expired_at: 2027-01-27
-  - id: CVE-2026-109518
-    purls:
-      - "pkg:deb/debian/apt"
-      - "pkg:deb/debian/libapt-pkg7.0"
-    statement:
-      Fixed in Debian as 3.0.4 (DSA-6607-1), and the node digest has it,
-      but the newest pgvector image (built 2026-10-31, checked 2026-11-05) still
-      ships 3.0.3. The flaw needs apt to install a package over tampered HTTP, and
-      nothing runs apt in the postgres container or builds on it with apt. That
-      alone protects root, since Azure's database-init job runs as root and on
-      Railway the entry point starts as root. The server runs as user 999 on
-      Compose and Railway, and user 999 cannot install. This entry would also hide
-      the finding on an old node digest, because trivy cannot scope it to one
-      image. Take the fix by raising the pgvector digest when a rebuild lands.
-    expired_at: 2026-11-27
   - id: CVE-2026-119373
     purls:
       - "pkg:deb/debian/libsqlite3-0"
@@ -92,7 +112,10 @@ vulnerabilities:
   - id: CVE-2026-16742
     purls:
       - "pkg:deb/debian/libsystemd0"
-    statement: The flaw is in systemd-homed, which is not present in the image.
+      - "pkg:deb/debian/libsystemd-shared"
+      - "pkg:deb/debian/systemd"
+    statement: The flaw is in systemd-homed, which is not present in the image
+      (checked against pgvector PostgreSQL 18.7 on 2026-11-26).
     expired_at: 2027-01-27
   - id: CVE-2026-16742
     purls:

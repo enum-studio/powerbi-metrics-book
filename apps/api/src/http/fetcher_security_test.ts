@@ -1,16 +1,24 @@
+import zlib from "node:zlib";
+import { nativeFetch } from "../../test/native-fetch.js";
+import { getGlobalDispatcher, setGlobalDispatcher } from "undici";
 import type { LookupAddress } from "node:dns";
 import { createServer, type RequestListener, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NodeEnv } from "../config.js";
 import { ServiceError } from "../errors.js";
-import { createGuardedFetcher, isInternalAddress } from "./fetcher.js";
+import {
+  createGuardedFetcher,
+  isInternalAddress,
+  protectNativeFetch,
+} from "./fetcher.js";
 
 // B6 in the threat model: no request the api makes can be steered at its own
 // network, the cloud metadata service, or a host outside the configured list.
 
 const servers: Server[] = [];
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const server of servers.splice(0)) {
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
@@ -402,4 +410,65 @@ describe("fetchFixed", () => {
       expect(seen.connections).toBe(0);
     });
   });
+});
+
+describe("native response decoder", () => {
+  it("rejects duplicate encoding headers before constructing the zstd decoder", async () => {
+    const decoder = vi.spyOn(zlib, "createZstdDecompress");
+    const { port } = await serve((_request, response) => {
+      response.writeHead(200, [
+        "Content-Encoding",
+        "gzip",
+        "Content-Encoding",
+        "zstd",
+      ]);
+      response.end(zlib.zstdCompressSync(Buffer.from("sample")));
+    });
+    const origin = `http://127.0.0.1:${port}`;
+    await expect(
+      fetcherWith(undefined, "test", [origin]).fetchFixed(origin),
+    ).rejects.toMatchObject({
+      kind: "upstream",
+      message:
+        "Refused a zstd-compressed response: this runtime's decoder is not safe to use.",
+    });
+    expect(decoder).not.toHaveBeenCalled();
+  });
+});
+
+it("protects native fetch used by authentication libraries before decoding", async () => {
+  const decoder = vi.spyOn(zlib, "createZstdDecompress");
+  const { port } = await serve((request, response) => {
+    const compressed = request.url === "/zstd";
+    response.writeHead(200, {
+      "content-encoding": compressed ? "zstd" : "gzip",
+    });
+    response.end(
+      compressed
+        ? zlib.zstdCompressSync(Buffer.from("sample"))
+        : zlib.gzipSync(Buffer.from("sample")),
+    );
+  });
+  const original = getGlobalDispatcher();
+  try {
+    protectNativeFetch();
+    const protectedAgent = getGlobalDispatcher();
+    protectNativeFetch();
+    expect(getGlobalDispatcher()).toBe(protectedAgent);
+    await expect(
+      nativeFetch(`http://127.0.0.1:${port}/zstd`),
+    ).rejects.toMatchObject({
+      cause: {
+        kind: "upstream",
+        message:
+          "Refused a zstd-compressed response: this runtime's decoder is not safe to use.",
+      },
+    });
+    expect(decoder).not.toHaveBeenCalled();
+    expect(
+      await (await nativeFetch(`http://127.0.0.1:${port}/gzip`)).text(),
+    ).toBe("sample");
+  } finally {
+    setGlobalDispatcher(original);
+  }
 });

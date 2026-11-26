@@ -153,295 +153,862 @@
         ],
         "additionalProperties": false
       },
-      "Me": {
+      "Guide": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "person",
-              "service_account"
-            ]
-          },
-          "email": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "roles": {
+          "areas": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "category"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "question": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kicker": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "icon": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "position": {
+                  "type": "number"
+                },
+                "metrics": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetricDocument"
+                  }
+                },
+                "headlines": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetricDocument"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "key",
+                "path",
+                "name",
+                "description",
+                "question",
+                "kicker",
+                "icon",
+                "position",
+                "metrics",
+                "headlines"
+              ],
+              "additionalProperties": false
             }
           },
-          "sign_in_method": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "metrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricDocument"
+            }
           },
-          "via": {
-            "type": "string",
-            "enum": [
-              "browser",
-              "mcp",
-              "api",
-              "cli"
-            ]
-          },
-          "powerbi_connection": {
+          "sum": {
             "anyOf": [
               {
-                "type": "string",
-                "enum": [
-                  "connected",
-                  "needs_reconnect",
-                  "disconnected",
-                  "not_connected"
-                ]
+                "$ref": "#/components/schemas/MetricDocument"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "powerbi_connect_url": {
-            "type": "string"
+          "featured": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "questions": {
-            "type": "boolean"
+          "glossary": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "term"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "group": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "metrics": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "metric"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "name",
+                "group",
+                "definition",
+                "metrics"
+              ],
+              "additionalProperties": false
+            }
           },
-          "sample_data": {
-            "type": "boolean"
-          },
-          "usage": {
+          "naming": {
             "type": "object",
             "properties": {
-              "capture": {
-                "type": "boolean"
+              "case": {
+                "type": "string",
+                "enum": [
+                  "snake_case",
+                  "none"
+                ]
               },
-              "retention_days": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
+              "kinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "forbidden_words": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "money_qualifier": {
+                "type": "object",
+                "properties": {
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "values": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "units": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  }
+                },
+                "required": [
+                  "required",
+                  "values",
+                  "units"
+                ],
+                "additionalProperties": false
+              },
+              "qualifier_order": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "qualifiers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                }
+              },
+              "label": {
+                "type": "string",
+                "enum": [
+                  "sentence_case",
+                  "none"
+                ]
               }
             },
             "required": [
-              "capture",
-              "retention_days"
+              "case",
+              "kinds",
+              "forbidden_words",
+              "money_qualifier",
+              "qualifier_order",
+              "qualifiers",
+              "label"
             ],
             "additionalProperties": false
           },
-          "may_admin": {
-            "type": "boolean",
-            "description": "Whether the admin section opens for the caller: the admin status page's own guard (admin:read_status)."
+          "exports": {
+            "type": "object",
+            "properties": {
+              "markdown": {
+                "type": "boolean"
+              },
+              "pdf": {
+                "type": "boolean"
+              },
+              "guide": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "markdown",
+              "pdf",
+              "guide"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "areas",
+          "metrics",
+          "sum",
+          "featured",
+          "glossary",
+          "naming",
+          "exports"
+        ],
+        "additionalProperties": false
+      },
+      "MetricDocument": {
+        "type": "object",
+        "properties": {
+          "open_questions": {
+            "type": "number"
           },
-          "warnings": {
+          "accepted_answers": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object",
+              "properties": {
+                "thread_id": {
+                  "type": "string"
+                },
+                "question": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "answer": {
+                  "type": "string"
+                },
+                "excerpt_truncated": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "answered_by": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "person",
+                        "service_account"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "accepted_by_role": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "asker",
+                        "asker_own_reply",
+                        "curator",
+                        "other",
+                        "unknown"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Who accepted: the asker, the asker on their own reply, a curator, or someone else a policy allows."
+                },
+                "accepted_by_kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "person",
+                        "service_account"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "A person, or a service_account (an agent)."
+                },
+                "accepted_by_via": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "browser",
+                        "mcp",
+                        "api",
+                        "cli"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Where it was accepted from: browser, mcp (an agent), api or cli."
+                }
+              },
+              "required": [
+                "thread_id",
+                "question",
+                "answer",
+                "answered_by",
+                "accepted_by_role",
+                "accepted_by_kind",
+                "accepted_by_via"
+              ],
+              "additionalProperties": false
             }
           },
-          "client_address": {
-            "description": "The address this request counted against for rate limits and audit, the caller's own. Null for a request made in process.",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "email",
-          "name",
-          "roles",
-          "sign_in_method",
-          "via",
-          "powerbi_connection",
-          "powerbi_connect_url",
-          "questions",
-          "sample_data",
-          "usage",
-          "may_admin",
-          "warnings",
-          "client_address"
-        ],
-        "additionalProperties": false
-      },
-      "PowerBiConnection": {
-        "type": "object",
-        "properties": {
-          "status": {
+          "kind": {
             "type": "string",
-            "enum": [
-              "connected",
-              "needs_reconnect",
-              "disconnected",
-              "not_connected"
-            ]
+            "const": "metric"
           },
-          "account": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "connected_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "last_used_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "account",
-          "connected_at",
-          "last_used_at",
-          "reason"
-        ],
-        "additionalProperties": false
-      },
-      "Grant": {
-        "type": "object",
-        "properties": {
           "id": {
             "type": "string"
           },
-          "client_id": {
+          "name": {
             "type": "string"
           },
-          "client_name": {
+          "label": {
+            "type": "string"
+          },
+          "icon": {
             "type": [
               "string",
               "null"
             ]
           },
-          "via": {
-            "type": "string",
-            "enum": [
-              "mcp",
-              "cli"
-            ]
+          "definition": {
+            "type": "string"
           },
-          "scopes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "granted_at": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          },
-          "last_used_at": {
+          "aliases": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               {
                 "type": "null"
               }
             ]
-          }
-        },
-        "required": [
-          "id",
-          "client_id",
-          "client_name",
-          "via",
-          "scopes",
-          "granted_at",
-          "last_used_at"
-        ],
-        "additionalProperties": false
-      },
-      "Dataset": {
-        "type": "object",
-        "properties": {
-          "kind": {
+          },
+          "tier": {
+            "type": "string"
+          },
+          "importance": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "importance_why": {
+            "type": "string"
+          },
+          "formula": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "use_for": {
+            "type": "string"
+          },
+          "dont_use_for": {
+            "type": "string"
+          },
+          "caveats": {
+            "type": "string"
+          },
+          "decisions": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "string"
+          },
+          "owner_team": {
+            "type": "string"
+          },
+          "primary_dimensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "building_block": {
+            "type": "boolean"
+          },
+          "owner_person": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "left": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "title",
+                  "left"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "who_may_see": {
+            "type": "string"
+          },
+          "moves_with": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "importance": {
+                      "type": "string"
+                    },
+                    "tier": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "label",
+                    "importance",
+                    "tier"
+                  ],
+                  "additionalProperties": false
+                },
+                "movement": {
+                  "type": "string",
+                  "enum": [
+                    "same",
+                    "opposite",
+                    "depends"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "metric",
+                "movement",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "importance": {
+                      "type": "string"
+                    },
+                    "tier": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "label",
+                    "importance",
+                    "tier"
+                  ],
+                  "additionalProperties": false
+                },
+                "sign": {
+                  "type": "number"
+                },
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "sum",
+                    "product"
+                  ]
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "metric",
+                "sign",
+                "operation",
+                "note"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "when_to_use": {
+            "type": "string"
+          },
+          "not_the_same_as": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grain_and_filters": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Category"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "trust_state": {
             "type": "string",
-            "const": "dataset"
+            "enum": [
+              "draft",
+              "agent_verified",
+              "human_verified"
+            ]
           },
-          "id": {
-            "type": "string"
+          "verified_by": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
-          "name": {
-            "type": "string"
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "sync",
+              "curator"
+            ]
+          },
+          "name_is_generated": {
+            "type": "boolean"
+          },
+          "touched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dismissed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dismissed_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "custom": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
           }
         },
         "required": [
           "kind",
           "id",
-          "name"
+          "name",
+          "label",
+          "icon",
+          "definition",
+          "aliases",
+          "tier",
+          "importance",
+          "direction",
+          "importance_why",
+          "use_for",
+          "dont_use_for",
+          "caveats",
+          "decisions",
+          "actions",
+          "owner_team",
+          "primary_dimensions",
+          "building_block",
+          "owner_person",
+          "who_may_see",
+          "moves_with",
+          "edges",
+          "when_to_use",
+          "not_the_same_as",
+          "grain_and_filters",
+          "unit",
+          "category_id",
+          "category",
+          "owner",
+          "trust_state",
+          "verified_by",
+          "verified_at",
+          "origin",
+          "name_is_generated",
+          "touched_at",
+          "dismissed_at",
+          "dismissed_reason",
+          "created_at",
+          "updated_at",
+          "custom"
         ],
         "additionalProperties": false
       },
-      "Workspace": {
+      "Category": {
         "type": "object",
         "properties": {
           "kind": {
             "type": "string",
-            "const": "workspace"
+            "const": "category"
           },
           "id": {
             "type": "string"
           },
+          "key": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "question": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kicker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "type": "number"
           }
         },
         "required": [
           "kind",
           "id",
-          "name"
-        ],
-        "additionalProperties": false
-      },
-      "Measure": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "measure"
-          },
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "kind",
-          "id",
-          "name"
+          "key",
+          "path",
+          "name",
+          "description",
+          "question",
+          "kicker",
+          "icon",
+          "position"
         ],
         "additionalProperties": false
       },
@@ -589,6 +1156,203 @@
                 "type": "null"
               }
             ]
+          },
+          "tier": {
+            "type": "string"
+          },
+          "importance": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "importance_why": {
+            "type": "string"
+          },
+          "formula": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "use_for": {
+            "type": "string"
+          },
+          "dont_use_for": {
+            "type": "string"
+          },
+          "caveats": {
+            "type": "string"
+          },
+          "decisions": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "string"
+          },
+          "owner_team": {
+            "type": "string"
+          },
+          "primary_dimensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "building_block": {
+            "type": "boolean"
+          },
+          "owner_person": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "left": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "title",
+                  "left"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "following": {
+            "type": "boolean"
+          },
+          "who_may_see": {
+            "type": "string"
+          },
+          "moves_with": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "importance": {
+                      "type": "string"
+                    },
+                    "tier": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "label",
+                    "importance",
+                    "tier"
+                  ],
+                  "additionalProperties": false
+                },
+                "movement": {
+                  "type": "string",
+                  "enum": [
+                    "same",
+                    "opposite",
+                    "depends"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "metric",
+                "movement",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "importance": {
+                      "type": "string"
+                    },
+                    "tier": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "label",
+                    "importance",
+                    "tier"
+                  ],
+                  "additionalProperties": false
+                },
+                "sign": {
+                  "type": "number"
+                },
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "sum",
+                    "product"
+                  ]
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "metric",
+                "sign",
+                "operation",
+                "note"
+              ],
+              "additionalProperties": false
+            }
           },
           "when_to_use": {
             "type": "string"
@@ -883,6 +1647,23 @@
           "icon",
           "definition",
           "aliases",
+          "tier",
+          "importance",
+          "direction",
+          "importance_why",
+          "use_for",
+          "dont_use_for",
+          "caveats",
+          "decisions",
+          "actions",
+          "owner_team",
+          "primary_dimensions",
+          "building_block",
+          "owner_person",
+          "following",
+          "who_may_see",
+          "moves_with",
+          "edges",
           "when_to_use",
           "not_the_same_as",
           "grain_and_filters",
@@ -909,50 +1690,66 @@
         ],
         "additionalProperties": false
       },
-      "Category": {
+      "Dataset": {
         "type": "object",
         "properties": {
           "kind": {
             "type": "string",
-            "const": "category"
+            "const": "dataset"
           },
           "id": {
             "type": "string"
           },
-          "key": {
-            "type": "string"
-          },
-          "path": {
-            "type": "string"
-          },
           "name": {
             "type": "string"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "icon": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "position": {
-            "type": "number"
           }
         },
         "required": [
           "kind",
           "id",
-          "key",
-          "path",
-          "name",
-          "description",
-          "icon",
-          "position"
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "Workspace": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "workspace"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "Measure": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "measure"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
         ],
         "additionalProperties": false
       },
@@ -997,6 +1794,235 @@
           "comparison_period",
           "currency",
           "custom_axes"
+        ],
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "person",
+              "service_account"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sign_in_method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "browser",
+              "mcp",
+              "api",
+              "cli"
+            ]
+          },
+          "powerbi_connection": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "connected",
+                  "needs_reconnect",
+                  "disconnected",
+                  "not_connected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "powerbi_connect_url": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "boolean"
+          },
+          "sample_data": {
+            "type": "boolean"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "capture": {
+                "type": "boolean"
+              },
+              "retention_days": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "capture",
+              "retention_days"
+            ],
+            "additionalProperties": false
+          },
+          "may_admin": {
+            "type": "boolean",
+            "description": "Whether the admin section opens for the caller: the admin status page's own guard (admin:read_status)."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "client_address": {
+            "description": "The address this request counted against for rate limits and audit, the caller's own. Null for a request made in process.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "email",
+          "name",
+          "roles",
+          "sign_in_method",
+          "via",
+          "powerbi_connection",
+          "powerbi_connect_url",
+          "questions",
+          "sample_data",
+          "usage",
+          "may_admin",
+          "warnings",
+          "client_address"
+        ],
+        "additionalProperties": false
+      },
+      "PowerBiConnection": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "needs_reconnect",
+              "disconnected",
+              "not_connected"
+            ]
+          },
+          "account": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "connected_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "account",
+          "connected_at",
+          "last_used_at",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Grant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "mcp",
+              "cli"
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "granted_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "client_id",
+          "client_name",
+          "via",
+          "scopes",
+          "granted_at",
+          "last_used_at"
         ],
         "additionalProperties": false
       },
@@ -1362,6 +2388,12 @@
             ]
           },
           "values": {},
+          "group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "owner": {
             "type": [
               "string",
@@ -1482,6 +2514,7 @@
           "aliases",
           "not_the_same_as",
           "values",
+          "group",
           "owner",
           "trust_state",
           "custom",
@@ -3165,6 +4198,18 @@
               "null"
             ]
           },
+          "question": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kicker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "icon": {
             "type": [
               "string",
@@ -3191,6 +4236,8 @@
           "path",
           "name",
           "description",
+          "question",
+          "kicker",
           "icon",
           "position",
           "metric_count",
@@ -4532,6 +5579,1618 @@
         }
       }
     },
+    "/api/v1/conventions/upgrade": {
+      "post": {
+        "operationId": "postApiV1ConventionsUpgrade",
+        "summary": "Split legacy metric usage into reviewable drafts",
+        "responses": {
+          "200": {
+            "description": "Split legacy metric usage into reviewable drafts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "updated",
+                    "note"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guide": {
+      "get": {
+        "operationId": "getApiV1Guide",
+        "summary": "Read the curated metrics guide",
+        "responses": {
+          "200": {
+            "description": "Read the curated metrics guide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Guide"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/book/exports": {
+      "get": {
+        "operationId": "getApiV1BookExports",
+        "summary": "Read available book exports",
+        "responses": {
+          "200": {
+            "description": "Read available book exports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "markdown": {
+                      "type": "boolean"
+                    },
+                    "pdf": {
+                      "type": "boolean"
+                    },
+                    "guide": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "markdown",
+                    "pdf",
+                    "guide"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guide/export": {
+      "get": {
+        "operationId": "getApiV1GuideExport",
+        "summary": "Export visible book documentation",
+        "responses": {
+          "200": {
+            "description": "Export visible book documentation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "markdown"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "array",
+                      "items": {}
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "error",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "markdown",
+              "type": "string",
+              "enum": [
+                "markdown",
+                "pdf"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/metrics/{name}/export": {
+      "get": {
+        "operationId": "getApiV1MetricsByNameExport",
+        "summary": "Export visible book documentation",
+        "responses": {
+          "200": {
+            "description": "Export visible book documentation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "markdown"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "array",
+                      "items": {}
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "error",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "markdown",
+              "type": "string",
+              "enum": [
+                "markdown",
+                "pdf"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/metrics/{name}/owner": {
+      "put": {
+        "operationId": "putApiV1MetricsByNameOwner",
+        "summary": "Assign the person who owns a metric",
+        "responses": {
+          "200": {
+            "description": "Assign the person who owns a metric",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metric"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/metrics/{name}/follow": {
+      "put": {
+        "operationId": "putApiV1MetricsByNameFollow",
+        "summary": "Follow or unfollow a metric as yourself",
+        "responses": {
+          "200": {
+            "description": "Follow or unfollow a metric as yourself",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "following": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "following"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "array",
+                      "items": {}
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "error",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "following": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "following"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/people/{id}/title": {
+      "put": {
+        "operationId": "putApiV1PeopleByIdTitle",
+        "summary": "Set a person's title",
+        "responses": {
+          "200": {
+            "description": "Set a person's title",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "array",
+                      "items": {}
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "error",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "title"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/metrics/{name}/links/{other}": {
+      "put": {
+        "operationId": "putApiV1MetricsByNameLinksByOther",
+        "summary": "Change a metric relationship",
+        "responses": {
+          "200": {
+            "description": "Change a metric relationship",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moves_with": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "movement": {
+                            "type": "string",
+                            "enum": [
+                              "same",
+                              "opposite",
+                              "depends"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "movement",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "edges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "sign": {
+                            "type": "number"
+                          },
+                          "operation": {
+                            "type": "string",
+                            "enum": [
+                              "sum",
+                              "product"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "sign",
+                          "operation",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "moves_with",
+                    "edges"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "It conflicts with the book as it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "other",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "movement": {
+                    "type": "string",
+                    "enum": [
+                      "same",
+                      "opposite",
+                      "depends"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "other_reason": {
+                    "type": "string",
+                    "maxLength": 20000
+                  }
+                },
+                "required": [
+                  "movement",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteApiV1MetricsByNameLinksByOther",
+        "summary": "Change a metric relationship",
+        "responses": {
+          "200": {
+            "description": "Change a metric relationship",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moves_with": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "movement": {
+                            "type": "string",
+                            "enum": [
+                              "same",
+                              "opposite",
+                              "depends"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "movement",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "edges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "sign": {
+                            "type": "number"
+                          },
+                          "operation": {
+                            "type": "string",
+                            "enum": [
+                              "sum",
+                              "product"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "sign",
+                          "operation",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "moves_with",
+                    "edges"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "It conflicts with the book as it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "other",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/v1/metrics/{name}/edges/{other}": {
+      "put": {
+        "operationId": "putApiV1MetricsByNameEdgesByOther",
+        "summary": "Change a metric relationship",
+        "responses": {
+          "200": {
+            "description": "Change a metric relationship",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moves_with": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "movement": {
+                            "type": "string",
+                            "enum": [
+                              "same",
+                              "opposite",
+                              "depends"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "movement",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "edges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "sign": {
+                            "type": "number"
+                          },
+                          "operation": {
+                            "type": "string",
+                            "enum": [
+                              "sum",
+                              "product"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "sign",
+                          "operation",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "moves_with",
+                    "edges"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "It conflicts with the book as it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "other",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sign": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "const": 1
+                      },
+                      {
+                        "type": "number",
+                        "const": -1
+                      }
+                    ]
+                  },
+                  "operation": {
+                    "type": "string",
+                    "enum": [
+                      "sum",
+                      "product"
+                    ]
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "sign",
+                  "operation"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteApiV1MetricsByNameEdgesByOther",
+        "summary": "Change a metric relationship",
+        "responses": {
+          "200": {
+            "description": "Change a metric relationship",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moves_with": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "movement": {
+                            "type": "string",
+                            "enum": [
+                              "same",
+                              "opposite",
+                              "depends"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "movement",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "edges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "importance": {
+                                "type": "string"
+                              },
+                              "tier": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "label",
+                              "importance",
+                              "tier"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "sign": {
+                            "type": "number"
+                          },
+                          "operation": {
+                            "type": "string",
+                            "enum": [
+                              "sum",
+                              "product"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "sign",
+                          "operation",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "moves_with",
+                    "edges"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role or credential does not allow it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing, or none the caller may see.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "It conflicts with the book as it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "other",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "getApiV1Me",
@@ -5327,6 +7986,58 @@
                       }
                     ]
                   },
+                  "tier": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "importance": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "direction": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "importance_why": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "use_for": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "dont_use_for": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "caveats": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "decisions": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "actions": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "owner_team": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "primary_dimensions": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "building_block": {
+                    "type": "boolean"
+                  },
                   "when_to_use": {
                     "type": "string",
                     "maxLength": 20000
@@ -5813,6 +8524,58 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "tier": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "importance": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "direction": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "importance_why": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "use_for": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "dont_use_for": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "caveats": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "decisions": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "actions": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "owner_team": {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      "primary_dimensions": {
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "building_block": {
+                        "type": "boolean"
                       },
                       "when_to_use": {
                         "type": "string",
@@ -6885,6 +9648,28 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "question": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kicker": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -7019,6 +9804,28 @@
                         "maxLength": 500
                       },
                       "description": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "question": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "kicker": {
                         "anyOf": [
                           {
                             "type": "string",
@@ -7184,6 +9991,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "group": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "definition": {
                     "type": "string",
                     "maxLength": 20000
@@ -7374,6 +10193,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "group": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "definition": {
                     "type": "string",
                     "maxLength": 20000
@@ -9064,6 +11895,199 @@
                               ],
                               "additionalProperties": false
                             },
+                            "tier": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "importance": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "direction": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "importance_why": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "required_when": {
+                                  "type": "object",
+                                  "properties": {
+                                    "field": {
+                                      "type": "string",
+                                      "const": "importance"
+                                    },
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "field",
+                                    "values"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "use_for": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "dont_use_for": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "decisions": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "actions": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "owner_team": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "primary_dimensions": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "building_block": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
                             "when_to_use": {
                               "type": "object",
                               "properties": {
@@ -9201,6 +12225,18 @@
                           "required": [
                             "definition",
                             "aliases",
+                            "tier",
+                            "importance",
+                            "direction",
+                            "importance_why",
+                            "use_for",
+                            "dont_use_for",
+                            "caveats",
+                            "decisions",
+                            "actions",
+                            "owner_team",
+                            "primary_dimensions",
+                            "building_block",
                             "when_to_use",
                             "not_the_same_as",
                             "grain_and_filters",
@@ -10001,8 +13037,20 @@
                               "metric_money_qualifier",
                               "naming.qualifier_order",
                               "metric_qualifier_order",
-                              "metric_fields.definition",
+                              "metric_fields.tier",
                               "metric_fields",
+                              "metric_fields.importance",
+                              "metric_fields.direction",
+                              "metric_fields.importance_why",
+                              "metric_fields.use_for",
+                              "metric_fields.dont_use_for",
+                              "metric_fields.caveats",
+                              "metric_fields.decisions",
+                              "metric_fields.actions",
+                              "metric_fields.owner_team",
+                              "metric_fields.primary_dimensions",
+                              "metric_fields.building_block",
+                              "metric_fields.definition",
                               "metric_fields.aliases",
                               "metric_fields.when_to_use",
                               "metric_fields.grain_and_filters",
@@ -10050,6 +13098,18 @@
                                   "naming.forbidden_words",
                                   "naming.money_qualifier",
                                   "naming.qualifier_order",
+                                  "metric_fields.tier",
+                                  "metric_fields.importance",
+                                  "metric_fields.direction",
+                                  "metric_fields.importance_why",
+                                  "metric_fields.use_for",
+                                  "metric_fields.dont_use_for",
+                                  "metric_fields.caveats",
+                                  "metric_fields.decisions",
+                                  "metric_fields.actions",
+                                  "metric_fields.owner_team",
+                                  "metric_fields.primary_dimensions",
+                                  "metric_fields.building_block",
                                   "metric_fields.definition",
                                   "metric_fields.aliases",
                                   "metric_fields.when_to_use",
@@ -10370,6 +13430,199 @@
                               ],
                               "additionalProperties": false
                             },
+                            "tier": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "importance": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "direction": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": [
+                                "required",
+                                "values"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "importance_why": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "required_when": {
+                                  "type": "object",
+                                  "properties": {
+                                    "field": {
+                                      "type": "string",
+                                      "const": "importance"
+                                    },
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "field",
+                                    "values"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "use_for": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "dont_use_for": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "caveats": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "decisions": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "actions": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "owner_team": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "primary_dimensions": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "building_block": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            },
                             "when_to_use": {
                               "type": "object",
                               "properties": {
@@ -10507,6 +13760,18 @@
                           "required": [
                             "definition",
                             "aliases",
+                            "tier",
+                            "importance",
+                            "direction",
+                            "importance_why",
+                            "use_for",
+                            "dont_use_for",
+                            "caveats",
+                            "decisions",
+                            "actions",
+                            "owner_team",
+                            "primary_dimensions",
+                            "building_block",
                             "when_to_use",
                             "not_the_same_as",
                             "grain_and_filters",
@@ -11307,8 +14572,20 @@
                               "metric_money_qualifier",
                               "naming.qualifier_order",
                               "metric_qualifier_order",
-                              "metric_fields.definition",
+                              "metric_fields.tier",
                               "metric_fields",
+                              "metric_fields.importance",
+                              "metric_fields.direction",
+                              "metric_fields.importance_why",
+                              "metric_fields.use_for",
+                              "metric_fields.dont_use_for",
+                              "metric_fields.caveats",
+                              "metric_fields.decisions",
+                              "metric_fields.actions",
+                              "metric_fields.owner_team",
+                              "metric_fields.primary_dimensions",
+                              "metric_fields.building_block",
+                              "metric_fields.definition",
                               "metric_fields.aliases",
                               "metric_fields.when_to_use",
                               "metric_fields.grain_and_filters",
@@ -11612,6 +14889,18 @@
                               "naming.forbidden_words",
                               "naming.money_qualifier",
                               "naming.qualifier_order",
+                              "metric_fields.tier",
+                              "metric_fields.importance",
+                              "metric_fields.direction",
+                              "metric_fields.importance_why",
+                              "metric_fields.use_for",
+                              "metric_fields.dont_use_for",
+                              "metric_fields.caveats",
+                              "metric_fields.decisions",
+                              "metric_fields.actions",
+                              "metric_fields.owner_team",
+                              "metric_fields.primary_dimensions",
+                              "metric_fields.building_block",
                               "metric_fields.definition",
                               "metric_fields.aliases",
                               "metric_fields.when_to_use",
@@ -20640,6 +23929,9 @@
                           "name": {
                             "type": "string"
                           },
+                          "title": {
+                            "type": "string"
+                          },
                           "email": {
                             "type": "string"
                           },
@@ -20709,6 +24001,7 @@
                           "pii_reader",
                           "id",
                           "name",
+                          "title",
                           "email",
                           "sign_in_method",
                           "last_seen_at",

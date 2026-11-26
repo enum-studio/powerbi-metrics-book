@@ -242,6 +242,23 @@ export const conventionsSchema = z.strictObject({
   metric_fields: z.strictObject({
     definition: required,
     aliases: required,
+    tier: z.strictObject({ required: z.boolean(), values: words }),
+    importance: z.strictObject({ required: z.boolean(), values: words }),
+    direction: z.strictObject({ required: z.boolean(), values: words }),
+    importance_why: z.strictObject({
+      required: z.boolean(),
+      required_when: z
+        .strictObject({ field: z.literal("importance"), values: words })
+        .optional(),
+    }),
+    use_for: required,
+    dont_use_for: required,
+    caveats: required,
+    decisions: required,
+    actions: required,
+    owner_team: required,
+    primary_dimensions: required,
+    building_block: required,
     when_to_use: required,
     not_the_same_as: z.strictObject({
       required: z.union([z.boolean(), z.literal("when_label_shares_a_word")]),
