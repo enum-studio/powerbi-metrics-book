@@ -40,6 +40,7 @@ export const SPA_PATHS: readonly string[] = [
   "/admin/pii",
   "/review/metrics/:name",
   "/catalog",
+  "/catalog/guide",
   "/catalog/search",
   "/catalog/categories/*",
   "/catalog/metrics/:name",

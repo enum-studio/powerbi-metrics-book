@@ -21,6 +21,7 @@ import {
   metricPagesQuery,
 } from "../queries";
 import { categoryCounts, categoryTrail, type Category } from "./model";
+import { exportsQuery } from "../guide/queries";
 import { DatasetsBranch } from "./datasets";
 import { useOpenRows } from "./open-rows";
 
@@ -77,11 +78,15 @@ function CategoryMetrics({
 }
 
 export function CatalogTree() {
+  const available = useQuery(exportsQuery);
   const location = useLocation();
   const path = location.pathname;
   const onMetric = path.startsWith("/catalog/metrics/");
   const inMetrics =
-    path === "/catalog" || onMetric || path.startsWith(CATEGORY_PAGE);
+    path === "/catalog" ||
+    path === "/catalog/guide" ||
+    onMetric ||
+    path.startsWith(CATEGORY_PAGE);
   const [metricsOpen, setMetricsOpen] = useFold(inMetrics);
   const categories = useQuery(categoriesQuery),
     summary = useQuery(bookSummaryQuery);
@@ -198,6 +203,15 @@ export function CatalogTree() {
       </div>
       {metricsOpen && (
         <>
+          {available.data?.guide && (
+            <Link
+              to="/catalog/guide"
+              className={NAV_ROW}
+              style={indent(1, false)}
+            >
+              Reading guide
+            </Link>
+          )}
           {categories.error && <ErrorState error={categories.error} />}
           {categories.isPending && (
             <p className="appear-late px-2 py-1 text-meta text-ink-3">

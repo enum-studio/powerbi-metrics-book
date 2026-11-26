@@ -1,3 +1,6 @@
+import { MetricDocumentation } from "../guide/documentation";
+import { Exports } from "../guide/exports";
+import { DocumentationEditor } from "../guide/editor";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../api/client";
@@ -9,7 +12,7 @@ import { ItemIcon } from "../../shell/item-icon";
 import { EmptyState, ErrorState, Loading } from "../../shell/states";
 import { categoriesQuery } from "../queries";
 import { categoryTrail, findCategory } from "../tree/model";
-import { metricQuery, variantsQuery, type Metric } from "../../review/queries";
+import { metricQuery, variantsQuery } from "../../review/queries";
 import { AcceptedAnswers } from "../../review/accepted-answers";
 import { History } from "../../review/history";
 import { Panel } from "../../review/panel";
@@ -112,7 +115,9 @@ export function MetricPage({
             </p>
             <TrustState metric={metric.data} />
           </header>
-          <Description metric={metric.data} />
+          <Exports name={metric.data.name} />
+          <MetricDocumentation metric={metric.data} />
+          <DocumentationEditor metric={metric.data} me={me} />
           <section
             aria-labelledby="variants-heading"
             className="flex flex-col gap-3"
@@ -164,27 +169,5 @@ export function MetricPage({
         <Panel metric={metric.data} me={me} categoryLinks={categoryLinks} />
       </div>
     </>
-  );
-}
-
-function Description({ metric }: { metric: Metric }) {
-  const parts = [
-    ["Definition", metric.definition],
-    ["When to use it", metric.when_to_use],
-    ["Not the same as", metric.not_the_same_as],
-  ] as const;
-  return (
-    <div className="flex max-w-(--measure) flex-col gap-4">
-      {parts.map(([term, text]) => (
-        <section key={term} className="flex flex-col gap-1">
-          <h2 className="text-meta font-medium text-ink-3">{term}</h2>
-          {text === null || text === "" ? (
-            <p className="text-body text-ink-3">Not written yet</p>
-          ) : (
-            <p className="text-body whitespace-pre-line text-ink">{text}</p>
-          )}
-        </section>
-      ))}
-    </div>
   );
 }

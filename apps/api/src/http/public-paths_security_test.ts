@@ -443,6 +443,7 @@ describe("isPublic", () => {
       "GET /admin/pii",
       "GET /review/metrics/:name",
       "GET /catalog",
+      "GET /catalog/guide",
       "GET /catalog/search",
       "GET /catalog/categories/*",
       "GET /catalog/metrics/:name",

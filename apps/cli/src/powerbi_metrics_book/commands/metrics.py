@@ -106,6 +106,22 @@ def _show_metric(console: Console, metric: dict[str, Json]) -> None:
         {
             "definition": metric.get("definition"),
             "aliases": metric.get("aliases"),
+            "tier": metric.get("tier"),
+            "importance": metric.get("importance"),
+            "importance_why": metric.get("importance_why"),
+            "direction": metric.get("direction"),
+            "use_for": metric.get("use_for"),
+            "dont_use_for": metric.get("dont_use_for"),
+            "caveats": metric.get("caveats"),
+            "decisions": metric.get("decisions"),
+            "actions": metric.get("actions"),
+            "owner_team": metric.get("owner_team"),
+            "primary_dimensions": metric.get("primary_dimensions"),
+            "building_block": metric.get("building_block"),
+            "owner_person": metric.get("owner_person"),
+            "moves_with": metric.get("moves_with"),
+            "edges": metric.get("edges"),
+            "who_may_see": metric.get("who_may_see"),
             "when_to_use": metric.get("when_to_use"),
             "not_the_same_as": metric.get("not_the_same_as"),
             "grain_and_filters": metric.get("grain_and_filters"),
@@ -195,8 +211,34 @@ def _fields(
     category: str | None,
     owner: str | None,
     custom: list[str] | None,
+    tier: str | None = None,
+    importance: str | None = None,
+    importance_why: str | None = None,
+    direction: str | None = None,
+    use_for: str | None = None,
+    dont_use_for: str | None = None,
+    caveats: str | None = None,
+    decisions: str | None = None,
+    actions: str | None = None,
+    owner_team: str | None = None,
+    primary_dimensions: list[str] | None = None,
+    building_block: bool | None = None,
 ) -> dict[str, Json]:
-    given = {
+    given: dict[str, Json] = {
+        "tier": tier,
+        "importance": importance,
+        "importance_why": importance_why,
+        "direction": direction,
+        "use_for": use_for,
+        "dont_use_for": dont_use_for,
+        "caveats": caveats,
+        "decisions": decisions,
+        "actions": actions,
+        "owner_team": owner_team,
+        "primary_dimensions": None
+        if primary_dimensions is None
+        else [str(item) for item in primary_dimensions],
+        "building_block": building_block,
         "label": label,
         "definition": definition,
         "when_to_use": when_to_use,
@@ -300,6 +342,22 @@ def create(
     label: Annotated[str, typer.Option(help="Its name in words.")],
     definition: Definition = None,
     aliases: Aliases = None,
+    tier: Annotated[str | None, typer.Option(help="Tier.")] = None,
+    importance: Annotated[str | None, typer.Option(help="Importance.")] = None,
+    importance_why: Annotated[str | None, typer.Option(help="Importance why.")] = None,
+    direction: Annotated[str | None, typer.Option(help="Direction.")] = None,
+    use_for: Annotated[str | None, typer.Option(help="Use for.")] = None,
+    dont_use_for: Annotated[str | None, typer.Option(help="Dont use for.")] = None,
+    caveats: Annotated[str | None, typer.Option(help="Caveats.")] = None,
+    decisions: Annotated[str | None, typer.Option(help="Decisions.")] = None,
+    actions: Annotated[str | None, typer.Option(help="Actions.")] = None,
+    owner_team: Annotated[str | None, typer.Option(help="Owner team.")] = None,
+    primary_dimensions: Annotated[
+        list[str] | None, typer.Option(help="A term name; repeat to list dimensions.")
+    ] = None,
+    building_block: Annotated[
+        bool | None, typer.Option(help="Whether this metric builds others.")
+    ] = None,
     when_to_use: WhenToUse = None,
     not_the_same_as: NotTheSameAs = None,
     grain: Grain = None,
@@ -315,6 +373,18 @@ def create(
         label=label,
         definition=definition,
         aliases=aliases,
+        tier=tier,
+        importance=importance,
+        importance_why=importance_why,
+        direction=direction,
+        use_for=use_for,
+        dont_use_for=dont_use_for,
+        caveats=caveats,
+        decisions=decisions,
+        actions=actions,
+        owner_team=owner_team,
+        primary_dimensions=primary_dimensions,
+        building_block=building_block,
         when_to_use=when_to_use,
         not_the_same_as=not_the_same_as,
         grain=grain,
@@ -341,6 +411,22 @@ def update(
     label: Annotated[str | None, typer.Option(help="Its name in words.")] = None,
     definition: Definition = None,
     aliases: Aliases = None,
+    tier: Annotated[str | None, typer.Option(help="Tier.")] = None,
+    importance: Annotated[str | None, typer.Option(help="Importance.")] = None,
+    importance_why: Annotated[str | None, typer.Option(help="Importance why.")] = None,
+    direction: Annotated[str | None, typer.Option(help="Direction.")] = None,
+    use_for: Annotated[str | None, typer.Option(help="Use for.")] = None,
+    dont_use_for: Annotated[str | None, typer.Option(help="Dont use for.")] = None,
+    caveats: Annotated[str | None, typer.Option(help="Caveats.")] = None,
+    decisions: Annotated[str | None, typer.Option(help="Decisions.")] = None,
+    actions: Annotated[str | None, typer.Option(help="Actions.")] = None,
+    owner_team: Annotated[str | None, typer.Option(help="Owner team.")] = None,
+    primary_dimensions: Annotated[
+        list[str] | None, typer.Option(help="A term name; repeat to list dimensions.")
+    ] = None,
+    building_block: Annotated[
+        bool | None, typer.Option(help="Whether this metric builds others.")
+    ] = None,
     when_to_use: WhenToUse = None,
     not_the_same_as: NotTheSameAs = None,
     grain: Grain = None,
@@ -356,6 +442,18 @@ def update(
         label=label,
         definition=definition,
         aliases=aliases,
+        tier=tier,
+        importance=importance,
+        importance_why=importance_why,
+        direction=direction,
+        use_for=use_for,
+        dont_use_for=dont_use_for,
+        caveats=caveats,
+        decisions=decisions,
+        actions=actions,
+        owner_team=owner_team,
+        primary_dimensions=primary_dimensions,
+        building_block=building_block,
         when_to_use=when_to_use,
         not_the_same_as=not_the_same_as,
         grain=grain,
@@ -571,3 +669,121 @@ def check(
         )
     if failures:
         raise typer.Exit(1)
+
+
+owner_app = typer.Typer(help="Assign the person responsible for a metric.")
+app.add_typer(owner_app, name="owner")
+
+
+@owner_app.command("set")
+def set_owner(
+    context: typer.Context, name: Name, email: str, json_output: JsonOption = False
+) -> None:
+    """Assign a person by their email, or pass none to clear the owner."""
+    _metric(
+        context,
+        json_output,
+        "PUT",
+        name,
+        "the metric",
+        action="owner",
+        body={"email": None if email == "none" else email},
+    )
+
+
+@app.command("follow")
+def follow(context: typer.Context, name: Name, json_output: JsonOption = False) -> None:
+    """Follow this metric as yourself."""
+    show_object(
+        context,
+        json_output,
+        "PUT",
+        api_path("metrics", name, "follow"),
+        "the follow",
+        body={"following": True},
+    )
+
+
+@app.command("unfollow")
+def unfollow(
+    context: typer.Context, name: Name, json_output: JsonOption = False
+) -> None:
+    """Stop following this metric as yourself."""
+    show_object(
+        context,
+        json_output,
+        "PUT",
+        api_path("metrics", name, "follow"),
+        "the follow",
+        body={"following": False},
+    )
+
+
+@app.command("link")
+def link_metric(
+    context: typer.Context,
+    name: Name,
+    other: str,
+    movement: str,
+    reason: str,
+    other_reason: str = "",
+    json_output: JsonOption = False,
+) -> None:
+    """Describe how two metrics move together: same, opposite or depends."""
+    show_object(
+        context,
+        json_output,
+        "PUT",
+        api_path("metrics", name, "links", other),
+        "the links",
+        body={"movement": movement, "reason": reason, "other_reason": other_reason},
+    )
+
+
+@app.command("unlink")
+def unlink_metric(
+    context: typer.Context, name: Name, other: str, json_output: JsonOption = False
+) -> None:
+    """Remove a moves-with link."""
+    show_object(
+        context,
+        json_output,
+        "DELETE",
+        api_path("metrics", name, "links", other),
+        "the links",
+    )
+
+
+@app.command("edge")
+def edge_metric(
+    context: typer.Context,
+    name: Name,
+    child: str,
+    sign: int = 1,
+    operation: str = "sum",
+    note: str = "",
+    json_output: JsonOption = False,
+) -> None:
+    """Add a child to the metric's sum or product."""
+    show_object(
+        context,
+        json_output,
+        "PUT",
+        api_path("metrics", name, "edges", child),
+        "the edges",
+        body={"sign": sign, "operation": operation, "note": note},
+    )
+
+
+@app.command("remove-edge")
+def remove_edge(
+    context: typer.Context, name: Name, child: str, json_output: JsonOption = False
+) -> None:
+    """Remove a child from the metric's formula."""
+    show_object(
+        context,
+        json_output,
+        "DELETE",
+        api_path("metrics", name, "edges", child),
+        "the edges",
+    )

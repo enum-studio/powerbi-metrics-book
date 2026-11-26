@@ -100,6 +100,7 @@ export const PUBLIC_PATHS: readonly string[] = [
   "GET /review/metrics/:name",
   // The catalog shell holds no data; its screens read everything from /api/v1.
   "GET /catalog",
+  "GET /catalog/guide",
   "GET /catalog/search",
   // Categories nest to any depth. This wildcard serves only the shell; nothing below it is a route.
   "GET /catalog/categories/*",

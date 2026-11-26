@@ -15,6 +15,7 @@ import { setPasswordRoute } from "./routes/set-password";
 import { inviteRoute } from "./routes/invite";
 import { signInRoute } from "./routes/sign-in";
 import { catalogRoute, catalogIndexRoute } from "./routes/catalog";
+import { guideRoute } from "./routes/catalog/guide";
 import { categoryRoute } from "./routes/catalog/category";
 import { searchRoute } from "./routes/catalog/search";
 import { metricRoute } from "./routes/catalog/metric";
@@ -43,6 +44,7 @@ export const routeTree = rootRoute.addChildren([
   reviewMetricRoute,
   catalogRoute.addChildren([
     catalogIndexRoute,
+    guideRoute,
     searchRoute,
     categoryRoute,
     metricRoute,

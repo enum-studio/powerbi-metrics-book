@@ -33,6 +33,7 @@ import {
   liveMeasure,
   lockMetric,
   openChange,
+  changeVisibility,
   refuseClashes,
   resolveMetric,
   settle,
@@ -312,8 +313,9 @@ export async function moveVariant(
   move: VariantMove,
 ) {
   await requireCurator(context);
+  const visibility = await changeVisibility(context);
   await withEvents(context.db, async (tx, emit) => {
-    const change = await openChange(context, tx, emit);
+    const change = await openChange(context, tx, emit, visibility);
     const [found] = looksLikeId(id)
       ? await tx
           .select({

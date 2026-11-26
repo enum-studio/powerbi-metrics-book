@@ -95,6 +95,11 @@ RUN touch /git_sha; \
   fi
 
 FROM node
+# The upstream base still has the vulnerable system zstd library. Node's
+# bundled decoder is separate and refused by the guarded fetcher.
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends libzstd1=1.5.7+dfsg-1+deb13u1 \
+  && rm -rf /var/lib/apt/lists
 ARG GIT_SHA
 ENV NODE_ENV=production \
   GIT_SHA=$GIT_SHA \

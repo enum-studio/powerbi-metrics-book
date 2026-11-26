@@ -11,6 +11,50 @@ Every setting has three ways in: the admin section, `pbmb admin settings get|set
 
 Saving a setting checks it against the schema shown as Accepts.
 
+## `guide`
+
+### `guide.enabled`
+
+Show the curated reading page.
+
+- Default: `true`
+- Environment variable: `GUIDE_ENABLED`
+- Accepts: true or false
+
+### `guide.result_metric`
+
+The metric whose edges explain the result on the reading page.
+
+- Default: `null`
+- Environment variable: `GUIDE_RESULT_METRIC`
+- Accepts: text or null
+
+### `guide.featured_metric`
+
+The metric shown up close; otherwise the first north star.
+
+- Default: `null`
+- Environment variable: `GUIDE_FEATURED_METRIC`
+- Accepts: text or null
+
+## `exports`
+
+### `exports.markdown`
+
+Allow Markdown exports of the guide and metrics.
+
+- Default: `true`
+- Environment variable: `EXPORTS_MARKDOWN`
+- Accepts: true or false
+
+### `exports.pdf`
+
+Allow PDF exports through browser printing.
+
+- Default: `true`
+- Environment variable: `EXPORTS_PDF`
+- Accepts: true or false
+
 ## `questions`
 
 ### `questions.enabled`

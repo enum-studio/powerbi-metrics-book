@@ -265,3 +265,11 @@ def delete(context: typer.Context, name: Name, json_output: JsonOption = False) 
         {"deleted": name},
         f"Deleted the term {name}.",
     )
+
+
+@app.command("group")
+def set_group(
+    context: typer.Context, name: str, group: str, json_output: JsonOption = False
+) -> None:
+    """Set the glossary group of a term."""
+    _term(context, json_output, "PATCH", api_path("terms", name), {"group": group})

@@ -381,6 +381,13 @@ describe("the routes", () => {
     await call("POST", "/categories/sales", { name: "Sales" });
     await call("PATCH", `/metrics/${name}`, {
       definition: "Money spent on advertising.",
+      tier: "driver",
+      importance: "medium",
+      direction: "higher_is_better",
+      use_for: "Plan capacity.",
+      dont_use_for: "Profitability.",
+      decisions: "Adjust capacity.",
+      owner_team: "Operations",
       when_to_use: "Questions about marketing cost.",
       grain_and_filters: "Per campaign day.",
       unit: "money",

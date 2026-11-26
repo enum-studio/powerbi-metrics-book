@@ -1167,6 +1167,26 @@ Other answers: 401 Sign in first; 403 The caller's role or credential does not a
 
 ## book
 
+### GET `/api/v1/book/exports`
+
+Read available book exports
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Read available book exports | an object with markdown, pdf, guide |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `markdown` | true or false | yes |   |
+| `pdf` | true or false | yes |   |
+| `guide` | true or false | yes |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
+
 ### GET `/api/v1/book/summary`
 
 How much of the book the caller can see, for the home page
@@ -1219,6 +1239,8 @@ Body (JSON, required):
 | --- | --- | --- | --- |
 | `name` | text | yes |   |
 | `description` | text or null | no |   |
+| `question` | text or null | no |   |
+| `kicker` | text or null | no |   |
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
@@ -1234,6 +1256,8 @@ Fields of the first answer:
 | `path` | text | yes |   |
 | `name` | text | yes |   |
 | `description` | text or null | yes |   |
+| `question` | text or null | yes |   |
+| `kicker` | text or null | yes |   |
 | `icon` | text or null | yes |   |
 | `position` | a number | yes |   |
 
@@ -1249,7 +1273,7 @@ Who may call it: A curator; an admin; a curator outside the data's audience; a c
 | --- | --- | --- | --- | --- |
 | `path` | path | text | yes |   |
 
-Body (JSON): an object with parent, position or an object with name, key, description.
+Body (JSON): an object with parent, position or an object with name, key, description, question, kicker.
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
@@ -1265,6 +1289,8 @@ Fields of the first answer:
 | `path` | text | yes |   |
 | `name` | text | yes |   |
 | `description` | text or null | yes |   |
+| `question` | text or null | yes |   |
+| `kicker` | text or null | yes |   |
 | `icon` | text or null | yes |   |
 | `position` | a number | yes |   |
 
@@ -1303,6 +1329,25 @@ Who may call it: Any signed-in caller: a person in a browser or with `pbmb login
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
 ## conventions
+
+### POST `/api/v1/conventions/upgrade`
+
+Split legacy metric usage into reviewable drafts
+
+Who may call it: A curator; an admin; a curator outside the data's audience; a curator signed in with `pbmb login`.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Split legacy metric usage into reviewable drafts | an object with updated, note |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `updated` | a list of text | yes |   |
+| `note` | text | yes |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it.
 
 ### GET `/api/v1/conventions/rules`
 
@@ -1858,6 +1903,54 @@ Who may call it: Any signed-in caller: a person in a browser or with `pbmb login
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it.
 
+## guide
+
+### GET `/api/v1/guide`
+
+Read the curated metrics guide
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Read the curated metrics guide | Guide |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `areas` | a list of an object | yes |   |
+| `metrics` | a list of MetricDocument | yes |   |
+| `sum` | MetricDocument or null | yes |   |
+| `featured` | MetricDocument or null | yes |   |
+| `glossary` | a list of an object | yes |   |
+| `naming` | an object with case, kinds, forbidden_words, money_qualifier, qualifier_order, qualifiers, label | yes |   |
+| `exports` | an object with markdown, pdf, guide | yes |   |
+
+Other answers: 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
+### GET `/api/v1/guide/export`
+
+Export visible book documentation
+
+Who may call it: Any signed-in caller: a person in a browser or with `pbmb login`, or a service account.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `format` | query | one of "markdown", "pdf" | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Export visible book documentation | an object with markdown |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `markdown` | text | yes |   |
+
+Other answers: 400 Validation Error; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
 ## icons
 
 ### GET `/api/v1/icons`
@@ -1971,6 +2064,246 @@ Other answers: 400 Validation Error; 401 Sign in first; 403 The caller's role or
 
 ## metrics
 
+### GET `/api/v1/metrics/{name}/export`
+
+Export visible book documentation
+
+Who may call it: A viewer; a curator; an admin; a service account with a grant; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+| `format` | query | one of "markdown", "pdf" | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Export visible book documentation | an object with markdown |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `markdown` | text | yes |   |
+
+Other answers: 400 Validation Error; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
+### PUT `/api/v1/metrics/{name}/owner`
+
+Assign the person who owns a metric
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `email` | text (email) or null | yes |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Assign the person who owns a metric | Metric |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `open_questions` | a number | no |   |
+| `accepted_answers` | a list of an object | no |   |
+| `kind` | "metric" | yes |   |
+| `id` | text | yes |   |
+| `name` | text | yes |   |
+| `label` | text | yes |   |
+| `icon` | text or null | yes |   |
+| `definition` | text | yes |   |
+| `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
+| `when_to_use` | text | yes |   |
+| `not_the_same_as` | text or null | yes |   |
+| `grain_and_filters` | text | yes |   |
+| `unit` | text or null | yes |   |
+| `category_id` | text or null | yes |   |
+| `category` | Category or null | yes |   |
+| `owner` | text or null | yes |   |
+| `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
+| `verified_by` | text or null | yes |   |
+| `verified_by_name` | text or null | yes | The display name of whoever verified or approved it. Never an email. |
+| `verified_at` | text (date-time) or null | yes |   |
+| `origin` | one of "sync", "curator" | yes |   |
+| `name_is_generated` | true or false | yes |   |
+| `touched_at` | text (date-time) or null | yes |   |
+| `dismissed_at` | text (date-time) or null | yes |   |
+| `dismissed_reason` | text or null | yes |   |
+| `created_at` | text (date-time) | yes |   |
+| `updated_at` | text (date-time) | yes |   |
+| `custom` | an object | yes |   |
+| `failing_checks` | a list of an object | yes |   |
+| `base_variants` | a list of an object | yes |   |
+| `other_variants` | a list of an object | yes |   |
+| `terms` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
+### PUT `/api/v1/metrics/{name}/follow`
+
+Follow or unfollow a metric as yourself
+
+Who may call it: A viewer; a curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `following` | true or false | yes |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Follow or unfollow a metric as yourself | an object with following |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `following` | true or false | yes |   |
+
+Other answers: 400 Validation Error; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
+### PUT `/api/v1/metrics/{name}/links/{other}`
+
+Change a metric relationship
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+| `other` | path | text | yes |   |
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `movement` | one of "same", "opposite", "depends" | yes |   |
+| `reason` | text | yes |   |
+| `other_reason` | text | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Change a metric relationship | an object with moves_with, edges |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see; 409 It conflicts with the book as it is.
+
+### DELETE `/api/v1/metrics/{name}/links/{other}`
+
+Change a metric relationship
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+| `other` | path | text | yes |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Change a metric relationship | an object with moves_with, edges |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see; 409 It conflicts with the book as it is.
+
+### PUT `/api/v1/metrics/{name}/edges/{other}`
+
+Change a metric relationship
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+| `other` | path | text | yes |   |
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `sign` | 1 or -1 | yes |   |
+| `operation` | one of "sum", "product" | yes |   |
+| `note` | text or null | no |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Change a metric relationship | an object with moves_with, edges |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see; 409 It conflicts with the book as it is.
+
+### DELETE `/api/v1/metrics/{name}/edges/{other}`
+
+Change a metric relationship
+
+Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `name` | path | text | yes |   |
+| `other` | path | text | yes |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Change a metric relationship | an object with moves_with, edges |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
+
+Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see; 409 It conflicts with the book as it is.
+
 ### GET `/api/v1/metrics`
 
 The metrics, A to Z, as small anchors
@@ -2019,6 +2352,18 @@ Body (JSON, required):
 | `label` | text | yes |   |
 | `definition` | text | no |   |
 | `aliases` | a list of text or null | no |   |
+| `tier` | text | no |   |
+| `importance` | text | no |   |
+| `direction` | text | no |   |
+| `importance_why` | text | no |   |
+| `use_for` | text | no |   |
+| `dont_use_for` | text | no |   |
+| `caveats` | text | no |   |
+| `decisions` | text | no |   |
+| `actions` | text | no |   |
+| `owner_team` | text | no |   |
+| `primary_dimensions` | a list of text | no |   |
+| `building_block` | true or false | no |   |
 | `when_to_use` | text | no |   |
 | `not_the_same_as` | text or null | no |   |
 | `grain_and_filters` | text | no |   |
@@ -2045,6 +2390,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2098,6 +2461,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2134,7 +2515,7 @@ Who may call it: A curator; an admin; a curator signed in with `pbmb login`.
 | --- | --- | --- | --- | --- |
 | `name` | path | text | yes |   |
 
-Body (JSON): an object with name or an object with label, definition, aliases, when_to_use, not_the_same_as, grain_and_filters, unit, category, owner, custom.
+Body (JSON): an object with name or an object with label, definition, aliases, tier, importance, direction, importance_why, use_for, dont_use_for, caveats, decisions, actions, owner_team, primary_dimensions, building_block, when_to_use, not_the_same_as, grain_and_filters, unit, category, owner, custom.
 
 | Answer | Meaning | Shape |
 | --- | --- | --- |
@@ -2153,6 +2534,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2228,6 +2627,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2281,6 +2698,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2340,6 +2775,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2431,6 +2884,24 @@ Fields of the first answer:
 | `icon` | text or null | yes |   |
 | `definition` | text | yes |   |
 | `aliases` | a list of text or null | yes |   |
+| `tier` | text | yes |   |
+| `importance` | text | yes |   |
+| `direction` | text | yes |   |
+| `importance_why` | text | yes |   |
+| `formula` | text or null | no |   |
+| `use_for` | text | yes |   |
+| `dont_use_for` | text | yes |   |
+| `caveats` | text | yes |   |
+| `decisions` | text | yes |   |
+| `actions` | text | yes |   |
+| `owner_team` | text | yes |   |
+| `primary_dimensions` | a list of text | yes |   |
+| `building_block` | true or false | yes |   |
+| `owner_person` | an object with id, name, title, left or null | yes |   |
+| `following` | true or false | yes |   |
+| `who_may_see` | text | yes |   |
+| `moves_with` | a list of an object | yes |   |
+| `edges` | a list of an object | yes |   |
 | `when_to_use` | text | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `grain_and_filters` | text | yes |   |
@@ -2585,6 +3056,37 @@ Body (JSON, required):
 | 204 | Allow or deny the CLI's device code |   |
 
 Other answers: 400 The request is not valid; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
+
+## people
+
+### PUT `/api/v1/people/{id}/title`
+
+Set a person's title
+
+Who may call it: A signed-in person with no role on the data; a viewer; a curator; an admin; a curator outside the data's audience; a curator signed in with `pbmb login`.
+
+| Parameter | In | Accepts | Required | What |
+| --- | --- | --- | --- | --- |
+| `id` | path | text | yes |   |
+
+Body (JSON, required):
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `title` | text | yes |   |
+
+| Answer | Meaning | Shape |
+| --- | --- | --- |
+| 200 | Set a person's title | an object with id, title |
+
+Fields of the first answer:
+
+| Field | Accepts | Required | What |
+| --- | --- | --- | --- |
+| `id` | text | yes |   |
+| `title` | text | yes |   |
+
+Other answers: 400 Validation Error; 401 Sign in first; 403 The caller's role or credential does not allow it; 404 No such thing, or none the caller may see.
 
 ## powerbi
 
@@ -3431,6 +3933,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |
@@ -3453,6 +3956,7 @@ Body (JSON, optional):
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
+| `group` | text or null | no |   |
 | `definition` | text | no |   |
 | `aliases` | a list of text or null | no |   |
 | `not_the_same_as` | text or null | no |   |
@@ -3479,6 +3983,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |
@@ -3501,6 +4006,7 @@ Body (JSON, optional):
 
 | Field | Accepts | Required | What |
 | --- | --- | --- | --- |
+| `group` | text or null | no |   |
 | `definition` | text | no |   |
 | `aliases` | a list of text or null | no |   |
 | `not_the_same_as` | text or null | no |   |
@@ -3528,6 +4034,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |
@@ -3582,6 +4089,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |
@@ -3620,6 +4128,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |
@@ -3658,6 +4167,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |
@@ -3696,6 +4206,7 @@ Fields of the first answer:
 | `aliases` | a list of text or null | yes |   |
 | `not_the_same_as` | text or null | yes |   |
 | `values` | any value | yes |   |
+| `group` | text or null | yes |   |
 | `owner` | text or null | yes |   |
 | `trust_state` | one of "draft", "agent_verified", "human_verified" | yes |   |
 | `custom` | an object | yes |   |

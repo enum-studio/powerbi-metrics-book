@@ -116,6 +116,17 @@ To refresh:
   apps/cli/build-constraints.txt`, keep the two comment lines at its top, and
   set the same version in `build-system.requires` of `apps/cli/pyproject.toml`.
 
+## First-release setup
+
+On 2026-11-26 the public repository received the `release` and `pypi`
+environments, both restricted to `v*` tags with the maintainer as required
+reviewer. Separate tag rulesets restrict creation to repository admins and
+block updates and deletion for everyone. The default branch requires a pull
+request, a code-owner review and the `gate` check, with the documented admin
+bypass for pull requests. PyPI has the pending publisher for this workflow
+and its `pypi` environment. Package visibility and an anonymous image pull
+are verified after the first image is published.
+
 ## Before the first release
 
 Martin sets these up once. The first two are required: without them any

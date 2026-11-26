@@ -4,7 +4,7 @@ Power BI Metrics Book is Agent First BI: a metrics book over a company's own Pow
 
 You run it yourself as four containers, open source, and point it at your Power BI tenant. It is the sister product of [Metrics Book](https://github.com/enum-studio/metrics-book) (coming soon), and the two share one look and one set of words.
 
-**Status: not released yet.** The first release is 0.1, and nothing in the quickstart below installs until then. The design is in [docs/specs/2026-10-25-powerbi-metrics-book.md](docs/specs/2026-10-25-powerbi-metrics-book.md). You can run the whole stack today on a mock tenant, as [CONTRIBUTING.md](CONTRIBUTING.md) describes.
+**Current version: 0.1.0.** The app and source are available. See the [changelog](CHANGELOG.md) for what is included. To develop against the mock tenant, follow [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Agent First BI
 
@@ -35,7 +35,9 @@ Only `api` takes requests from outside. The same drawing, with the networks, is 
 
 ## Quickstart
 
-You need [uv](https://docs.astral.sh/uv/) and Docker with Compose. These are the commands as they will work at 0.1.
+To run the current source against the sample tenant, follow [CONTRIBUTING.md](CONTRIBUTING.md).
+
+You need [uv](https://docs.astral.sh/uv/) and Docker with Compose. The CLI is distributed through PyPI and pins the matching image on GHCR.
 
 ```bash
 uv tool install powerbi-metrics-book

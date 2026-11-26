@@ -717,6 +717,37 @@ const ROUTE_REQUESTS: Partial<
     byId(at.acceptThread, { reply_id: at.reply }),
   "POST /api/v1/threads/:id/archive": () => byId(at.archiveThread),
   "GET /api/v1/search": () => ({ query: "query=sales" }),
+  "GET /api/v1/guide": () => ({}),
+  "GET /api/v1/guide/export": () => ({}),
+  "GET /api/v1/book/exports": () => ({}),
+  "GET /api/v1/metrics/:name/export": () => theMetric(),
+  "PUT /api/v1/metrics/:name/owner": () => theMetric({ email: null }),
+  "PUT /api/v1/metrics/:name/follow": () => theMetric({ following: true }),
+  "PUT /api/v1/people/:id/title": () => ({
+    segments: { id: "me" },
+    body: { title: "Analyst" },
+  }),
+  "PUT /api/v1/metrics/:name/links/:other": () => ({
+    ...theMetric({ movement: "same", reason: "Shared demand." }),
+    segments: { name: at.metric, other: at.metric },
+    past: [400],
+  }),
+  "DELETE /api/v1/metrics/:name/links/:other": () => ({
+    ...theMetric(),
+    segments: { name: at.metric, other: at.metric },
+    past: [400],
+  }),
+  "PUT /api/v1/metrics/:name/edges/:other": () => ({
+    ...theMetric({ sign: 1, operation: "sum" }),
+    segments: { name: at.metric, other: at.metric },
+    past: [400],
+  }),
+  "DELETE /api/v1/metrics/:name/edges/:other": () => ({
+    ...theMetric(),
+    segments: { name: at.metric, other: at.metric },
+    past: [400],
+  }),
+  "POST /api/v1/conventions/upgrade": () => ({}),
   "GET /api/v1/metrics/:name": () => theMetric(),
   "GET /api/v1/metrics/:name/variants": () => theMetric(),
   "GET /api/v1/variants/:id": () => byId(at.variant),
@@ -916,6 +947,8 @@ const swapsOf = (real: object, missing: object): [string, string][] =>
 /** A tool with no entry is called with no input. */
 const TOOL_REQUESTS: Partial<Record<ToolName, () => ToolSpec>> = {
   search: () => ({ input: { query: "sales" } }),
+  read: () => ({ input: { kind: "guide" } }),
+  my_metrics: () => ({ input: { with_values: false } }),
   get_metric: () => about("name", at.metric, {}, MISSING),
   list_variants: () => about("metric", at.metric, {}, MISSING),
   get_variant: () => about("id", at.variant),

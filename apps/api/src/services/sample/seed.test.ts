@@ -151,6 +151,20 @@ it("seeds an admin, sales and documentation on an empty database, then changes n
     ).toBe(true);
     expect(await failingDocs(api)).toEqual([]);
     expect((await testPool("migrator").query(UNDESCRIBED)).rows).toEqual([]);
+    const reading = await testPool("migrator").query(`
+      select name from metric m where dismissed_at is null and (
+        tier = '' or importance = '' or direction = '' or use_for = '' or dont_use_for = ''
+        or decisions = '' or owner_team = '' or owner_person is null
+        or (select count(*) from metric_link l where l.metric_id = m.id or l.other_metric_id = m.id) < 2
+      )`);
+    expect(reading.rows).toEqual([]);
+    expect(
+      (
+        await testPool("migrator").query(
+          "select count(*)::int as count from metric_edge",
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
     const documented = await testPool("migrator").query(DOCS_CHANGES);
     const categories = () =>
       testPool("migrator").query("select * from category order by key");
@@ -176,6 +190,7 @@ it("seeds an admin, sales and documentation on an empty database, then changes n
     expect((await categories()).rows).toEqual(first);
     expect(lines).toContain("Sample book: already seeded, nothing changed.");
     expect(lines).toContain("Sample docs: already written, nothing changed.");
+    expect(lines).toContain("Sample reading page: 0 changes.");
     expect((await testPool("migrator").query(DOCS_CHANGES)).rows).toEqual(
       documented.rows,
     );
@@ -183,7 +198,7 @@ it("seeds an admin, sales and documentation on an empty database, then changes n
     expect(
       (
         await testPool("migrator").query(
-          `select 1 from session s join "user" u on u.id = s.user_id where u.email in ('viewer@sample.example', 'admin@sample.example')`,
+          `select 1 from session s join "user" u on u.id = s.user_id where u.email in ('viewer@sample.example', 'admin@sample.example', 'analyst@sample.example', 'leader@sample.example')`,
         )
       ).rowCount,
     ).toBe(0);

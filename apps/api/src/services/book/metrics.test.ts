@@ -829,6 +829,13 @@ async function passing(tx: Db, sample: SampleMirror): Promise<string> {
   await updateMetric(context, name, {
     label: "Number of units sold",
     definition: "How many units were sold.",
+    tier: "driver",
+    importance: "medium",
+    direction: "higher_is_better",
+    use_for: "Plan capacity.",
+    dont_use_for: "Profitability.",
+    decisions: "Adjust capacity.",
+    owner_team: "Operations",
     aliases: [],
     when_to_use: "To count volume.",
     not_the_same_as: "Not the number of orders.",

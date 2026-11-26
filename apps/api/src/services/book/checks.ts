@@ -27,6 +27,18 @@ export type CheckableMetric = {
   name_is_generated: boolean;
   definition: string | null;
   aliases: string[] | null;
+  tier?: string;
+  importance?: string;
+  direction?: string;
+  importance_why?: string;
+  use_for?: string;
+  dont_use_for?: string;
+  caveats?: string;
+  decisions?: string;
+  actions?: string;
+  owner_team?: string;
+  primary_dimensions?: string[];
+  building_block?: boolean;
   when_to_use: string | null;
   not_the_same_as: string | null;
   grain_and_filters: string | null;
@@ -73,6 +85,7 @@ export const exceptionIndex = (conventions: Conventions): ExceptionIndex =>
   );
 
 export type MetricCheckContext = {
+  term_names?: ReadonlySet<string>;
   conventions: Conventions;
   exceptions: ExceptionIndex;
   /** The labels of the other metrics that may share a word of this one's; see wordsComparedWithOtherLabels. */
@@ -236,11 +249,48 @@ const metric_qualifier_order: MetricCheck = (
   return [];
 };
 
-const metric_fields: MetricCheck = (metric, { conventions }) => {
+const metric_fields: MetricCheck = (metric, { conventions, term_names }) => {
   const rules = conventions.metric_fields;
   const found: Finding[] = [];
   const add = (field: string, message: string) =>
     found.push({ rule: `metric_fields.${field}`, message });
+  for (const field of ["tier", "importance", "direction"] as const) {
+    const value = metric[field] ?? "";
+    const rule = rules[field];
+    if (rule.required && blank(value)) add(field, `Fill in ${field}.`);
+    if (!blank(value) && !rule.values.includes(value))
+      add(field, `Choose ${field} from ${rule.values.join(", ")}.`);
+  }
+  for (const field of [
+    "importance_why",
+    "use_for",
+    "dont_use_for",
+    "caveats",
+    "decisions",
+    "actions",
+    "owner_team",
+  ] as const) {
+    const rule = rules[field];
+    const conditional =
+      field === "importance_why" &&
+      rules.importance_why.required_when?.values.includes(
+        metric.importance ?? "",
+      );
+    if ((rule.required || conditional) && blank(metric[field] ?? ""))
+      add(field, `Fill in ${field}.`);
+  }
+  if (rules.primary_dimensions.required && !metric.primary_dimensions?.length)
+    add("primary_dimensions", "Name the terms used to break down this metric.");
+  if (rules.building_block.required && metric.building_block === undefined)
+    add("building_block", "Say whether this metric builds other metrics.");
+  if (term_names)
+    for (const name of metric.primary_dimensions ?? []) {
+      if (!term_names.has(name))
+        add(
+          "primary_dimensions",
+          `Create the term ${name}, or choose a term already in the book.`,
+        );
+    }
   const empty: [string, boolean][] = [
     ["definition", rules.definition.required && blank(metric.definition)],
     ["when_to_use", rules.when_to_use.required && blank(metric.when_to_use)],

@@ -9,6 +9,7 @@ import { onTheMock } from "../auth/sign-in-config.js";
 import type { Environment } from "../settings/env.js";
 import { newSetupLink } from "../setup/link.js";
 import { seedSampleBook, seedSampleDocs, type Send } from "./book.js";
+import { seedSampleReadingPage } from "./reading.js";
 import { SAMPLE } from "./tenant.js";
 
 const SYNC_TIMEOUT_MS = 5 * 60 * 1000;
@@ -368,29 +369,30 @@ export async function seedSample(
           await answered(await web("/api/v1/admin/roles"), 200, "Listing roles")
         ).json(),
       );
-    if (
-      !assignments.roles.some(
-        (assignment) =>
-          assignment.role === "viewer" &&
-          assignment.subject_kind === "person" &&
-          assignment.subject === "viewer@sample.example",
+    for (const [email, role] of [
+      ["viewer@sample.example", "viewer"],
+      ["analyst@sample.example", "curator"],
+      ["leader@sample.example", "viewer"],
+    ] as const) {
+      if (
+        !assignments.roles.some(
+          (assignment) =>
+            assignment.role === role &&
+            assignment.subject_kind === "person" &&
+            assignment.subject === email,
+        )
       )
-    )
-      await answered(
-        await web("/api/v1/admin/roles", {
-          method: "POST",
-          json: {
-            role: "viewer",
-            subject_kind: "person",
-            subject: "viewer@sample.example",
-          },
-        }),
-        201,
-        "Assigning the sample viewer role",
-      );
-    print("Sign in the sample viewer");
-    const viewer = browser();
-    await signIn(viewer, SAMPLE.people["viewer@sample.example"]);
+        await answered(
+          await web("/api/v1/admin/roles", {
+            method: "POST",
+            json: { role, subject_kind: "person", subject: email },
+          }),
+          201,
+          "Assigning a sample role",
+        );
+      await signIn(browser(), SAMPLE.people[email]);
+    }
+    print(await seedSampleReadingPage(web));
     const final = await state();
     print(setupLine(final, checklists));
   } finally {

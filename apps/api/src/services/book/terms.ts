@@ -73,6 +73,7 @@ export type TermInput = {
   not_the_same_as?: string | null;
   /** A list, or a map from each value to what it means; null for none. */
   values?: unknown;
+  group?: string | null;
   owner?: string | null;
   /** Replaces the term's custom fields whole. */
   custom?: Record<string, unknown>;
@@ -285,6 +286,7 @@ export async function createTerm(context: ServiceContext, input: TermInput) {
       aliases,
       not_the_same_as: input.not_the_same_as,
       values: input.values,
+      group: input.group,
       owner: input.owner,
       custom: input.custom,
     });
@@ -332,6 +334,7 @@ export async function updateTerm(
         not_the_same_as: changes.not_the_same_as,
       }),
       ...(changes.values !== undefined && { values: changes.values }),
+      ...(changes.group !== undefined && { group: changes.group }),
       ...(changes.owner !== undefined && { owner: changes.owner }),
       ...(changes.custom !== undefined && { custom: changes.custom }),
     };
@@ -612,6 +615,7 @@ export async function getTerm(context: ServiceContext, reference: string) {
     aliases: row.aliases,
     not_the_same_as: row.not_the_same_as,
     values: row.values,
+    group: row.group,
     owner: row.owner,
     trust_state: row.trust_state,
     custom: row.custom,

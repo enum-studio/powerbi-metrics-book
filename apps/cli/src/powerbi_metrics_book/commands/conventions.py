@@ -677,3 +677,16 @@ def edit(context: typer.Context, json_output: JsonOption = False) -> None:
                 typer.echo(f"Your edits are kept at {path}.", err=True)
             else:
                 shutil.rmtree(folder)
+
+
+@app.command("upgrade")
+def upgrade(context: typer.Context, json_output: JsonOption = False) -> None:
+    """Split legacy when_to_use text into use_for and dont_use_for drafts for review."""
+    with open_session(context, json_output) as session:
+        answer = session.client.request("POST", "/conventions/upgrade")
+        session.emit(
+            answer,
+            lambda console: line(
+                console, one_line(object_of(answer, "the upgrade").get("note"))
+            ),
+        )

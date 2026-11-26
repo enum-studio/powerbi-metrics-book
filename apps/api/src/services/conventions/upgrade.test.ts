@@ -276,8 +276,13 @@ exceptions: []
     await store(1, legacy);
     expect(await upgradeStoredConventions(migrator)).toBe(1);
     const [row] = await stored();
-    expect(row?.document).toEqual({ ...upgraded, preset: "metrics_book" });
-    expect(resolve(row?.document)).toEqual(resolve({ preset: "metrics_book" }));
+    // Preserve the previous deployment's explicit when_to_use requirement.
+    const retained = {
+      preset: "metrics_book",
+      metric_fields: { when_to_use: { required: true } },
+    };
+    expect(row?.document).toEqual({ ...upgraded, ...retained });
+    expect(resolve(row?.document)).toEqual(resolve(retained));
   });
 
   it("turns each complete document into the company's part, resolving to the same rules", async () => {

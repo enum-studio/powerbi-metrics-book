@@ -24,6 +24,19 @@ naming:
   qualifiers: {}
   label: none
 metric_fields:
+  tier: { required: false, values: [north_star, driver, guardrail, diagnostic] }
+  importance: { required: false, values: [critical, high, medium, low] }
+  direction:
+    { required: false, values: [higher_is_better, lower_is_better, neither] }
+  importance_why: { required: false }
+  use_for: { required: false }
+  dont_use_for: { required: false }
+  caveats: { required: false }
+  decisions: { required: false }
+  actions: { required: false }
+  owner_team: { required: false }
+  primary_dimensions: { required: false }
+  building_block: { required: false }
   definition: { required: true }
   aliases: { required: false }
   when_to_use: { required: false }

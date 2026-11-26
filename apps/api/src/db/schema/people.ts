@@ -17,7 +17,19 @@ export const personDeactivation = pgTable("person_deactivation", {
   deactivated_by: text("deactivated_by").notNull(),
 });
 
+export const personProfile = pgTable("person_profile", {
+  person_id: text("person_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default(""),
+});
+
 declareGrants({
+  person_profile: {
+    api_rw: ["select", "insert", "update"],
+    worker_rw: [],
+    audit_writer: [],
+  },
   person_deactivation: {
     api_rw: ["select", "insert", "delete"],
     worker_rw: [],

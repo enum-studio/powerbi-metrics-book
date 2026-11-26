@@ -71,6 +71,7 @@ const PERSON: People[number] = {
   id: "person",
   name: "Someone",
   email: "someone@sample.example",
+  title: "",
   sign_in_method: "microsoft",
   last_seen_at: null,
   powerbi_connection: "connected",

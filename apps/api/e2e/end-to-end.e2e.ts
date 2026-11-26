@@ -176,6 +176,14 @@ const NET_SALES = {
     "Web net sales LY, which counts the web channel in the previous year only.",
   grain: "One order line. Test orders left out. VAT excluded.",
   unit: "money",
+  tier: "north_star",
+  importance: "critical",
+  "importance-why": "The headline sales result for commercial planning.",
+  direction: "higher_is_better",
+  "use-for": "Compare sales with targets and prior periods.",
+  "dont-use-for": "Profit or cash flow, which need costs and payment timing.",
+  decisions: "Choose the channels and products needing commercial attention.",
+  "owner-team": "Sales",
 };
 const flags = (fields: Record<string, string>) =>
   Object.entries(fields).flatMap(([name, value]) => [`--${name}`, value]);

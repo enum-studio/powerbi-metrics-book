@@ -1,4 +1,10 @@
-import { closeColumn, expect, openColumn, test } from "./fixtures.ts";
+import {
+  closeColumn,
+  devStackUrl,
+  expect,
+  openColumn,
+  test,
+} from "./fixtures.ts";
 
 test.use({ signedInAs: "admin" });
 
@@ -65,45 +71,61 @@ test("the catalog shows filed metrics, and serves category routes", async ({
   expect(csp).toEqual([]);
 });
 
-test("the catalog asks for one page of each list, and the tree links to what is not filed", async ({
+test("the catalog asks for one page of each list, and the tree links to what is not filed @tenant", async ({
   page,
+  request,
 }) => {
-  const asked: string[] = [];
-  page.on("request", (request) => {
-    if (request.url().includes("/api/v1/metrics?")) asked.push(request.url());
+  const name = "unfiled_reading_test";
+  const headers = { origin: devStackUrl() };
+  const created = await request.post("/api/v1/metrics", {
+    headers,
+    data: { name, label: "Unfiled reading test" },
   });
-  await page.goto("/catalog");
-  await expect(page.getByRole("heading", { name: /^Not filed/ })).toBeVisible();
-  expect(asked.length).toBeGreaterThan(0);
-  for (const url of asked) {
-    expect(url).toContain("limit=50");
-    expect(url).not.toContain("cursor=");
+  expect(created.status()).toBe(201);
+  try {
+    const asked: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/v1/metrics?")) asked.push(request.url());
+    });
+    await page.goto("/catalog");
+    await expect(
+      page.getByRole("heading", { name: /^Not filed/ }),
+    ).toBeVisible();
+    expect(asked.length).toBeGreaterThan(0);
+    for (const url of asked) {
+      expect(url).toContain("limit=50");
+      expect(url).not.toContain("cursor=");
+    }
+    await openColumn(page);
+    await page
+      .getByRole("navigation", { name: "Catalog" })
+      .getByRole("link", { name: /^Not filed/ })
+      .click();
+    await expect(page).toHaveURL(/\/catalog\?view=not-filed$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Not filed" }),
+    ).toBeVisible();
+    const sales = page
+      .getByRole("main")
+      .locator('a[href="/catalog/categories/sales"]');
+    await expect(sales).toBeHidden();
+    // A link to the view, opened cold, shows the same.
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Not filed" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("main").locator('a[href^="/catalog/metrics/"]').first(),
+    ).toBeVisible();
+    await expect(sales).toBeHidden();
+    // Any other view is the whole home.
+    await page.goto("/catalog?view=junk");
+    await expect(sales).toBeVisible();
+  } finally {
+    expect(
+      (await request.delete(`/api/v1/metrics/${name}`, { headers })).status(),
+    ).toBe(204);
   }
-  await openColumn(page);
-  await page
-    .getByRole("navigation", { name: "Catalog" })
-    .getByRole("link", { name: /^Not filed/ })
-    .click();
-  await expect(page).toHaveURL(/\/catalog\?view=not-filed$/);
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Not filed" }),
-  ).toBeVisible();
-  const sales = page
-    .getByRole("main")
-    .locator('a[href="/catalog/categories/sales"]');
-  await expect(sales).toBeHidden();
-  // A link to the view, opened cold, shows the same.
-  await page.reload();
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Not filed" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("main").locator('a[href^="/catalog/metrics/"]').first(),
-  ).toBeVisible();
-  await expect(sales).toBeHidden();
-  // Any other view is the whole home.
-  await page.goto("/catalog?view=junk");
-  await expect(sales).toBeVisible();
 });
 
 test("a failed category query shows its error under Metrics and leaves the rest of the tree", async ({

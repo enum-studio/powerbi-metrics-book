@@ -29,6 +29,8 @@ export type CategoryAnchor = {
   path: string;
   name: string;
   description: string | null;
+  question: string | null;
+  kicker: string | null;
   icon: string | null;
   position: number;
 };
@@ -63,6 +65,8 @@ export async function loadTree(db: Db) {
     path: pathOf(row),
     name: row.name,
     description: row.description,
+    question: row.question,
+    kicker: row.kicker,
     icon: row.icon,
     position: row.position,
   });
@@ -189,7 +193,12 @@ function refuseTakenKey(
 export function createCategory(
   context: ServiceContext,
   path: string,
-  input: { name: string; description?: string | null },
+  input: {
+    name: string;
+    description?: string | null;
+    question?: string | null;
+    kicker?: string | null;
+  },
 ): Promise<CategoryAnchor> {
   return edit(context, async (session) => {
     const { tx, tree } = session;
@@ -205,6 +214,8 @@ export function createCategory(
       key,
       name,
       description: input.description ?? null,
+      question: input.question ?? null,
+      kicker: input.kicker ?? null,
       position: lastPosition(tree, parent?.id ?? null),
     };
     await tx.insert(category).values(row);
@@ -224,7 +235,16 @@ async function change(
   action: string,
   row: Row,
   changes: Partial<
-    Pick<Row, "name" | "key" | "description" | "parent_id" | "position">
+    Pick<
+      Row,
+      | "name"
+      | "key"
+      | "description"
+      | "question"
+      | "kicker"
+      | "parent_id"
+      | "position"
+    >
   >,
   path: string,
 ): Promise<CategoryAnchor> {
@@ -242,7 +262,13 @@ async function change(
 export function renameCategory(
   context: ServiceContext,
   path: string,
-  changes: { name?: string; key?: string; description?: string | null },
+  changes: {
+    name?: string;
+    key?: string;
+    description?: string | null;
+    question?: string | null;
+    kicker?: string | null;
+  },
 ): Promise<CategoryAnchor> {
   return edit(context, (session) => {
     const row = session.tree.get(path);
@@ -258,6 +284,8 @@ export function renameCategory(
       {
         ...(changes.name !== undefined && { name: checkName(changes.name) }),
         ...(key !== undefined && { key }),
+        ...(changes.question !== undefined && { question: changes.question }),
+        ...(changes.kicker !== undefined && { kicker: changes.kicker }),
         ...(changes.description !== undefined && {
           description: changes.description,
         }),

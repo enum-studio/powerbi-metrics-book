@@ -62,6 +62,12 @@ def create(
         str | None, typer.Option(help="Its name in words; else made from the key.")
     ] = None,
     description: Annotated[str | None, typer.Option(help="What is filed here.")] = None,
+    question: Annotated[
+        str | None, typer.Option(help="The question this area answers.")
+    ] = None,
+    kicker: Annotated[
+        str | None, typer.Option(help="The short line above the area name.")
+    ] = None,
     json_output: JsonOption = False,
 ) -> None:
     """Create a category. Its parent is the path before the last key, and must exist."""
@@ -69,6 +75,10 @@ def create(
     body: dict[str, Json] = {"name": name or key.replace("_", " ").capitalize()}
     if description is not None:
         body["description"] = description
+    if question is not None:
+        body["question"] = question
+    if kicker is not None:
+        body["kicker"] = kicker
     show_object(
         context, json_output, "POST", _category_path(path), "the category", body=body
     )
@@ -84,6 +94,12 @@ def rename(
     ] = None,
     description: Annotated[
         str | None, typer.Option(help="Its new description.")
+    ] = None,
+    question: Annotated[
+        str | None, typer.Option(help="The question this area answers.")
+    ] = None,
+    kicker: Annotated[
+        str | None, typer.Option(help="The short line above the area name.")
     ] = None,
     json_output: JsonOption = False,
 ) -> None:

@@ -89,6 +89,11 @@ export type SignInProvider = {
 
 /** Every setting and the type of its value. The defaults and schemas live in src/services/settings/registry.ts. */
 export type SettingValues = {
+  "guide.enabled": boolean;
+  "guide.result_metric": string | null;
+  "guide.featured_metric": string | null;
+  "exports.markdown": boolean;
+  "exports.pdf": boolean;
   "questions.enabled": boolean;
   "usage.capture": boolean;
   "usage.retention_days": number;

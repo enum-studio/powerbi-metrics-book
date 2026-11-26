@@ -42,7 +42,6 @@ export default defineConfig({
       ],
       components: {
         SiteTitle: "./src/components/SiteTitle.astro",
-        Banner: "./src/components/Banner.astro",
       },
       sidebar: PARTS.map(([label, directory]) => ({
         label,

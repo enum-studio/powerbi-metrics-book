@@ -245,7 +245,7 @@ export const metricDetail = (row: Row): Row =>
         keep({ shift: shift(other.shift), count: other.count }, "shift count"),
       ),
     },
-    "id name label trust_state base_variants other_variants failing_checks definition aliases when_to_use not_the_same_as grain_and_filters unit category owner verified_by_name verified_at dismissed_at dismissed_reason custom terms open_questions accepted_answers",
+    "id name label trust_state base_variants other_variants failing_checks definition formula aliases tier importance importance_why direction use_for dont_use_for caveats decisions actions primary_dimensions owner_team building_block owner_person who_may_see moves_with edges when_to_use not_the_same_as grain_and_filters unit category owner verified_by_name verified_at dismissed_at dismissed_reason custom terms open_questions accepted_answers",
     {},
     ["base_variants"],
   );
@@ -263,7 +263,7 @@ export const termDetail = (row: Row): Row =>
       ),
       metrics: rows(row.metrics).map(metricAnchor),
     },
-    "id name icon type definition aliases not_the_same_as values owner trust_state custom columns metrics open_questions accepted_answers",
+    "id name icon type definition aliases not_the_same_as values group owner trust_state custom columns metrics open_questions accepted_answers",
   );
 
 /** The envelope belongs to the service, including absent first-page totals. */

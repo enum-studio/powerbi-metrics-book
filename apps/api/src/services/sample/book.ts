@@ -61,9 +61,21 @@ export const CATEGORIES = [
     path: "finance",
     name: "Finance",
     description:
-      "Numbers as Finance books them: after returns, in the currency picked. Use these for the board, not for trading.",
+      "Revenue in a stated reporting currency and goods margin in EUR. Returned sales remain included; these are not net profit or cash measures.",
   },
   { path: "finance/margin", name: "Margin", description: null },
+  {
+    path: "retail",
+    name: "Retail",
+    description:
+      "Store sales, returns and budgets. Money needs an explicit currency selection, and budget comparisons need matching months.",
+  },
+  {
+    path: "retail/stock",
+    name: "Stock",
+    description:
+      "Units and cost at one stock snapshot, read alongside product demand.",
+  },
 ];
 
 /**
@@ -127,7 +139,7 @@ export const METRICS: Metric[] = [
     definition:
       "Visits to the web shop, counted by the analytics tool a day behind.",
     when_to_use:
-      "Use it for traffic. For the share of visits that end in an order, use Conversion rate.",
+      "Use it for traffic. Read Conversion rate for the model's orders-to-sessions ratio, with its population caveats.",
     unit: "count",
   },
   {
@@ -135,8 +147,9 @@ export const METRICS: Metric[] = [
     label: "Conversion rate",
     category: "web_analytics",
     definition:
-      "Orders divided by sessions: the share of visits to the web shop that end in an order.",
-    when_to_use: "Use it to judge the web shop and campaigns against traffic.",
+      "All-channel orders divided by web sessions. This is a ratio of different populations unless the order channel is narrowed explicitly.",
+    when_to_use:
+      "Use it to investigate order-versus-traffic changes after checking that date and population filters are comparable.",
     unit: "rate",
   },
   {
@@ -153,8 +166,9 @@ export const METRICS: Metric[] = [
     label: "Return on ad spend",
     category: "marketing/paid_media",
     definition:
-      "Net sales divided by ad spend: the sales won for each euro spent on ads.",
-    when_to_use: "Use it to compare what paid channels return for their spend.",
+      "Net sales divided by ad spend: total filtered sales per euro spent, without attributing those sales to advertising.",
+    when_to_use:
+      "Use it to diagnose sales-versus-media-cost changes; confirm attribution before changing campaign budgets.",
     unit: "ratio",
   },
   {
@@ -166,7 +180,7 @@ export const METRICS: Metric[] = [
       "The net amount of the order lines in the currency picked on the page, euros when none is picked.",
     when_to_use: "Use it for the board and for results Finance signs off.",
     not_the_same_as:
-      "Net sales, which Sales counts before returns and always in EUR.",
+      "Net sales, which always uses EUR. Both measures include returned sales; the distinction is currency selection.",
     unit: "money",
   },
   {
@@ -231,7 +245,7 @@ const categorySchema: z.ZodType<Category> = z.object({
 const pathsIn = (nodes: Category[]): string[] =>
   nodes.flatMap((node) => [node.path, ...pathsIn(node.children)]);
 
-async function call(
+export async function call(
   send: Send,
   method: string,
   path: string,

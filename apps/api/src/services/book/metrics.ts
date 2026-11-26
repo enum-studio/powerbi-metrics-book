@@ -1,4 +1,9 @@
+import { metricVisibility } from "./visibility.js";
+import { documentationError } from "./documentation-errors.js";
+import { relationsForMetric } from "./relations.js";
+import { ownerOf } from "./ownership.js";
 import { isDeepStrictEqual } from "node:util";
+import { lockAsAdmin } from "../admin/people.js";
 import {
   and,
   asc,
@@ -20,6 +25,8 @@ import {
   bookChange,
   metric,
   metricVariant,
+  metricEdge,
+  metricLink,
   type ORIGINS,
   term,
   termMetric,
@@ -314,7 +321,11 @@ async function checksOf(
           )
           .orderBy(asc(metric.label));
   const [bases] = await liveVariants(db, eq(metric.id, row.id));
+  const termNames = row.primary_dimensions.length
+    ? await db.select({ name: term.name }).from(term)
+    : [];
   return checkMetric(row, {
+    term_names: new Set(termNames.map((t) => t.name)),
     conventions,
     exceptions: exceptionIndex(conventions),
     other_labels: others.map((other) => other.label),
@@ -408,17 +419,22 @@ export type Change = {
   now: Date;
 };
 
+export const changeVisibility = async (context: ServiceContext) => ({
+  allowed: await context.access.describableDatasets(context.principal),
+  hidesPii: !(await readsPii(context)),
+});
+
 export const openChange = async (
   context: ServiceContext,
   tx: Db,
   emit: Change["emit"],
+  visibility: Pick<Change, "allowed" | "hidesPii">,
 ): Promise<Change> => ({
   context,
   tx,
   emit,
   conventions: await currentConventions(tx),
-  allowed: await context.access.describableDatasets(context.principal),
-  hidesPii: !(await readsPii(context)),
+  ...visibility,
   now: context.clock(),
 });
 
@@ -537,15 +553,25 @@ export async function settle(
 }
 
 /** Lets `work` change the metric in a transaction with its row locked, then settles the change. */
-async function amend(
+export async function amendMetric(
   context: ServiceContext,
   reference: string,
   action: string,
   work: (change: Change, before: MetricRow) => Promise<void>,
 ): Promise<string> {
   await requireCurator(context);
+  const fallback =
+    action === "owner"
+      ? await context.settings.get("access.default_role")
+      : undefined;
+  const visibility = await changeVisibility(context);
   return withEvents(context.db, async (tx, emit) => {
-    const change = await openChange(context, tx, emit);
+    if (fallback !== undefined) await lockAsAdmin(context, tx, fallback);
+    if (action === "delete")
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext('metric_relations'))`,
+      );
+    const change = await openChange(context, tx, emit, visibility);
     const found = await resolveMetric(
       tx,
       change.allowed,
@@ -556,7 +582,7 @@ async function amend(
     await work(change, before);
     await settle(change, before, action);
     return before.id;
-  });
+  }).catch(documentationError);
 }
 
 /** Writes only what differs, so a change that changes nothing records nothing. */
@@ -580,6 +606,18 @@ type MetricFields = {
   definition?: string;
   /** Null until reviewed; an empty list says there are none. */
   aliases?: string[] | null;
+  tier?: string;
+  importance?: string;
+  direction?: string;
+  importance_why?: string;
+  use_for?: string;
+  dont_use_for?: string;
+  caveats?: string;
+  decisions?: string;
+  actions?: string;
+  owner_team?: string;
+  primary_dimensions?: string[];
+  building_block?: boolean;
   when_to_use?: string;
   not_the_same_as?: string | null;
   grain_and_filters?: string;
@@ -624,6 +662,22 @@ async function columnsOf(
   if (aliases?.includes("")) throw invalid("An alias cannot be blank.");
   if (aliases !== null && aliases !== undefined)
     await refuseAliasesOnKeys(tx, aliases, own);
+  for (const field of ["tier", "importance", "direction"] as const) {
+    const value = fields[field];
+    const values = conventions.metric_fields[field].values;
+    if (value && !values.includes(value))
+      throw invalid(`Choose ${field} from ${values.join(", ")}.`);
+  }
+  if (fields.primary_dimensions) {
+    const names = new Set(
+      (await tx.select({ name: term.name }).from(term)).map((t) => t.name),
+    );
+    for (const name of fields.primary_dimensions)
+      if (!names.has(name))
+        throw invalid(
+          `Create the term ${name}, or choose a term already in the book.`,
+        );
+  }
   const { unit, custom } = fields;
   const units = conventions.metric_fields.unit.values;
   if (unit !== undefined && unit !== null && !units.includes(unit)) {
@@ -641,6 +695,18 @@ async function columnsOf(
     label,
     definition: fields.definition,
     aliases,
+    tier: fields.tier,
+    importance: fields.importance,
+    direction: fields.direction,
+    importance_why: fields.importance_why,
+    use_for: fields.use_for,
+    dont_use_for: fields.dont_use_for,
+    caveats: fields.caveats,
+    decisions: fields.decisions,
+    actions: fields.actions,
+    owner_team: fields.owner_team,
+    primary_dimensions: fields.primary_dimensions,
+    building_block: fields.building_block,
     when_to_use: fields.when_to_use,
     not_the_same_as: fields.not_the_same_as,
     grain_and_filters: fields.grain_and_filters,
@@ -689,8 +755,9 @@ export async function createMetric(
 ) {
   await requireCurator(context);
   const name = keyOf(input.name);
+  const visibility = await changeVisibility(context);
   const id = await withEvents(context.db, async (tx, emit) => {
-    const change = await openChange(context, tx, emit);
+    const change = await openChange(context, tx, emit, visibility);
     const columns = await columnsOf(change, input);
     await refuseKeyOnAliases(tx, name);
     const [created] = await tx
@@ -707,7 +774,7 @@ export async function createMetric(
     if (created === undefined) throw taken(name);
     await record(change, "create", null, created, {});
     return created.id;
-  });
+  }).catch(documentationError);
   return getMetric(context, id);
 }
 
@@ -716,7 +783,7 @@ export async function updateMetric(
   reference: string,
   fields: MetricFields,
 ) {
-  const id = await amend(
+  const id = await amendMetric(
     context,
     reference,
     "update",
@@ -738,7 +805,7 @@ export async function renameMetric(
   newName: string,
 ) {
   const name = keyOf(newName);
-  const id = await amend(
+  const id = await amendMetric(
     context,
     reference,
     "rename",
@@ -765,7 +832,7 @@ export async function dismissMetric(
 ) {
   const why = reason.trim();
   if (why === "") throw invalid("Say why the metric is dismissed.");
-  const id = await amend(
+  const id = await amendMetric(
     context,
     reference,
     "dismiss",
@@ -783,7 +850,7 @@ export async function deleteMetric(
   context: ServiceContext,
   reference: string,
 ): Promise<void> {
-  await amend(
+  await amendMetric(
     context,
     reference,
     "delete",
@@ -814,6 +881,7 @@ export async function deleteMetric(
           `${before.name} still has ${holds.join(", and ")}. Merge it into another metric, or move its variants, before you delete it.`,
         );
       }
+      await refuseRelatedDeletion(tx, before.id);
       await tx.delete(metric).where(eq(metric.id, before.id));
     },
   );
@@ -901,8 +969,12 @@ export async function mergeMetrics(
   { from, into }: { from: string; into: string },
 ) {
   await requireCurator(context);
+  const visibility = await changeVisibility(context);
   const id = await withEvents(context.db, async (tx, emit) => {
-    const change = await openChange(context, tx, emit);
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext('metric_relations'))`,
+    );
+    const change = await openChange(context, tx, emit, visibility);
     const source = await resolveMetric(
       tx,
       change.allowed,
@@ -964,6 +1036,7 @@ export async function mergeMetrics(
         },
       });
     }
+    await refuseRelatedDeletion(tx, gone.id);
     await tx.delete(metric).where(eq(metric.id, gone.id));
     // Events carry ids, never another element's name: a reader may see one metric and not the other.
     await settle(change, gone, "merge", {
@@ -1014,8 +1087,9 @@ async function promote(
   to: "agent_verified" | "human_verified",
 ): Promise<string> {
   const action = to === "agent_verified" ? "verify" : "approve";
+  const visibility = await changeVisibility(context);
   return withEvents(context.db, async (tx, emit) => {
-    const change = await openChange(context, tx, emit);
+    const change = await openChange(context, tx, emit, visibility);
     if (to === "human_verified") refuseUnlessPerson(change, reference);
     const found = await resolveMetric(
       tx,
@@ -1165,6 +1239,9 @@ export async function getMetric(context: ServiceContext, reference: string) {
     .select({
       id: metricVariant.id,
       measure: { id: powerbiMeasure.id, name: powerbiMeasure.name },
+      explanation: sql<
+        string | null
+      >`coalesce(${powerbiMeasure.description}, ${powerbiMeasure.description_pbi})`,
       format_string: powerbiMeasure.format_string,
       period: metricVariant.period,
       reads_selection: metricVariant.reads_selection,
@@ -1207,10 +1284,11 @@ export async function getMetric(context: ServiceContext, reference: string) {
     .innerJoin(term, eq(term.id, termMetric.term_id))
     .where(eq(termMetric.metric_id, row.id))
     .orderBy(asc(term.name));
+  const conventions = await currentConventions(db);
   const checks = await checksOf(
     db,
     row,
-    await currentConventions(db),
+    conventions,
     allowed,
     hides,
     "for_a_page",
@@ -1225,6 +1303,27 @@ export async function getMetric(context: ServiceContext, reference: string) {
   return {
     kind: "metric" as const,
     ...row,
+    formula:
+      bases
+        .filter((base) => base.explanation)
+        .map(
+          (base) =>
+            `${base.dataset.name} / ${base.measure.name}: ${base.explanation ?? ""}`,
+        )
+        .join("\n\n") || null,
+    owner_person: await ownerOf(context, row),
+    who_may_see: metricVisibility(
+      await context.settings.get("access.metadata_visibility"),
+      (
+        await db
+          .selectDistinct({ name: powerbiDataset.name })
+          .from(metricVariant)
+          .innerJoin(powerbiMeasure, toMeasure)
+          .innerJoin(powerbiDataset, toDataset)
+          .where(seen)
+      ).map((dataset) => dataset.name),
+    ),
+    ...(await relationsForMetric(context, row.id, allowed, hides, conventions)),
     verified_by_name: await verifierName(db, row),
     category: categoryOf(await loadTree(db), row.category_id),
     failing_checks: await Promise.all(
@@ -1449,4 +1548,21 @@ export async function listMetrics(
     ),
     next_cursor: page.next_cursor,
   };
+}
+
+async function refuseRelatedDeletion(db: Db, id: string): Promise<void> {
+  const [edge] = await db
+    .select({ id: metricEdge.parent_id })
+    .from(metricEdge)
+    .where(or(eq(metricEdge.parent_id, id), eq(metricEdge.child_id, id)))
+    .limit(1);
+  const [link] = await db
+    .select({ id: metricLink.metric_id })
+    .from(metricLink)
+    .where(or(eq(metricLink.metric_id, id), eq(metricLink.other_metric_id, id)))
+    .limit(1);
+  if (edge || link)
+    throw conflict(
+      "Remove this metric's relationships before deleting or merging it, so their changes remain in the book's history.",
+    );
 }

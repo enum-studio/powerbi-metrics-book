@@ -9,9 +9,7 @@ test("the terms list opens Channel and its dataset diagram", async ({
   await expect(page.getByRole("heading", { name: "Terms" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Channel/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Region/ })).toBeVisible();
-  await expect(
-    page.getByRole("row").filter({ hasText: "Return" }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Return / })).toBeVisible();
   await page.goto("/catalog/terms/Channel");
   await expect(
     page.getByText("'Channel'[Channel]", { exact: true }),

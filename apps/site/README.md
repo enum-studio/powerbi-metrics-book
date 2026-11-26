@@ -82,11 +82,8 @@ curl -sI https://powerbimetricsbook.io/no-such-page | head -1
 
 The first two answer `200`. The third answers a redirect to `/docs/set-up/`, and the last answers `404`, with the landing page's 404 page as its body.
 
-## When 0.1 ships
+## Release notes
 
-The site says "Not released yet" in three places. Change all three in the same pull request as the release:
-- the line above the install commands on the landing page (`src/pages/index.astro`);
-- the banner on every docs page (`apps/docs/src/components/Banner.astro`);
-- the "Run it on the sample tenant" links next to both.
+Edit the repository's `CHANGELOG.md` for each release. The docs build copies it to `/docs/reference/changelog/`, which the site's header and footer link to.
 
-Move the "Unreleased" entry in `CHANGELOG.md` under the release's heading too.
+Keep pending changes under `Unreleased`. Move them under the release's version when it ships, with any upgrade notes.
