@@ -91,6 +91,14 @@ mobile-starlight-toc nav,
   border-radius: var(--radius);
 }
 
+.pagination-links a {
+  font-size: var(--type-meta);
+}
+
+.pagination-links .link-title {
+  font-size: var(--type-body);
+}
+
 /* The context guide compares each reply against the longest one. */
 .sl-markdown-content .reply-sizes {
   margin-inline: 0;
