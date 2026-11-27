@@ -25,9 +25,9 @@ Agents reach it three ways, all through the same rules: an MCP connector (the ma
 - **The person who sets it up.** Usually a Power BI admin or an engineer next to one. You need rights to register apps in Microsoft Entra and to change Power BI tenant settings. If you have never registered an app in Entra, the Set up part walks you through every click.
 - **The agents that connect**, such as Claude, Codex and Cursor. Pages are written so an agent can follow them step by step: every command and value to copy, and the check that proves the step worked.
 
-## Read the Start part in this order
+## Start here
 
-1. [The stack](/docs/start/the-stack/): what runs, and who talks to whom.
+1. [How it works](/docs/how-it-works/): the system design, what runs, and how agents find and query a measure.
 2. [Quickstart](/docs/start/quickstart/): three commands, then the setup link.
 3. [Try it on the sample tenant](/docs/start/sample-tenant/): no tenant to connect yet? Run the stack on invented data first, and move to your own tenant when you can.
 

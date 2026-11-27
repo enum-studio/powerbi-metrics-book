@@ -6,6 +6,7 @@ import { defineConfig } from "astro/config";
 // themselves by `sidebar.order` in their front matter.
 const PARTS = [
   ["Start", "start"],
+  ["How it works", "how-it-works"],
   ["Set up", "set-up"],
   ["Deploy", "deploy"],
   ["Use", "use"],
@@ -26,7 +27,11 @@ export default defineConfig({
   outDir: "dist",
   trailingSlash: "always",
   // The Start folder's opening page is the front page, at the root.
-  redirects: { "/start": "/docs/" },
+  redirects: {
+    "/start": "/docs/",
+    "/start/the-stack": "/docs/how-it-works/the-stack/",
+    "/use/mcp-context": "/docs/how-it-works/mcp-context/",
+  },
   integrations: [
     starlight({
       title: "Power BI Metrics Book",

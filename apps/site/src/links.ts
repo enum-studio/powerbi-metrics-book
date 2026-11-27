@@ -12,7 +12,7 @@ export const LINKS = {
   demo: "https://demo.powerbimetricsbook.io",
   docs: "/docs/",
   quickstart: "/docs/start/quickstart/",
-  stack: "/docs/start/the-stack/",
+  stack: "/docs/how-it-works/the-stack/",
   agents: "/docs/set-up/agents/",
   buildOnApi: "/docs/make-it-yours/building-on-the-api/",
   deploy: "/docs/deploy/",

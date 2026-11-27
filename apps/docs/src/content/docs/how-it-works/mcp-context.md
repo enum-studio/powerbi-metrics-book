@@ -2,8 +2,8 @@
 title: How much context does a CSV download save?
 description: See what an assistant reads when it searches for a metric, opens one definition and downloads thousands of rows from Power BI Metrics Book.
 sidebar:
-  order: 2.5
-  label: Search, previews and CSV savings
+  order: 2
+  label: Context savings
 ---
 
 **A 2,938-row sales export took 70,783 tokens with every row included in the reply. With a CSV link and no preview, the reply took 294 tokens.** The downloaded file still contains all 2,938 rows. The saving comes from sending the rows straight to a file.
