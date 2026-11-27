@@ -6,7 +6,7 @@ sidebar:
   label: Context savings
 ---
 
-**A 2,938-row sales export took 70,783 tokens with every row included in the reply. With a CSV link and no preview, the reply took 294 tokens.** The downloaded file still contains all 2,938 rows. The saving comes from sending the rows straight to a file.
+**Putting all 2,938 sample sales rows into one JSON reply would take 70,783 tokens. In the same benchmark, a CSV link with no preview took 294 tokens.** The connector limits inline replies; the full-row figure models a reply without that limit. The downloaded file still contains all 2,938 rows. The saving comes from sending the rows straight to a file.
 
 Metric discovery works on the same principle. A short list lets the assistant choose which definition deserves a closer look. Both examples below use invented data from the sample book.
 
