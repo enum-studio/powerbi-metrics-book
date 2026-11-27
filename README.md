@@ -1,23 +1,20 @@
 # Power BI Metrics Book
 
-Power BI Metrics Book is Agent First BI: a metrics book over a company's own Power BI, so its AI agents get the right numbers. It mirrors your workspaces, datasets and measures, keeps one definition per metric, and serves both to Claude (or any MCP client) through an MCP connector, the `pbmb` command and a REST API, with every query run under the asking person's own Power BI rights.
+Power BI Metrics Book is a self-hosted catalog of your Power BI metrics and an MCP server for AI assistants. When someone asks Claude or Codex for a number, the assistant can look up how your team defines it, find the DAX measure that calculates it, and run the query with that person's Power BI permissions.
 
-You run it yourself as four containers, open source, and point it at your Power BI tenant. It is the sister product of [Metrics Book](https://github.com/enum-studio/metrics-book) (coming soon), and the two share one look and one set of words.
+[Website](https://powerbimetricsbook.io/) · [Try the live demo](https://demo.powerbimetricsbook.io/) · [Read the docs](https://powerbimetricsbook.io/docs/) · [Self-host it](https://powerbimetricsbook.io/docs/start/quickstart/)
 
-**Current version: 0.1.1.** The app and source are available. See the [changelog](CHANGELOG.md) for what is included. To develop against the mock tenant, follow [CONTRIBUTING.md](CONTRIBUTING.md).
+## One metric across three datasets
 
-## Agent First BI
+Does net sales include returns? In the sample tenant, the definition is gross order value less discounts, before returns, in EUR. The Sales dataset calls its measure `Net sales`. Finance calls the same calculation `Revenue`. Both appear under [Net sales in the live demo](https://demo.powerbimetricsbook.io/catalog/metrics/net_sales).
 
-The main user of deep analytics is now an agent, and people work through it. Someone asks Claude or Codex a question; the agent finds the right metric, writes the DAX, gets the numbers and brings back the answer. Power BI Metrics Book gives that agent a good way into the Power BI setup you already have:
+<img src="apps/docs/public/screenshots/net-sales.png" alt="The Net sales page in the sample catalog showing how the Sales, Marketing and Finance datasets calculate the metric.">
 
-- Power BI stays the single source of truth. Nothing moves out of it, and every query runs with the asking person's own Power BI rights.
-- A metric is one business concept, and each Power BI measure that calculates it is a variant of it, whichever dataset it lives in.
-- The agent finds metrics, columns and terms by meaning, through search over the metadata, and takes the variant's DAX instead of writing it from memory.
-- Results stay out of the agent's context. A query answers with a short preview, pages to read on, and a link that downloads every row as a CSV into the agent's working folder.
+The catalog mirrors Power BI metadata. Agents can search metrics, columns and glossary terms, inspect a measure's DAX, and query Power BI through MCP, the `pbmb` CLI or the REST API. Power BI enforces the asking person's permissions on every query. The agent gets a short result preview and can read more rows by page or download the full CSV.
 
 ## What it costs
 
-There is no model inside the product. The agent you already pay for does the thinking, on your existing Claude or ChatGPT subscription. The only model calls are embeddings for search, with your own OpenAI or Gemini key, or none at all: at the prices read on 25 October 2026, embedding 5,000 search documents costs about $0.10 with OpenAI, and later syncs embed only what changed. Beyond that you pay for the [machine it runs on](apps/docs/src/content/docs/deploy/index.md).
+There is no model inside the product. The agent you already pay for does the thinking, on your existing Claude or ChatGPT subscription. The only model calls are embeddings for search, with your own OpenAI or Gemini key, or none at all: at the prices read on 25 October 2026, embedding 5,000 search documents costs about $0.10 with OpenAI, and later syncs embed only what changed. Beyond that you pay for the [machine it runs on](https://powerbimetricsbook.io/docs/deploy/).
 
 ## Who it is for
 
@@ -26,12 +23,6 @@ There is no model inside the product. The agent you already pay for does the thi
 - **The agents that connect**, such as Claude, Codex and Cursor. The docs are written so an agent can follow them step by step.
 
 It serves one organisation and one Power BI tenant per deployment. It reads Power BI and never changes a model, a report or a permission.
-
-## The stack
-
-<img src="apps/docs/public/stack.svg" alt="People and agents reach the api. The api talks to Postgres, Cerbos, Power BI (or the mock) and the embedding provider. The worker talks to Postgres, Power BI's admin scanner and the embedding provider.">
-
-Only `api` takes requests from outside. The same drawing, with the networks, is on [the stack page](apps/docs/src/content/docs/how-it-works/the-stack.mdx).
 
 ## Quickstart
 
@@ -45,43 +36,34 @@ pbmb init ./deployment --public-base-url https://metrics.example.com
 cd ./deployment && docker compose up -d
 ```
 
-Then run `docker compose exec api server setup-link` yourself (an agent never does) and open the setup link it prints. The link works once, for 24 hours. [The quickstart](apps/docs/src/content/docs/start/quickstart.md) has the checks that show the stack is healthy.
+Then run `docker compose exec api server setup-link` yourself (an agent never does) and open the setup link it prints. The link works once, for 24 hours. [The quickstart](https://powerbimetricsbook.io/docs/start/quickstart/) has the checks that show the stack is healthy.
 
-## The setup in ten steps
-
-The link opens a guide that checks every step with a real call before the next. These pages say the same, step by step, in the product's words.
-
-1. [Address](apps/docs/src/content/docs/set-up/address.md): the https address people open.
-2. [The app registration](apps/docs/src/content/docs/set-up/app-registration.md): sign-in and the Power BI connection, in Entra.
-3. [The scanner](apps/docs/src/content/docs/set-up/scanner.md): a second registration, its security group and the Power BI tenant settings.
-4. [What to sync](apps/docs/src/content/docs/set-up/what-to-sync.md): which workspaces, and when.
-5. [Sign-in](apps/docs/src/content/docs/set-up/sign-in.md): Google, OpenID Connect and passkeys beside Microsoft.
-6. [Who gets in](apps/docs/src/content/docs/set-up/who-gets-in.md): roles, and who sees which dataset.
-7. [Search](apps/docs/src/content/docs/set-up/search.md): OpenAI, Gemini or none.
-8. [Agents](apps/docs/src/content/docs/set-up/agents.md): the MCP address and the command line.
-9. [First sync](apps/docs/src/content/docs/set-up/first-sync.md): read the tenant for the first time.
-10. [Security](apps/docs/src/content/docs/set-up/security.md): the checklist, run against your deployment.
-
-When a check fails, [When a check fails](apps/docs/src/content/docs/set-up/when-a-check-fails.md) has every sentence a check shows, with its cause and fix.
+Follow the [setup guide](https://powerbimetricsbook.io/docs/set-up/) to connect your tenant and run the first sync.
 
 ## Where to run it
 
 Each guide ends with `pbmb admin status` passing against the new address. Dokploy, Railway and Azure have not been followed on a real account yet; their pages say so. The VM guide has been followed.
 
-- [One VM with Docker Compose](apps/docs/src/content/docs/deploy/vm.md): the reference deployment, with Caddy for TLS.
-- [Dokploy or Coolify on a VM](apps/docs/src/content/docs/deploy/dokploy.md): the same compose file, with the domain and certificate from Dokploy.
-- [Railway](apps/docs/src/content/docs/deploy/railway.md): a service per container, with no server to look after.
-- [Azure Container Apps](apps/docs/src/content/docs/deploy/azure.md): for a company that already runs Power BI in Azure.
-- [Kubernetes](apps/docs/src/content/docs/deploy/kubernetes.md): no chart yet; the page lists what the containers already meet.
+- [One VM with Docker Compose](https://powerbimetricsbook.io/docs/deploy/vm/): the reference deployment, with Caddy for TLS.
+- [Dokploy or Coolify on a VM](https://powerbimetricsbook.io/docs/deploy/dokploy/): the same compose file, with the domain and certificate from Dokploy.
+- [Railway](https://powerbimetricsbook.io/docs/deploy/railway/): a service per container, with no server to look after.
+- [Azure Container Apps](https://powerbimetricsbook.io/docs/deploy/azure/): for a company that already runs Power BI in Azure.
+- [Kubernetes](https://powerbimetricsbook.io/docs/deploy/kubernetes/): no chart yet; the page lists what the containers already meet.
+
+## The stack
+
+<img src="apps/docs/public/stack.svg" alt="People and agents reach the api. The api talks to Postgres, Cerbos, Power BI (or the mock) and the embedding provider. The worker talks to Postgres, Power BI's admin scanner and the embedding provider.">
+
+Only `api` takes requests from outside. The same drawing, with the networks, is on [the stack page](https://powerbimetricsbook.io/docs/how-it-works/the-stack/).
 
 ## What agents get
 
-- **The MCP connector.** Search the book, read a metric and its variants, run DAX, read a big result page by page or as a CSV file, ask a question. It never changes the book. See [the MCP tools](apps/docs/src/content/docs/reference/mcp-tools.md).
-- **The `pbmb` command.** Everything the connector does, plus curation: structuring drafts, conventions, roles and keys. See [the CLI](apps/docs/src/content/docs/reference/cli.md).
-- **Five skills** in [skills/](skills/), as a Claude Code plugin (`.claude-plugin/`) and for Codex and Cursor (`.agents/skills/`): `deploy_powerbi_metrics_book`, `adapt_conventions`, `curate_metrics_book`, `query_power_bi` and `answer_questions`. [Agents](apps/docs/src/content/docs/set-up/agents.md#skills) has the commands that install them.
-- **A REST API** with service-account keys, typed from [its OpenAPI file](apps/docs/src/content/docs/reference/rest-api.md), to build your own tools.
+- **The MCP connector.** Search the book, read a metric and its variants, run DAX, read a big result page by page or as a CSV file, ask a question. It never changes the book. See [the MCP tools](https://powerbimetricsbook.io/docs/reference/mcp-tools/).
+- **The `pbmb` command.** Everything the connector does, plus curation: structuring drafts, conventions, roles and keys. See [the CLI](https://powerbimetricsbook.io/docs/reference/cli/).
+- **Five skills** in [skills/](skills/), as a Claude Code plugin (`.claude-plugin/`) and for Codex and Cursor (`.agents/skills/`): `deploy_powerbi_metrics_book`, `adapt_conventions`, `curate_metrics_book`, `query_power_bi` and `answer_questions`. [Agents](https://powerbimetricsbook.io/docs/set-up/agents/#skills) has the commands that install them.
+- **A REST API** with service-account keys, typed from [its OpenAPI file](https://powerbimetricsbook.io/docs/reference/rest-api/), to build your own tools.
 
-The company decides the rules: names, the description shape, who may do what and how people sign in are [conventions and settings](apps/docs/src/content/docs/make-it-yours/index.md), changed without a fork.
+The company decides the rules: names, the description shape, who may do what and how people sign in are [conventions and settings](https://powerbimetricsbook.io/docs/make-it-yours/), changed without a fork.
 
 ## Security in five lines
 
@@ -91,7 +73,7 @@ The company decides the rules: names, the description shape, who may do what and
 4. An agent cannot sign off a metric as a person, and the connector cannot change a definition.
 5. Every access is audited, and twelve of the thirteen controls on the checklist are built and tested, each with a command you can run. The thirteenth, dependencies and images, is partly built, and the checklist says what is missing.
 
-The evaluator's page is [the security overview](apps/docs/src/content/docs/security/index.md), with [the checklist](apps/docs/src/content/docs/security/checklist.md). The model behind it is [docs/security/threat_model.md](docs/security/threat_model.md). Report a vulnerability privately, as [SECURITY.md](SECURITY.md) says.
+The evaluator's page is [the security overview](https://powerbimetricsbook.io/docs/security/), with [the checklist](https://powerbimetricsbook.io/docs/security/checklist/). The model behind it is [docs/security/threat_model.md](docs/security/threat_model.md). Report a vulnerability privately, as [SECURITY.md](SECURITY.md) says.
 
 ## Documentation
 
@@ -99,7 +81,8 @@ The evaluator's page is [the security overview](apps/docs/src/content/docs/secur
 - [docs/decisions/](docs/decisions/): one file per part, with each decision and when it stops being right.
 - [docs/standards/](docs/standards/): naming, TypeScript and Python.
 - [AGENTS.md](AGENTS.md): the rules, the layout and how to check a change, for agents and people.
-- The docs site starts at [what it is](apps/docs/src/content/docs/start/index.md) and is served at `/docs` by a running stack.
+- The [latest release](https://github.com/enum-studio/powerbi-metrics-book/releases/latest) and [changelog](CHANGELOG.md) cover what ships.
+- The docs site starts at [what it is](https://powerbimetricsbook.io/docs/) and is served at `/docs` by a running stack.
 
 ## Contributing
 
