@@ -51,7 +51,7 @@ Prefer `--trust-state human_verified` when a number goes to a decision. A `draft
 
 ## Browse with no ranking
 
-When ranking misses something, list instead. These return everything that matches the filters, A to Z, a page at a time with a `next_cursor`:
+When ranking misses something, list instead. Metrics, terms, datasets, columns and measures page with `next_cursor`. Workspaces and apps return a list. Categories return a tree.
 
 | MCP tool | CLI |
 |---|---|
@@ -64,7 +64,7 @@ When ranking misses something, list instead. These return everything that matche
 
 ## Then read the hit
 
-A hit is an anchor: `kind`, `id`, `name`, `label`, a 240-character `summary`, the `dataset`, the `trust_state` and a `score`. A category hit also carries its `key`, and so does each category step in its `path`, so you can build the category's path. A hit also carries `path`, what holds it from the root down (workspace, dataset, table, display folder, or a metric's categories); `icon`, the curator's icon or null; and `metric`, the name and label of the metric a variant belongs to. The answer's `counts` says how many hits of each kind you may see, so you know what a `--kind` filter would narrow to. It counts every exact, words and typo match of that kind, however many, plus the meaning ranking's 30 candidates of all kinds together. It never counts a hit you may not see. Take the next step by kind.
+An MCP hit gives the kind, ID and name, with a summary of up to 240 characters when one is available. A category appears as a path such as `sales/orders`. The CLI and REST also expose the score and the individual steps in the path. The answer's `counts` says how many hits of each kind you may see, so you know what a `--kind` filter would narrow to. It counts every exact, words and typo match of that kind, however many, plus the meaning ranking's 30 candidates of all kinds together. It never counts a hit you may not see. See the measured examples in [Context savings](/docs/how-it-works/mcp-context/).
 
 - A metric: `get_metric` (`pbmb metrics show <name>`). It returns the definition, the failing checks, the base variant in each dataset with a `measure_reference` such as `[Net sales]` to use in DAX, a count of the other variants by shift, the terms, and the open questions and accepted answers. Read those answers before you ask anything.
 - A variant: `get_variant` (`pbmb variants show <id>`) returns the measure's DAX and the columns to filter if it reads a slicer.

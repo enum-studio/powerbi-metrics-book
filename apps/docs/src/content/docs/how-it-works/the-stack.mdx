@@ -1,0 +1,41 @@
+---
+title: The stack
+description: What runs when you start Power BI Metrics Book, and who talks to whom.
+sidebar:
+  order: 1
+---
+
+import StackDrawing from "../../../components/StackDrawing.astro";
+
+Four containers make the stack, and only one of them takes requests from outside. This page shows them and says who talks to whom.
+
+<StackDrawing />
+
+## The containers
+
+| Container  | What it does                                                                                                              | Reachable from outside                             |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `api`      | Serves the web app, the sign-in, the MCP connector, the REST API and this site                                            | Yes, and only this one, through your reverse proxy |
+| `worker`   | The same image started with `worker`: the sync, the drafts, embeddings, result expiry and schedules                       | No                                                 |
+| `postgres` | PostgreSQL with pgvector: sign-in, the mirror, the book, results, the query log, threads, the job queue and the audit log | No                                                 |
+| `cerbos`   | Decides who may do what, from policies you can read and extend                                                            | No                                                 |
+
+## Who talks to whom
+
+- People and agents talk to the `api` over https, through a reverse proxy that you run (Caddy, Traefik or the one your host gives you).
+- The `api` talks to `postgres` and `cerbos`. It talks to Power BI with the asking person's own delegated token, so row-level security holds. It sends a search query to the embedding provider, OpenAI or Gemini, with your key.
+- The `worker` talks to `postgres`. It talks to Power BI's admin scanner API as a service principal, and sends the text of the book to the embedding provider so search can find it.
+- `cerbos` talks to nobody. Only the `api` asks it.
+- In development, the mock tenant stands in for Microsoft and the embedding provider, so the stack runs with no real credentials.
+
+The containers sit on three Docker networks: `edge` (the proxy and the `api`), `app` (the `api`, the `worker`, `cerbos` and `postgres`, with no route out) and `egress` (the `api` and the `worker`, the only two that reach the internet).
+
+## Check
+
+After the [quickstart](/docs/start/quickstart/), run this in the deployment directory:
+
+```bash
+docker compose ps
+```
+
+It lists `api`, `worker`, `postgres` and `cerbos`, each as healthy. Only `api` shows a published port, bound to `127.0.0.1`.

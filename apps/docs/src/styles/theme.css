@@ -90,3 +90,44 @@ mobile-starlight-toc nav,
 .right-sidebar a {
   border-radius: var(--radius);
 }
+
+/* The context guide compares each reply against the longest one. */
+.sl-markdown-content .reply-sizes {
+  margin-inline: 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: var(--radius);
+}
+
+.reply-sizes figcaption {
+  font-weight: 600;
+}
+
+.reply-sizes > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  margin-top: 0.8rem;
+}
+
+.reply-sizes > div > * {
+  margin: 0;
+}
+
+.reply-sizes strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.reply-sizes i {
+  grid-column: 1 / -1;
+  height: 0.4rem;
+  background: var(--sl-color-hairline-light);
+}
+
+.reply-sizes i::before {
+  content: "";
+  display: block;
+  width: var(--share);
+  height: 100%;
+  background: var(--sl-color-text-accent);
+}

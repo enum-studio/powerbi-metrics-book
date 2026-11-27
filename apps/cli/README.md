@@ -31,7 +31,7 @@ It serves one organisation and one Power BI tenant per deployment. It reads Powe
 
 <img src="https://github.com/enum-studio/powerbi-metrics-book/raw/refs/heads/main/apps/docs/public/stack.svg" alt="People and agents reach the api. The api talks to Postgres, Cerbos, Power BI (or the mock) and the embedding provider. The worker talks to Postgres, Power BI's admin scanner and the embedding provider.">
 
-Only `api` takes requests from outside. The same drawing, with the networks, is on [the stack page](https://github.com/enum-studio/powerbi-metrics-book/blob/main/apps/docs/src/content/docs/start/the-stack.mdx).
+Only `api` takes requests from outside. The same drawing, with the networks, is on [the stack page](https://github.com/enum-studio/powerbi-metrics-book/blob/main/apps/docs/src/content/docs/how-it-works/the-stack.mdx).
 
 ## Quickstart
 
